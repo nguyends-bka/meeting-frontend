@@ -1,5 +1,6 @@
 import '@livekit/components-styles';
 import './globals.css';
+import { AuthProvider } from '@/lib/auth';
 
 export const metadata = {
   title: 'Meeting App',
@@ -13,7 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
