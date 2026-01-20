@@ -3,8 +3,8 @@ import './globals.css';
 import { AuthProvider } from '@/lib/auth';
 
 export const metadata = {
-  title: 'Meeting App',
-  description: 'Google Meet clone using LiveKit',
+  title: 'BKMeeting',
+  description: 'Hệ thống họp trực tuyến BKMeeting',
 };
 
 export default function RootLayout({

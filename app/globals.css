@@ -34,3 +34,13 @@ button:hover:not(:disabled) {
 button:active:not(:disabled) {
   transform: translateY(0);
 }
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  /* Tablet và smaller */
+}
+
+@media (max-width: 768px) {
+  /* Mobile */
+  /* Main layout sẽ được xử lý bằng inline styles */
+}

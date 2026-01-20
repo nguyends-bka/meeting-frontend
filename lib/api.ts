@@ -100,6 +100,7 @@ class ApiService {
       roomName: string;
       meetingId: string;
       meetingCode: string;
+      participantId: string;
     }>('/api/meeting/join-by-link', {
       method: 'POST',
       body: JSON.stringify({ meetingId }),
@@ -113,6 +114,7 @@ class ApiService {
       roomName: string;
       meetingId: string;
       meetingCode: string;
+      participantId: string;
     }>('/api/meeting/join', {
       method: 'POST',
       body: JSON.stringify({ 
@@ -130,12 +132,38 @@ class ApiService {
       meetingId: string;
       meetingCode: string;
       title: string;
+      participantId: string;
     }>('/api/meeting/join', {
       method: 'POST',
       body: JSON.stringify({ 
         MeetingCode: meetingCode.toUpperCase(),
         Passcode: passcode 
       }),
+    });
+  }
+
+  async leaveMeeting(participantId: string, meetingId: string) {
+    return this.request<{ message: string; updatedCount?: number }>('/api/meeting/leave', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        ParticipantId: participantId,
+        MeetingId: meetingId 
+      }),
+    });
+  }
+
+  async getMeetingHistory(meetingId: string) {
+    return this.request<
+      Array<{
+        id: string;
+        username: string;
+        userId: string;
+        joinedAt: string;
+        leftAt: string | null;
+        duration: number | null;
+      }>
+    >(`/api/meeting/${meetingId}/history`, {
+      method: 'GET',
     });
   }
 

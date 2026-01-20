@@ -21,6 +21,9 @@ export default function MeetingPage() {
   const [error, setError] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(true);
   const [roomError, setRoomError] = useState<string | null>(null);
+  const [participantId, setParticipantId] = useState<string | null>(null);
+  const [currentMeetingId, setCurrentMeetingId] = useState<string | null>(null);
+  const [hasJoined, setHasJoined] = useState(false); // Guard để tránh join nhiều lần
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -28,9 +31,11 @@ export default function MeetingPage() {
       return;
     }
 
-    if (!isAuthenticated || !meetingId) return;
+    if (!isAuthenticated || !meetingId || hasJoined) return;
 
     const joinMeeting = async () => {
+      // Đánh dấu đã join để tránh gọi lại
+      setHasJoined(true);
       setConnecting(true);
       setError(null);
 
@@ -40,27 +45,39 @@ export default function MeetingPage() {
       if (result.error) {
         setError(result.error);
         setConnecting(false);
+        setHasJoined(false); // Reset nếu có lỗi để có thể thử lại
         return;
       }
 
       if (result.data) {
         setToken(result.data.token);
         setUrl(result.data.liveKitUrl);
+        setParticipantId(result.data.participantId);
+        setCurrentMeetingId(result.data.meetingId);
         setConnecting(false);
       }
     };
 
     joinMeeting();
-  }, [meetingId, isAuthenticated, authLoading, router]);
+  }, [meetingId, isAuthenticated, authLoading, router, hasJoined]);
 
   const handleError = useCallback((error: Error) => {
     console.error('LiveKit room error:', error);
     setRoomError(error.message || 'Có lỗi xảy ra trong meeting room');
   }, []);
 
-  const handleDisconnected = useCallback(() => {
+  const handleDisconnected = useCallback(async () => {
+    // Ghi lại lịch sử rời meeting
+    // Gửi cả ParticipantId và MeetingId để backend có thể cập nhật tất cả active sessions
+    if (participantId && currentMeetingId) {
+      try {
+        await apiService.leaveMeeting(participantId, currentMeetingId);
+      } catch (error) {
+        console.error('Failed to record leave:', error);
+      }
+    }
     router.push('/');
-  }, [router]);
+  }, [router, participantId, currentMeetingId]);
 
   if (authLoading) {
     return (
