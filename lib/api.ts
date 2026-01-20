@@ -33,8 +33,49 @@ class ApiService {
 
       if (!response.ok) {
         const errorText = await response.text();
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        
+        // Thử parse JSON error response
+        try {
+          const errorJson = JSON.parse(errorText);
+          // Ưu tiên message từ backend (nếu có)
+          if (errorJson.message) {
+            errorMessage = errorJson.message;
+          } else if (errorJson.title) {
+            // Map các status code thành message tiếng Việt thân thiện
+            if (response.status === 401) {
+              errorMessage = 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.';
+            } else if (response.status === 400) {
+              errorMessage = errorJson.title === 'Bad Request' 
+                ? 'Thông tin không hợp lệ. Vui lòng kiểm tra lại.' 
+                : errorJson.title;
+            } else if (response.status === 404) {
+              errorMessage = 'Không tìm thấy tài nguyên.';
+            } else if (response.status === 500) {
+              errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
+            } else {
+              errorMessage = errorJson.title || errorMessage;
+            }
+          } else if (typeof errorJson === 'string') {
+            errorMessage = errorJson;
+          }
+        } catch {
+          // Nếu không parse được JSON, kiểm tra nếu là plain text error
+          if (errorText && errorText.trim() !== '') {
+            // Nếu error text không phải JSON, dùng nó trực tiếp
+            if (!errorText.startsWith('{')) {
+              errorMessage = errorText;
+            } else {
+              // Nếu là JSON nhưng parse lỗi, dùng message mặc định theo status
+              if (response.status === 401) {
+                errorMessage = 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.';
+              }
+            }
+          }
+        }
+        
         return {
-          error: errorText || `HTTP ${response.status}: ${response.statusText}`,
+          error: errorMessage,
         };
       }
 

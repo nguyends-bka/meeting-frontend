@@ -8,6 +8,7 @@ import Link from 'next/link';
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated, loading: authLoading } = useAuth();
@@ -59,14 +60,24 @@ export default function LoginPage() {
 
           <div style={styles.inputGroup}>
             <label style={styles.label}>Mật khẩu</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={styles.input}
-              placeholder="Nhập mật khẩu"
-            />
+            <div style={styles.passwordWrapper}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={styles.passwordInput}
+                placeholder="Nhập mật khẩu"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={styles.passwordToggle}
+                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu'}
+              >
+                {showPassword ? '👁️' : '👁️‍🗨️'}
+              </button>
+            </div>
           </div>
 
           <button
@@ -138,6 +149,34 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '16px',
     outline: 'none',
     transition: 'border-color 0.2s',
+  },
+  passwordWrapper: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    padding: '12px 45px 12px 12px',
+    border: '1px solid #ddd',
+    borderRadius: '6px',
+    fontSize: '16px',
+    outline: 'none',
+    transition: 'border-color 0.2s',
+    width: '100%',
+  },
+  passwordToggle: {
+    position: 'absolute',
+    right: '12px',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '20px',
+    padding: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#666',
+    transition: 'color 0.2s',
   },
   button: {
     padding: '12px',

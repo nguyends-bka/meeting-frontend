@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
@@ -23,6 +24,13 @@ export default function HomePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [page, setPage] = useState<number>(1);
+
+  const totalPages = Math.max(1, Math.ceil(meetings.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIdx = (currentPage - 1) * pageSize;
+  const pagedMeetings = meetings.slice(startIdx, startIdx + pageSize);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -57,6 +65,11 @@ export default function HomePage() {
     }
     setLoadingMeetings(false);
   };
+
+  useEffect(() => {
+    // Nếu đang ở trang > tổng trang mới (do đổi pageSize hoặc data thay đổi) thì kéo về trang hợp lệ
+    setPage((p) => Math.min(p, Math.max(1, Math.ceil(meetings.length / pageSize))));
+  }, [meetings.length, pageSize]);
 
 
   const createMeeting = async () => {
@@ -164,7 +177,25 @@ export default function HomePage() {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <h1 style={styles.logo}>BKMeeting</h1>
+        <div style={styles.headerLeft}>
+          <h1 style={styles.logo}>BKMeeting</h1>
+          <div style={styles.headerActions}>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              style={styles.headerActionPrimary}
+            >
+              <span style={styles.actionButtonIcon}>➕</span>
+              <span style={styles.actionButtonTextSmall}>Tạo cuộc họp mới</span>
+            </button>
+            <button
+              onClick={() => setShowJoinModal(true)}
+              style={styles.headerActionSecondary}
+            >
+              <span style={styles.actionButtonIcon}>🔗</span>
+              <span style={styles.actionButtonTextSmall}>Tham gia cuộc họp</span>
+            </button>
+          </div>
+        </div>
         <div style={styles.userInfo}>
           <span style={styles.username}>Xin chào, {user?.username}</span>
           <button onClick={logout} style={styles.logoutBtn}>
@@ -174,30 +205,89 @@ export default function HomePage() {
       </header>
 
       <main style={styles.main}>
-        {/* Action Buttons Section */}
-        <div style={styles.actionSection}>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            style={styles.actionButtonPrimary}
-          >
-            <span style={styles.actionButtonIcon}>➕</span>
-            <span style={styles.actionButtonText}>Tạo cuộc họp mới</span>
-          </button>
-          <button
-            onClick={() => setShowJoinModal(true)}
-            style={styles.actionButtonSecondary}
-          >
-            <span style={styles.actionButtonIcon}>🔗</span>
-            <span style={styles.actionButtonText}>Tham gia cuộc họp</span>
-          </button>
-        </div>
-
         {/* Meetings Table Section */}
         <div style={styles.tableSection}>
           <div style={styles.card}>
             <div style={styles.cardHeader}>
-              <h2 style={styles.cardTitle}>Cuộc họp của tôi</h2>
-              <span style={styles.meetingCount}>{meetings.length}</span>
+              <div style={styles.cardHeaderLeft}>
+                <h2 style={styles.cardTitle}>Cuộc họp của tôi</h2>
+                <span style={styles.meetingCount}>{meetings.length}</span>
+              </div>
+
+              <div style={styles.paginationBar}>
+                <div style={styles.pageSizeGroup}>
+                  <span style={styles.pageSizeLabel}>Bản ghi/trang</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      setPageSize(next);
+                      setPage(1);
+                    }}
+                    style={styles.pageSizeSelect}
+                  >
+                    {[ 10, 20, 50, 100].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={styles.pageNav}>
+                  <button
+                    type="button"
+                    onClick={() => setPage(1)}
+                    disabled={currentPage === 1}
+                    style={{
+                      ...styles.pageBtn,
+                      ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
+                    }}
+                    title="Trang đầu"
+                  >
+                    «
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    style={{
+                      ...styles.pageBtn,
+                      ...(currentPage === 1 ? styles.pageBtnDisabled : {}),
+                    }}
+                    title="Trang trước"
+                  >
+                    ‹
+                  </button>
+                  <span style={styles.pageInfo}>
+                    {currentPage}/{totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    style={{
+                      ...styles.pageBtn,
+                      ...(currentPage === totalPages ? styles.pageBtnDisabled : {}),
+                    }}
+                    title="Trang sau"
+                  >
+                    ›
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    style={{
+                      ...styles.pageBtn,
+                      ...(currentPage === totalPages ? styles.pageBtnDisabled : {}),
+                    }}
+                    title="Trang cuối"
+                  >
+                    »
+                  </button>
+                </div>
+              </div>
             </div>
             
             {loadingMeetings ? (
@@ -225,10 +315,9 @@ export default function HomePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {meetings.map((meeting, index) => (
-                      <>
+                    {pagedMeetings.map((meeting, index) => (
+                      <React.Fragment key={meeting.id}>
                         <tr 
-                          key={meeting.id} 
                           style={{
                             ...styles.tableRow,
                             ...(selectedMeeting === meeting.id ? styles.tableRowSelected : {}),
@@ -237,7 +326,7 @@ export default function HomePage() {
                           onClick={() => setSelectedMeeting(selectedMeeting === meeting.id ? null : meeting.id)}
                         >
                           <td style={{...styles.tableCell, textAlign: 'center', width: '80px'}}>
-                            <strong>{index + 1}</strong>
+                            <strong>{startIdx + index + 1}</strong>
                           </td>
                           <td style={styles.tableCell}>
                             <strong>{meeting.title}</strong>
@@ -278,6 +367,18 @@ export default function HomePage() {
                                   </button>
                                 </div>
                                 
+                                <div style={styles.detailActions}>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(`/history/${meeting.id}`);
+                                    }}
+                                    style={styles.detailActionBtn}
+                                  >
+                                    📊 Xem lịch sử
+                                  </button>
+                                </div>
+
                                 <div style={styles.detailContent}>
                                   <div style={styles.detailRow}>
                                     <span style={styles.detailLabel}>Mã cuộc họp:</span>
@@ -294,10 +395,7 @@ export default function HomePage() {
                                         📋
                                       </button>
                                     </div>
-                                  </div>
-                                  
-                                  <div style={styles.detailRow}>
-                                    <span style={styles.detailLabel}>Passcode:</span>
+                                    <span style={{...styles.detailLabel, marginLeft: '16px'}}>Passcode:</span>
                                     <div style={styles.detailValue}>
                                       <code style={styles.inlineCode}>{meeting.passcode}</code>
                                       <button
@@ -341,23 +439,11 @@ export default function HomePage() {
                                     </div>
                                   </div>
                                 </div>
-                                
-                                <div style={styles.detailActions}>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      router.push(`/history/${meeting.id}`);
-                                    }}
-                                    style={styles.detailActionBtn}
-                                  >
-                                    📊 Xem lịch sử
-                                  </button>
-                                </div>
                               </div>
                             </td>
                           </tr>
                         )}
-                      </>
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -601,6 +687,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    position: 'sticky',
+    top: 0,
+    zIndex: 200,
+  },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '20px',
+    minWidth: 0,
+  },
+  headerActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    flexWrap: 'wrap',
   },
   logo: {
     margin: 0,
@@ -635,49 +736,48 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: 'column',
     gap: '30px',
   },
-  actionSection: {
-    display: 'flex',
-    gap: '20px',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-  },
-  actionButtonPrimary: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '16px 32px',
-    background: 'linear-gradient(135deg, #0070f3 0%, #0051cc 100%)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '18px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    boxShadow: '0 4px 12px rgba(0, 112, 243, 0.3)',
-    transition: 'all 0.2s',
-    minWidth: '220px',
-  },
-  actionButtonSecondary: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '16px 32px',
-    background: 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '18px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    boxShadow: '0 4px 12px rgba(40, 167, 69, 0.3)',
-    transition: 'all 0.2s',
-    minWidth: '220px',
-  },
+  // (moved actions into header)
   actionButtonIcon: {
     fontSize: '24px',
   },
   actionButtonText: {
     fontSize: '18px',
+  },
+  actionButtonTextSmall: {
+    fontSize: '14px',
+    fontWeight: '700',
+  },
+  headerActionPrimary: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px 16px',
+    background: 'linear-gradient(135deg, #0070f3 0%, #0051cc 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: '14px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    boxShadow: '0 2px 8px rgba(0, 112, 243, 0.25)',
+    transition: 'all 0.2s',
+    whiteSpace: 'nowrap',
+  },
+  headerActionSecondary: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px 16px',
+    background: 'linear-gradient(135deg, #28a745 0%, #1e7e34 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: '14px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    boxShadow: '0 2px 8px rgba(40, 167, 69, 0.25)',
+    transition: 'all 0.2s',
+    whiteSpace: 'nowrap',
   },
   tableSection: {
     width: '100%',
@@ -689,14 +789,32 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
     transition: 'transform 0.2s, box-shadow 0.2s',
     border: '1px solid #f0f0f0',
+    display: 'flex',
+    flexDirection: 'column',
+    maxHeight: 'calc(100vh - 200px)',
+    overflow: 'hidden',
   },
   cardHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '24px',
+    marginBottom: '0',
     paddingBottom: '16px',
     borderBottom: '2px solid #f5f5f5',
+    gap: '16px',
+    flexWrap: 'wrap',
+    position: 'sticky',
+    top: 0,
+    backgroundColor: 'white',
+    zIndex: 10,
+    paddingTop: '0',
+    marginTop: '0',
+    flexShrink: 0,
+  },
+  cardHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
   },
   cardTitle: {
     margin: 0,
@@ -716,6 +834,58 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '14px',
     fontWeight: '600',
     minWidth: '28px',
+    textAlign: 'center',
+  },
+  paginationBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+  },
+  pageSizeGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  pageSizeLabel: {
+    fontSize: '13px',
+    color: '#666',
+    fontWeight: '600',
+  },
+  pageSizeSelect: {
+    padding: '8px 10px',
+    borderRadius: '8px',
+    border: '1px solid #dee2e6',
+    backgroundColor: 'white',
+    fontSize: '14px',
+    cursor: 'pointer',
+  },
+  pageNav: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  pageBtn: {
+    padding: '8px 12px',
+    borderRadius: '8px',
+    border: '1px solid #dee2e6',
+    backgroundColor: 'white',
+    cursor: 'pointer',
+    fontWeight: '700',
+    color: '#495057',
+    minWidth: '40px',
+  },
+  pageBtnDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+  },
+  pageInfo: {
+    fontSize: '13px',
+    color: '#666',
+    fontWeight: '700',
+    padding: '0 6px',
+    minWidth: '64px',
     textAlign: 'center',
   },
   labelIcon: {
@@ -1028,13 +1198,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginLeft: '8px',
   },
   inlineCode: {
-    backgroundColor: '#f5f5f5',
-    padding: '2px 6px',
+    backgroundColor: '#e3f2fd',
+    padding: '4px 8px',
     borderRadius: '4px',
     fontFamily: 'monospace',
     fontSize: '14px',
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#0070f3',
+    letterSpacing: '0.5px',
   },
   historyBtn: {
     padding: '10px 16px',
@@ -1051,11 +1222,15 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   tableContainer: {
     overflowX: 'auto',
-    marginTop: '20px',
+    overflowY: 'auto',
+    marginTop: '0',
+    flex: 1,
+    minHeight: 0,
   },
   table: {
     width: '100%',
-    borderCollapse: 'collapse',
+    borderCollapse: 'separate',
+    borderSpacing: 0,
     fontSize: '14px',
     backgroundColor: 'white',
   },
@@ -1070,6 +1245,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#495057',
     fontSize: '14px',
     borderBottom: '2px solid #dee2e6',
+    backgroundColor: '#f8f9fa',
+    position: 'sticky',
+    top: 0,
+    zIndex: 9,
   },
   tableRow: {
     borderBottom: '1px solid #e9ecef',
@@ -1239,18 +1418,22 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: 'white',
     borderRadius: '8px',
     border: '1px solid #e9ecef',
+    transition: 'all 0.2s',
+    flexWrap: 'wrap',
   },
   detailLabel: {
     fontSize: '14px',
     fontWeight: '600',
     color: '#666',
     minWidth: '120px',
+    flexShrink: 0,
   },
   detailValue: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     flex: 1,
+    minWidth: 0,
   },
   detailText: {
     fontSize: '14px',
@@ -1264,6 +1447,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '6px',
     fontSize: '13px',
     backgroundColor: 'white',
+    minWidth: 0,
   },
   copyBtnSmall: {
     padding: '8px 12px',
@@ -1274,11 +1458,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: 'pointer',
     fontSize: '14px',
     transition: 'all 0.2s',
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '36px',
   },
   detailActions: {
     display: 'flex',
     gap: '12px',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
+    marginBottom: '20px',
   },
   detailActionBtn: {
     padding: '12px 24px',
