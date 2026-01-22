@@ -1,6 +1,6 @@
 const config = {
   plugins: {
-    "@tailwindcss/postcss": {},
+    // No Tailwind in this project; keep PostCSS enabled without extra plugins.
   },
 };
 

@@ -9,6 +9,8 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
@@ -38,7 +40,12 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    const result = await register(username, password);
+    const result = await register(
+      username, 
+      password, 
+      fullName.trim() || undefined, 
+      email.trim() || undefined
+    );
     
     if (result.success) {
       router.push('/');
@@ -60,7 +67,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Tên đăng nhập</label>
+            <label style={styles.label}>Tên đăng nhập <span style={{ color: 'red' }}>*</span></label>
             <input
               type="text"
               value={username}
@@ -72,7 +79,29 @@ export default function RegisterPage() {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Mật khẩu</label>
+            <label style={styles.label}>Họ và tên (tùy chọn)</label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              style={styles.input}
+              placeholder="Nhập họ và tên"
+            />
+          </div>
+
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Email (tùy chọn)</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={styles.input}
+              placeholder="Nhập email"
+            />
+          </div>
+
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Mật khẩu <span style={{ color: 'red' }}>*</span></label>
             <div style={styles.passwordWrapper}>
               <input
                 type={showPassword ? 'text' : 'password'}

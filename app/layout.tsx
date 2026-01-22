@@ -1,6 +1,8 @@
 import '@livekit/components-styles';
+import 'antd/dist/reset.css';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth';
+import { App as AntdApp } from 'antd';
 
 export const metadata = {
   title: 'BKMeeting',
@@ -15,7 +17,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AntdApp>
+          <AuthProvider>{children}</AuthProvider>
+        </AntdApp>
       </body>
     </html>
   );

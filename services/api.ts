@@ -87,10 +87,10 @@ class ApiService {
     }
   }
 
-  async register(username: string, password: string) {
+  async register(username: string, password: string, fullName?: string, email?: string) {
     return this.request<{ token: string; user: any }>('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, fullName, email }),
     });
   }
 
@@ -187,6 +187,24 @@ class ApiService {
     });
   }
 
+  async getMyHistory() {
+    return this.request<
+      Array<{
+        id: string;
+        meetingId: string;
+        meetingTitle: string;
+        username: string;
+        joinedAt: string;
+        leftAt: string | null;
+        duration: number | null;
+        meetingCode: string;
+        hostName: string;
+      }>
+    >('/api/meeting/my-history', {
+      method: 'GET',
+    });
+  }
+
   async getMeetings() {
     return this.request<
       Array<{
@@ -199,6 +217,118 @@ class ApiService {
       }>
     >('/api/meeting', {
       method: 'GET',
+    });
+  }
+
+  // ==========================
+  // ADMIN APIs
+  // ==========================
+  async getAllUsers() {
+    return this.request<
+      Array<{
+        id: string;
+        username: string;
+        role: string;
+        createdAt: string;
+      }>
+    >('/api/admin/users', {
+      method: 'GET',
+    });
+  }
+
+  async updateUserRole(userId: string, role: string) {
+    return this.request<{
+      message: string;
+      user: {
+        id: string;
+        username: string;
+        role: string;
+      };
+    }>(`/api/admin/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async deleteUser(userId: string) {
+    return this.request<{ message: string }>(`/api/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getAdminStats() {
+    return this.request<{
+      totalUsers: number;
+      totalAdmins: number;
+      totalUsersRole: number;
+      totalMeetings: number;
+      totalParticipants: number;
+    }>('/api/admin/stats', {
+      method: 'GET',
+    });
+  }
+
+  async getAllMeetings() {
+    return this.request<
+      Array<{
+        id: string;
+        title: string;
+        hostName: string;
+        hostIdentity: string;
+        meetingCode: string;
+        passcode: string;
+        roomName: string;
+        createdAt: string;
+        participantCount: number;
+        activeParticipantCount: number;
+      }>
+    >('/api/admin/meetings', {
+      method: 'GET',
+    });
+  }
+
+  async deleteMeeting(meetingId: string) {
+    return this.request<{ message: string }>(`/api/admin/meetings/${meetingId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ==========================
+  // USER PROFILE APIs
+  // ==========================
+  async getProfile() {
+    return this.request<{
+      id: string;
+      username: string;
+      role: string;
+      fullName: string | null;
+      email: string | null;
+      createdAt: string;
+    }>('/api/user/profile', {
+      method: 'GET',
+    });
+  }
+
+  async updateProfile(fullName?: string, email?: string) {
+    return this.request<{
+      message: string;
+      user: {
+        id: string;
+        username: string;
+        role: string;
+        fullName: string | null;
+        email: string | null;
+      };
+    }>('/api/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify({ fullName, email }),
+    });
+  }
+
+  async changePassword(oldPassword: string, newPassword: string) {
+    return this.request<{ message: string }>('/api/user/profile/password', {
+      method: 'PUT',
+      body: JSON.stringify({ oldPassword, newPassword }),
     });
   }
 }

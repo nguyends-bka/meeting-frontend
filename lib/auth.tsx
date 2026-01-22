@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiService } from './api';
+import { apiService } from '@/services/api';
 
 interface User {
   id: string;
@@ -15,9 +15,10 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (username: string, password: string, fullName?: string, email?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isAuthenticated: boolean;
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -62,8 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
-  const register = async (username: string, password: string) => {
-    const result = await apiService.register(username, password);
+  const register = async (username: string, password: string, fullName?: string, email?: string) => {
+    const result = await apiService.register(username, password, fullName, email);
     
     if (result.error) {
       return { success: false, error: result.error };
@@ -95,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         isAuthenticated: !!token && !!user,
+        isAdmin: user?.role === 'Admin',
       }}
     >
       {children}

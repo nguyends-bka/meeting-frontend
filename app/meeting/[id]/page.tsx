@@ -2,12 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import {
-  LiveKitRoom,
-  VideoConference,
-} from '@livekit/components-react';
+import { LiveKitRoom, VideoConference } from '@livekit/components-react';
 import { useAuth } from '@/lib/auth';
-import { apiService } from '@/lib/api';
+import { apiService } from '@/services/api';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function MeetingPage() {
@@ -146,9 +143,9 @@ export default function MeetingPage() {
   return (
     <ErrorBoundary>
       <div style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
-        <LiveKitRoom
-          token={token}
-          serverUrl={url}
+    <LiveKitRoom
+      token={token}
+      serverUrl={url}
           connect={true}
           video={true}
           audio={true}
@@ -158,9 +155,9 @@ export default function MeetingPage() {
           }}
           onError={handleError}
           onDisconnected={handleDisconnected}
-        >
-          <VideoConference />
-        </LiveKitRoom>
+    >
+      <VideoConference />
+    </LiveKitRoom>
       </div>
     </ErrorBoundary>
   );
