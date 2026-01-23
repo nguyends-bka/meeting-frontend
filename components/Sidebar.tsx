@@ -97,12 +97,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
     {
       key: '/settings',
       icon: <SettingOutlined />,
-      label: (
-        <Space>
-          <span>Cài đặt</span>
-          <Tag color="default" size="small">Sắp ra mắt</Tag>
-        </Space>
-      ),
+      label: 'Cài đặt',
     },
   ];
 
@@ -203,12 +198,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
     {
       key: '/settings',
       icon: <SettingOutlined />,
-      label: (
-        <Space>
-          <span>Cài đặt</span>
-          <Tag color="default" size="small">Sắp ra mắt</Tag>
-        </Space>
-      ),
+      label: 'Cài đặt',
     },
   ];
 
@@ -233,9 +223,19 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
   // Xác định selected key dựa trên pathname
   const getSelectedKeys = () => {
     if (pathname === '/') return ['/'];
-    if (pathname.startsWith('/admin')) return ['/admin'];
+    if (pathname.startsWith('/admin')) {
+      if (pathname === '/admin/meetings') return ['/admin/meetings'];
+      if (pathname === '/admin/analytics') return ['/admin/analytics'];
+      if (pathname === '/admin/logs') return ['/admin/logs'];
+      return ['/admin'];
+    }
     if (pathname.startsWith('/meeting')) return ['/meetings'];
     if (pathname.startsWith('/history')) return ['/history'];
+    if (pathname === '/settings') return ['/settings'];
+    if (pathname === '/profile') return ['/profile'];
+    if (pathname === '/join') return ['/join'];
+    if (pathname === '/calendar') return ['/calendar'];
+    if (pathname === '/reports') return ['/reports'];
     return [pathname];
   };
 
@@ -259,6 +259,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
       theme="light"
     >
       <div
+        className="sidebar-header"
         style={{
           padding: collapsed ? '16px 8px' : '16px',
           borderBottom: '1px solid #f0f0f0',
@@ -300,6 +301,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
       </div>
 
       <div
+        className="sidebar-footer"
         style={{
           padding: '16px',
           borderTop: '1px solid #f0f0f0',

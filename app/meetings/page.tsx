@@ -159,9 +159,21 @@ export default function MeetingsPage() {
                 setTablePageSize(ps);
               },
             }}
+            onRow={(record) => ({
+              onClick: () => {
+                const isExpanded = expandedRowKeys.includes(record.id);
+                if (isExpanded) {
+                  setExpandedRowKeys(expandedRowKeys.filter((key) => key !== record.id));
+                } else {
+                  setExpandedRowKeys([...expandedRowKeys, record.id]);
+                }
+              },
+              style: { cursor: 'pointer' },
+            })}
             expandable={{
               expandedRowKeys,
               onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]),
+              showExpandColumn: false, // Ẩn icon expand mặc định
               expandedRowRender: (record) => {
                 const link = buildMeetingLink(record.id);
                 return (
@@ -169,14 +181,20 @@ export default function MeetingsPage() {
                     <Space style={{ marginBottom: 12 }} wrap>
                       <Button
                         icon={<HistoryOutlined />}
-                        onClick={() => router.push(`/history/${record.id}`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/history/${record.id}`);
+                        }}
                       >
                         Xem lịch sử
                       </Button>
                       <Button
                         type="primary"
                         icon={<RightCircleOutlined />}
-                        onClick={() => router.push(`/meeting/${record.id}`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/meeting/${record.id}`);
+                        }}
                       >
                         Tham gia
                       </Button>
@@ -192,7 +210,10 @@ export default function MeetingsPage() {
                               <Button
                                 size="small"
                                 icon={<CopyOutlined />}
-                                onClick={() => void copyText(record.meetingCode, 'Đã copy mã cuộc họp')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void copyText(record.meetingCode, 'Đã copy mã cuộc họp');
+                                }}
                               />
                             </Tooltip>
                           </Space>
@@ -204,7 +225,10 @@ export default function MeetingsPage() {
                               <Button
                                 size="small"
                                 icon={<CopyOutlined />}
-                                onClick={() => void copyText(record.passcode, 'Đã copy passcode')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void copyText(record.passcode, 'Đã copy passcode');
+                                }}
                               />
                             </Tooltip>
                           </Space>
@@ -227,10 +251,14 @@ export default function MeetingsPage() {
                               borderRadius: '4px',
                               maxWidth: 520,
                             }}
+                            onClick={(e) => e.stopPropagation()}
                           />
                           <Button
                             icon={<CopyOutlined />}
-                            onClick={() => void copyText(link, 'Đã copy link')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void copyText(link, 'Đã copy link');
+                            }}
                           >
                             Copy link
                           </Button>

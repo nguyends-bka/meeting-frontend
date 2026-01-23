@@ -10,6 +10,630 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f5f5f5;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark theme styles */
+html[data-theme='dark'],
+html.dark-theme {
+  color-scheme: dark;
+}
+
+body.dark-theme {
+  background-color: #141414 !important;
+  color: #fff !important;
+}
+
+/* Cải thiện màu nền cho các container chính */
+.dark-theme .ant-layout-content {
+  background-color: #141414 !important;
+}
+
+body.light-theme {
+  background-color: #f5f5f5 !important;
+  color: #000 !important;
+}
+
+/* Dark theme cho Ant Design components */
+.dark-theme .ant-layout {
+  background: #141414 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-layout-sider {
+  background: #1f1f1f !important;
+  color: #fff !important;
+}
+
+/* Đảm bảo tất cả các phần tử trong sidebar đều có nền tối */
+.dark-theme .ant-layout-sider > * {
+  background-color: #1f1f1f !important;
+}
+
+.dark-theme .ant-layout-sider .ant-menu {
+  background: #1f1f1f !important;
+}
+
+.dark-theme .ant-layout-sider .ant-menu-item,
+.dark-theme .ant-layout-sider .ant-menu-submenu-title {
+  background-color: transparent !important;
+}
+
+/* Sửa phần user info header trong sidebar */
+.dark-theme .ant-layout-sider .sidebar-header,
+.dark-theme .ant-layout-sider > div:first-child {
+  background-color: #1f1f1f !important;
+  border-bottom-color: #434343 !important;
+}
+
+/* Sửa phần logout button container */
+.dark-theme .ant-layout-sider .sidebar-footer,
+.dark-theme .ant-layout-sider > div:last-child {
+  background-color: #1f1f1f !important;
+  border-top-color: #434343 !important;
+}
+
+/* Đảm bảo không có khoảng trống trắng trong sidebar */
+.dark-theme .ant-layout-sider {
+  overflow: hidden !important;
+  background: #1f1f1f !important;
+}
+
+.dark-theme .ant-layout-sider > * {
+  background-color: #1f1f1f !important;
+}
+
+.dark-theme .ant-layout-sider > div {
+  background-color: #1f1f1f !important;
+}
+
+/* Sửa menu scroll area */
+.dark-theme .ant-layout-sider .ant-menu {
+  background: #1f1f1f !important;
+}
+
+.dark-theme .ant-layout-sider .ant-menu::before,
+.dark-theme .ant-layout-sider .ant-menu::after {
+  display: none !important;
+}
+
+/* Đảm bảo tất cả các phần tử trong sidebar không có nền trắng */
+.dark-theme .ant-layout-sider .sidebar-header,
+.dark-theme .ant-layout-sider .sidebar-footer {
+  background-color: #1f1f1f !important;
+}
+
+.dark-theme .ant-layout-sider .ant-menu {
+  background-color: #1f1f1f !important;
+}
+
+/* Đảm bảo các phần tử con của sidebar có nền tối */
+.dark-theme .ant-layout-sider .ant-space,
+.dark-theme .ant-layout-sider .ant-avatar,
+.dark-theme .ant-layout-sider .ant-btn {
+  background-color: transparent !important;
+}
+
+.dark-theme .ant-layout-sider .ant-btn {
+  color: #fff !important;
+}
+
+/* Sửa border colors cho sidebar */
+.dark-theme .ant-layout-sider .sidebar-header {
+  border-bottom-color: #434343 !important;
+}
+
+.dark-theme .ant-layout-sider .sidebar-footer {
+  border-top-color: #434343 !important;
+}
+
+/* Sửa Sider trigger (nút collapse) */
+.dark-theme .ant-layout-sider-trigger {
+  background-color: #1f1f1f !important;
+  border-top-color: #434343 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-layout-sider-trigger:hover {
+  background-color: #2a2a2a !important;
+}
+
+.dark-theme .ant-card {
+  background: #1f1f1f !important;
+  border-color: #434343 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-card-head {
+  background: #1f1f1f !important;
+  border-color: #434343 !important;
+}
+
+.dark-theme .ant-card-head-title,
+.dark-theme .ant-card-body,
+.dark-theme .ant-typography,
+.dark-theme h1,
+.dark-theme h2,
+.dark-theme h3,
+.dark-theme h4,
+.dark-theme h5,
+.dark-theme h6,
+.dark-theme p,
+.dark-theme span,
+.dark-theme div {
+  color: #fff !important;
+}
+
+.dark-theme .ant-menu {
+  background: #1f1f1f !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-menu-item,
+.dark-theme .ant-menu-submenu-title {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.dark-theme .ant-menu-item:hover,
+.dark-theme .ant-menu-submenu-title:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-menu-item-selected {
+  background-color: #177ddc !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-input,
+.dark-theme .ant-input-search,
+.dark-theme .ant-input-search .ant-input,
+.dark-theme .ant-input-group .ant-input,
+.dark-theme .ant-input-affix-wrapper,
+.dark-theme .ant-input-affix-wrapper .ant-input,
+.dark-theme .ant-select-selector,
+.dark-theme .ant-select-selection-item {
+  background-color: #2a2a2a !important;
+  border-color: #434343 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-input-affix-wrapper:hover,
+.dark-theme .ant-input-affix-wrapper-focused {
+  border-color: #177ddc !important;
+}
+
+.dark-theme .ant-input-search .ant-input-search-button {
+  background-color: #2a2a2a !important;
+  border-color: #434343 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-input-search .ant-input-search-button:hover {
+  background-color: #3a3a3a !important;
+  border-color: #555 !important;
+}
+
+.dark-theme .ant-input-prefix,
+.dark-theme .ant-input-suffix {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.dark-theme .ant-input-password-icon {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.dark-theme .ant-input-password-icon:hover {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.dark-theme .ant-input::placeholder,
+.dark-theme .ant-select-selection-placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.dark-theme .ant-input:focus,
+.dark-theme .ant-select-focused .ant-select-selector {
+  border-color: #177ddc !important;
+}
+
+.dark-theme .ant-btn-default {
+  background-color: #2a2a2a !important;
+  border-color: #434343 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-btn-default:hover {
+  background-color: #3a3a3a !important;
+  border-color: #555 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-btn-primary {
+  background-color: #177ddc !important;
+  border-color: #177ddc !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-tag {
+  background-color: #2a2a2a !important;
+  border-color: #434343 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-tag.ant-tag-default {
+  background-color: #2a2a2a !important;
+  border-color: #555 !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.dark-theme .ant-descriptions-item-label,
+.dark-theme .ant-descriptions-item-content {
+  color: #fff !important;
+}
+
+.dark-theme .ant-form-item-label > label {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.dark-theme .ant-switch-checked {
+  background-color: #177ddc !important;
+}
+
+.dark-theme .ant-select-dropdown {
+  background-color: #1f1f1f !important;
+  border-color: #434343 !important;
+}
+
+.dark-theme .ant-select-item {
+  color: #fff !important;
+}
+
+.dark-theme .ant-select-item:hover,
+.dark-theme .ant-select-item-option-selected {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
+}
+
+/* Cải thiện contrast cho text trong sidebar */
+.dark-theme .ant-layout-sider .ant-typography,
+.dark-theme .ant-layout-sider .ant-avatar-string,
+.dark-theme .ant-layout-sider .ant-tag {
+  color: #fff !important;
+}
+
+/* Cải thiện contrast cho các card và stat cards */
+.dark-theme .ant-statistic-title,
+.dark-theme .ant-statistic-content {
+  color: #fff !important;
+}
+
+/* Cải thiện contrast cho các heading */
+.dark-theme .ant-typography-title,
+.dark-theme .ant-typography-title h1,
+.dark-theme .ant-typography-title h2,
+.dark-theme .ant-typography-title h3,
+.dark-theme .ant-typography-title h4 {
+  color: #fff !important;
+}
+
+/* Cải thiện contrast cho Typography.Text */
+.dark-theme .ant-typography,
+.dark-theme .ant-typography p,
+.dark-theme .ant-typography span {
+  color: #fff !important;
+}
+
+.dark-theme .ant-typography.ant-typography-secondary {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.dark-theme .ant-typography code {
+  background-color: #2a2a2a !important;
+  color: #fff !important;
+  border-color: #434343 !important;
+}
+
+/* Cải thiện contrast cho Statistic */
+.dark-theme .ant-statistic-title {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.dark-theme .ant-statistic-content {
+  color: #fff !important;
+}
+
+.dark-theme .ant-statistic-content-value {
+  color: #fff !important;
+}
+
+/* Cải thiện contrast cho Card titles */
+.dark-theme .ant-card-head-title {
+  color: #fff !important;
+  font-weight: 600 !important;
+}
+
+.dark-theme .ant-card-extra {
+  color: #fff !important;
+}
+
+/* Cải thiện contrast cho Sidebar */
+.dark-theme .ant-layout-sider .ant-typography,
+.dark-theme .ant-layout-sider .ant-typography strong {
+  color: #fff !important;
+}
+
+.dark-theme .ant-layout-sider .ant-tag {
+  color: #fff !important;
+}
+
+.dark-theme .ant-layout-sider .ant-tag.ant-tag-red {
+  background-color: #a61d24 !important;
+  border-color: #a61d24 !important;
+  color: #fff !important;
+}
+
+/* Cải thiện contrast cho các button text */
+.dark-theme .ant-btn {
+  color: #fff !important;
+}
+
+.dark-theme .ant-btn-default {
+  color: #fff !important;
+}
+
+.dark-theme .ant-btn-text {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.dark-theme .ant-btn-text:hover {
+  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark-theme .ant-btn-dangerous.ant-btn-text {
+  color: #ff4d4f !important;
+}
+
+.dark-theme .ant-btn-dangerous.ant-btn-text:hover {
+  color: #ff7875 !important;
+  background-color: rgba(255, 77, 79, 0.1) !important;
+}
+
+/* Cải thiện contrast cho divider */
+.dark-theme .ant-divider {
+  border-color: #434343 !important;
+}
+
+/* Cải thiện contrast cho empty state */
+.dark-theme .ant-empty-description {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+/* Cải thiện contrast cho table */
+.dark-theme .ant-table {
+  background: #1f1f1f !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-table-thead > tr > th {
+  background: #2a2a2a !important;
+  border-color: #434343 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-table-tbody > tr > td {
+  border-color: #434343 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-table-tbody > tr:hover > td {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Cải thiện contrast cho pagination */
+.dark-theme .ant-pagination-item {
+  background-color: #2a2a2a !important;
+  border-color: #434343 !important;
+}
+
+.dark-theme .ant-pagination-item a {
+  color: #fff !important;
+}
+
+.dark-theme .ant-pagination-item-active {
+  background-color: #177ddc !important;
+  border-color: #177ddc !important;
+}
+
+.dark-theme .ant-pagination-item-active a {
+  color: #fff !important;
+}
+
+/* Cải thiện contrast cho tooltip */
+.dark-theme .ant-tooltip-inner {
+  background-color: #2a2a2a !important;
+  color: #fff !important;
+}
+
+/* Cải thiện contrast cho modal */
+.dark-theme .ant-modal-content {
+  background-color: #1f1f1f !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-modal-header {
+  background-color: #1f1f1f !important;
+  border-color: #434343 !important;
+}
+
+.dark-theme .ant-modal-title {
+  color: #fff !important;
+}
+
+.dark-theme .ant-modal-close {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.dark-theme .ant-modal-close:hover {
+  color: #fff !important;
+}
+
+.dark-theme .ant-modal-body {
+  color: #fff !important;
+}
+
+.dark-theme .ant-modal-footer {
+  border-color: #434343 !important;
+}
+
+/* Cải thiện contrast cho notification messages (toast notifications) */
+.dark-theme .ant-message-notice {
+  background-color: #1f1f1f !important;
+}
+
+.dark-theme .ant-message-notice-content {
+  background-color: #1f1f1f !important;
+  color: #fff !important;
+  border: 1px solid #434343 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark-theme .ant-message-success .ant-message-notice-content {
+  background-color: #162312 !important;
+  border-color: #49aa19 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-message-success .anticon {
+  color: #49aa19 !important;
+}
+
+.dark-theme .ant-message-error .ant-message-notice-content {
+  background-color: #2a1215 !important;
+  border-color: #cf1322 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-message-error .anticon {
+  color: #ff4d4f !important;
+}
+
+.dark-theme .ant-message-warning .ant-message-notice-content {
+  background-color: #2b1d11 !important;
+  border-color: #d48806 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-message-warning .anticon {
+  color: #faad14 !important;
+}
+
+.dark-theme .ant-message-info .ant-message-notice-content {
+  background-color: #111b26 !important;
+  border-color: #177ddc !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-message-info .anticon {
+  color: #1890ff !important;
+}
+
+.dark-theme .ant-message-notice-content .ant-message-custom-content {
+  color: #fff !important;
+}
+
+.dark-theme .ant-message-notice-content span {
+  color: #fff !important;
+}
+
+/* Đảm bảo text trong message có contrast tốt */
+.dark-theme .ant-message .ant-message-notice-content .ant-message-custom-content > span {
+  color: #fff !important;
+}
+
+/* Cải thiện contrast cho Alert component */
+.dark-theme .ant-alert {
+  background-color: #1f1f1f !important;
+  border-color: #434343 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-alert-message {
+  color: #fff !important;
+}
+
+.dark-theme .ant-alert-description {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.dark-theme .ant-alert-success {
+  background-color: #162312 !important;
+  border-color: #49aa19 !important;
+}
+
+.dark-theme .ant-alert-success .ant-alert-icon {
+  color: #49aa19 !important;
+}
+
+.dark-theme .ant-alert-error {
+  background-color: #2a1215 !important;
+  border-color: #cf1322 !important;
+}
+
+.dark-theme .ant-alert-error .ant-alert-icon {
+  color: #ff4d4f !important;
+}
+
+.dark-theme .ant-alert-warning {
+  background-color: #2b1d11 !important;
+  border-color: #d48806 !important;
+}
+
+.dark-theme .ant-alert-warning .ant-alert-icon {
+  color: #faad14 !important;
+}
+
+.dark-theme .ant-alert-info {
+  background-color: #111b26 !important;
+  border-color: #177ddc !important;
+}
+
+.dark-theme .ant-alert-info .ant-alert-icon {
+  color: #1890ff !important;
+}
+
+/* Cải thiện contrast cho Popconfirm */
+.dark-theme .ant-popover {
+  background-color: #1f1f1f !important;
+  border-color: #434343 !important;
+}
+
+.dark-theme .ant-popover-inner {
+  background-color: #1f1f1f !important;
+}
+
+.dark-theme .ant-popover-inner-content {
+  color: #fff !important;
+}
+
+.dark-theme .ant-popover-title {
+  background-color: #1f1f1f !important;
+  border-color: #434343 !important;
+  color: #fff !important;
+}
+
+.dark-theme .ant-popconfirm-message {
+  color: #fff !important;
+}
+
+.dark-theme .ant-popconfirm-description {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.dark-theme .ant-popover-arrow::before {
+  background-color: #1f1f1f !important;
+  border-color: #434343 !important;
 }
 
 @keyframes spin {
