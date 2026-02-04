@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { apiService } from '@/services/api';
-import MainLayout from '@/components/Sidebar';
+import MainLayout from '@/components/MainLayout';
 import {
   App,
   Button,

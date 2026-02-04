@@ -72,7 +72,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
       label: (
         <Space>
           <span>Lịch cuộc họp</span>
-          <Tag color="default" size="small">Sắp ra mắt</Tag>
+          <Tag color="default">Sắp ra mắt</Tag>
         </Space>
       ),
     },
@@ -82,7 +82,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
       label: (
         <Space>
           <span>Báo cáo</span>
-          <Tag color="default" size="small">Sắp ra mắt</Tag>
+          <Tag color="default">Sắp ra mắt</Tag>
         </Space>
       ),
     },
@@ -128,7 +128,6 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
     },
     {
       key: 'admin-group',
-      icon: <SettingOutlined />,
       label: 'Quản trị',
       type: 'group',
       children: [
@@ -148,7 +147,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
           label: (
             <Space>
               <span>Thống kê & Phân tích</span>
-              <Tag color="default" size="small">Sắp ra mắt</Tag>
+              <Tag color="default">Sắp ra mắt</Tag>
             </Space>
           ),
         },
@@ -158,7 +157,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
           label: (
             <Space>
               <span>Nhật ký hệ thống</span>
-              <Tag color="default" size="small">Sắp ra mắt</Tag>
+              <Tag color="default">Sắp ra mắt</Tag>
             </Space>
           ),
         },
@@ -173,7 +172,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
       label: (
         <Space>
           <span>Lịch cuộc họp</span>
-          <Tag color="default" size="small">Sắp ra mắt</Tag>
+          <Tag color="default">Sắp ra mắt</Tag>
         </Space>
       ),
     },
@@ -183,7 +182,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
       label: (
         <Space>
           <span>Báo cáo</span>
-          <Tag color="default" size="small">Sắp ra mắt</Tag>
+          <Tag color="default">Sắp ra mắt</Tag>
         </Space>
       ),
     },
@@ -280,7 +279,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
                   {user?.username}
                 </Text>
                 {isAdmin && (
-                  <Tag color="red" size="small" style={{ marginTop: 4 }}>
+                  <Tag color="red" style={{ marginTop: 4 }}>
                     Admin
                   </Tag>
                 )}

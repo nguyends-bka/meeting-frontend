@@ -159,7 +159,7 @@ export default function AdminMeetingsPage() {
             <span>Tổng: {record.participantCount}</span>
           </Space>
           {record.activeParticipantCount > 0 && (
-            <Tag color="green" size="small">
+            <Tag color="green">
               Đang tham gia: {record.activeParticipantCount}
             </Tag>
           )}
