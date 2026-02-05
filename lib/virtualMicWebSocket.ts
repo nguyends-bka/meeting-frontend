@@ -1,7 +1,7 @@
 /**
  * WebSocket client for virtual mic: sends PCM16 audio to backend.
  *
- * Backend URL: ws://<API_HOST>/ws/virtual-mic?meetingId=xxx&token=JWT
+ * Backend URL: wss://<API_HOST>/ws/virtual-mic?meetingId=xxx&token=JWT
  * Protocol:
  *   1. Client connects, then sends one text message: JSON { sampleRate, channels } (e.g. 48000, 1).
  *   2. Client sends binary messages: raw PCM16 (16-bit signed LE, mono).
@@ -9,8 +9,8 @@
 
 const getWsBaseUrl = (): string => {
   if (typeof window === 'undefined') return '';
-  const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002';
-  return api.replace(/^http/, 'ws');
+  const api = process.env.NEXT_PUBLIC_API_URL || 'https://meeting.soict.io:8080';
+  return api.replace(/^https?/, (s) => (s === 'https' ? 'wss' : 'ws'));
 };
 
 export interface VirtualMicConfig {

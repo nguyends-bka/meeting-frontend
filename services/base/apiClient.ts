@@ -1,5 +1,5 @@
 // Base API client with common request handling
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://meeting.soict.io:8080';
 
 export interface ApiResponse<T> {
   data?: T;
