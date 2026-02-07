@@ -659,6 +659,33 @@ button:active:not(:disabled) {
   transform: translateY(0);
 }
 
+/* LiveKit: Đảm bảo control bar luôn hiển thị khi màn hình rộng */
+.lk-video-conference {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.lk-video-conference-inner {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.lk-grid-layout-wrapper,
+.lk-focus-layout-wrapper {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+}
+
+.lk-control-bar {
+  flex-shrink: 0 !important;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   /* Tablet và smaller */

@@ -142,7 +142,14 @@ export default function MeetingPage() {
   // These are typically non-critical and don't affect functionality
   return (
     <ErrorBoundary>
-      <div style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
+      <div style={{
+        height: '100vh',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}>
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
     <LiveKitRoom
       token={token}
       serverUrl={url}
@@ -158,6 +165,7 @@ export default function MeetingPage() {
     >
       <VideoConference />
     </LiveKitRoom>
+    </div>
       </div>
     </ErrorBoundary>
   );
