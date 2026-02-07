@@ -20,6 +20,9 @@
 # production
 /build
 
+# Docker build artifacts (too large for Git)
+*.tar
+
 # misc
 .DS_Store
 *.pem

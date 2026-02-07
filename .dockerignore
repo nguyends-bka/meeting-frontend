@@ -1,0 +1,38 @@
+# Dependencies (installed in image)
+node_modules
+.pnp
+.pnp.js
+npm-debug.log*
+.yarn-integrity
+.yarn/cache
+.yarn/unplugged
+.yarn/install-state.gz
+.yarn/build-state.yml
+.pnp.*
+
+# Build output (rebuilt in image)
+.next
+out
+build
+dist
+
+# Env files (pass via build-args in script)
+.env
+.env.*
+!.env.example
+
+# Git / IDE
+.git
+.gitignore
+.dockerignore
+*.md
+.vscode
+.idea
+*.swp
+*.swo
+.nano.swp
+
+# Misc
+Dockerfile*
+docker-compose*
+*.tar
