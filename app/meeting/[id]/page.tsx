@@ -2,15 +2,17 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { LiveKitRoom, VideoConference } from '@livekit/components-react';
+import { LiveKitRoom, VideoConference, PreJoin } from '@livekit/components-react';
+import type { LocalUserChoices } from '@livekit/components-core';
 import { useAuth } from '@/lib/auth';
 import { apiService } from '@/services/api';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import '@livekit/components-styles';
 
 export default function MeetingPage() {
   const params = useParams();
   const router = useRouter();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const meetingId = params.id as string;
 
   const [token, setToken] = useState<string | null>(null);
@@ -21,6 +23,8 @@ export default function MeetingPage() {
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [currentMeetingId, setCurrentMeetingId] = useState<string | null>(null);
   const [hasJoined, setHasJoined] = useState(false); // Guard để tránh join nhiều lần
+  const [preJoinDone, setPreJoinDone] = useState(false);
+  const [userChoices, setUserChoices] = useState<LocalUserChoices | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -112,6 +116,29 @@ export default function MeetingPage() {
     );
   }
 
+  // Màn hình chọn thiết bị (Microphone, Camera) trước khi vào meeting - không có Username vì đã đăng nhập
+  if (!preJoinDone) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.preJoinWrapper} className="prejoin-no-username">
+          <PreJoin
+            onValidate={() => true}
+            onSubmit={(choices) => {
+              setUserChoices(choices);
+              setPreJoinDone(true);
+            }}
+            onError={(err) => console.error('PreJoin error:', err)}
+            joinLabel="Tham gia cuộc họp"
+            micLabel="Microphone"
+            camLabel="Camera"
+            persistUserChoices={true}
+            defaults={{ username: user?.username || 'user' }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (roomError) {
     return (
       <div style={styles.container}>
@@ -138,6 +165,17 @@ export default function MeetingPage() {
     );
   }
 
+  const audioOptions = userChoices
+    ? userChoices.audioEnabled
+      ? (userChoices.audioDeviceId ? { deviceId: { exact: userChoices.audioDeviceId } } : true)
+      : false
+    : true;
+  const videoOptions = userChoices
+    ? userChoices.videoEnabled
+      ? (userChoices.videoDeviceId ? { deviceId: { exact: userChoices.videoDeviceId } } : true)
+      : false
+    : true;
+
   // Note: LiveKit may show internal warnings about camera placeholders
   // These are typically non-critical and don't affect functionality
   return (
@@ -149,13 +187,16 @@ export default function MeetingPage() {
         flexDirection: 'column',
         overflow: 'hidden',
       }}>
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div
+      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      data-lk-theme="default"
+    >
     <LiveKitRoom
       token={token}
       serverUrl={url}
           connect={true}
-          video={true}
-          audio={true}
+          audio={audioOptions}
+          video={videoOptions}
           options={{
             adaptiveStream: true,
             dynacast: true,
@@ -227,5 +268,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '16px',
     fontWeight: '600',
     cursor: 'pointer',
+  },
+  preJoinWrapper: {
+    width: '100%',
+    maxWidth: '640px',
   },
 };

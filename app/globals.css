@@ -686,6 +686,51 @@ button:active:not(:disabled) {
   flex-shrink: 0 !important;
 }
 
+/* Badge thông báo tin nhắn chưa đọc - to hơn, nổi bật hơn */
+.lk-control-bar .lk-chat-toggle[data-lk-unread-msgs]:not([data-lk-unread-msgs='0'])::after {
+  content: attr(data-lk-unread-msgs) !important;
+  min-width: 22px !important;
+  height: 22px !important;
+  padding: 0 6px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 22px !important;
+  background: #ef4444 !important;
+  color: #fff !important;
+  border-radius: 11px !important;
+  top: -6px !important;
+  right: -6px !important;
+  left: auto !important;
+  margin: 0 !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.55) !important;
+  animation: lk-badge-pulse 2s ease-in-out infinite !important;
+}
+
+/* Fallback: LiveKit có thể dùng data-unread-msgs */
+.lk-control-bar .lk-chat-toggle[data-unread-msgs]:not([data-unread-msgs='0'])::after {
+  content: attr(data-unread-msgs) !important;
+  min-width: 22px !important;
+  height: 22px !important;
+  padding: 0 6px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 22px !important;
+  background: #ef4444 !important;
+  color: #fff !important;
+  border-radius: 11px !important;
+  top: -6px !important;
+  right: -6px !important;
+  left: auto !important;
+  margin: 0 !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.55) !important;
+  animation: lk-badge-pulse 2s ease-in-out infinite !important;
+}
+
+@keyframes lk-badge-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.95; }
+}
+
 /* Chat sidebar bên phải (như ảnh 2): video trái ~2/3, chat phải ~1/3 */
 .lk-video-conference {
   flex-direction: row !important;
@@ -702,23 +747,34 @@ button:active:not(:disabled) {
   max-width: 420px !important;
   min-width: 280px !important;
   flex-shrink: 0 !important;
+  align-self: stretch !important;
+  height: 100% !important;
   border-left: 1px solid #e8eaed !important;
   background: linear-gradient(180deg, #fafbfc 0%, #f5f6f8 100%) !important;
   min-height: 0 !important;
   overflow: hidden !important;
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.04) !important;
+  align-items: start !important;
 }
 
-/* Chat header - gọn, hiện đại */
+/* Chat header - cố định phía trên, chữ Messages đẹp */
 .lk-chat-header {
   flex-shrink: 0 !important;
-  padding: 14px 16px !important;
-  font-weight: 600 !important;
-  font-size: 15px !important;
-  color: #1f2937 !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  padding: 14px 44px 14px 16px !important;
+  min-height: 48px !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  letter-spacing: 0.02em !important;
+  color: #111827 !important;
   background: #fff !important;
   border-bottom: 1px solid #e5e7eb !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .lk-chat-header .lk-close-button {
@@ -727,6 +783,8 @@ button:active:not(:disabled) {
   margin: -6px -8px !important;
   border-radius: 8px !important;
   color: #6b7280 !important;
+  position: absolute !important;
+  right: 8px !important;
 }
 .lk-chat-header .lk-close-button:hover {
   background: #f3f4f6 !important;
@@ -803,21 +861,27 @@ button:active:not(:disabled) {
 .lk-chat-entry .lk-participant-name {
   font-size: 11px !important;
   font-weight: 600 !important;
-  opacity: 0.85 !important;
+  opacity: 1 !important;
   margin-top: 0 !important;
   letter-spacing: 0.02em !important;
 }
 
 .lk-chat-entry[data-lk-message-origin='remote'] .lk-participant-name {
-  color: #4b5563 !important;
+  color: #374151 !important;
 }
 
 .lk-chat-entry .lk-timestamp {
   font-size: 10px !important;
-  opacity: 0.75 !important;
+  opacity: 1 !important;
+  color: #6b7280 !important;
+}
+
+.lk-chat-entry[data-lk-message-origin='remote'] .lk-timestamp {
+  color: #6b7280 !important;
 }
 
 /* Nội dung tin nhắn - width max-content để bubble rộng theo nội dung, tránh xuống dòng thừa */
+/* Bỏ background riêng của message-body (LiveKit mặc định tạo bubble lồng nhau gây xấu) */
 .lk-chat-entry .lk-message-body {
   display: block !important;
   width: max-content !important;
@@ -830,10 +894,13 @@ button:active:not(:disabled) {
   padding: 0 !important;
   text-align: left !important;
   font-size: 14px !important;
+  background: none !important;
+  background-color: transparent !important;
+  border: none !important;
 }
 
 .lk-chat-entry[data-lk-message-origin='remote'] .lk-message-body {
-  color: #374151 !important;
+  color: #1f2937 !important;
 }
 
 .lk-chat-entry .lk-message-body * {
@@ -841,9 +908,19 @@ button:active:not(:disabled) {
   margin-block-end: 0 !important;
 }
 
-/* Form nhập - gọn đẹp */
+/* Link trong tin nhắn - đồng bộ màu với bubble, không tạo nút riêng */
+.lk-chat-entry .lk-message-body .lk-chat-link,
+.lk-chat-entry .lk-message-body a {
+  color: inherit !important;
+  text-decoration: underline !important;
+  background: none !important;
+  border: none !important;
+}
+
+/* Form nhập - cố định phía dưới cùng */
 .lk-chat-form {
   flex-shrink: 0 !important;
+  align-self: end !important;
   display: flex !important;
   gap: 10px !important;
   padding: 14px 16px !important;
@@ -863,6 +940,12 @@ button:active:not(:disabled) {
   border: 1px solid #e5e7eb !important;
   padding: 10px 14px !important;
   font-size: 14px !important;
+  background: #fff !important;
+  color: #111827 !important;
+}
+
+.lk-chat-form .lk-form-control.lk-chat-form-input::placeholder {
+  color: #6b7280 !important;
 }
 
 .lk-chat-form .lk-form-control.lk-chat-form-input:focus {
@@ -882,6 +965,17 @@ button:active:not(:disabled) {
 
 .lk-chat-form .lk-button.lk-chat-form-button:hover {
   filter: brightness(1.05) !important;
+}
+
+/* Override dark theme cho ô nhập tin nhắn (data-lk-theme làm input bị đen) */
+[data-lk-theme] .lk-chat-form .lk-form-control.lk-chat-form-input {
+  background: #fff !important;
+  color: #111827 !important;
+  border-color: #e5e7eb !important;
+}
+
+[data-lk-theme] .lk-chat-form .lk-form-control.lk-chat-form-input::placeholder {
+  color: #6b7280 !important;
 }
 
 /* Dark theme: chat */
@@ -907,6 +1001,11 @@ button:active:not(:disabled) {
   color: #e5e7eb !important;
 }
 
+.dark-theme .lk-chat-entry .lk-message-body {
+  background: none !important;
+  background-color: transparent !important;
+}
+
 .dark-theme .lk-chat-entry[data-lk-message-origin='local'] {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
 }
@@ -914,6 +1013,45 @@ button:active:not(:disabled) {
 .dark-theme .lk-chat-form {
   background: #1f1f23 !important;
   border-top-color: #333 !important;
+}
+
+/* PreJoin: ẩn ô Username vì user đã đăng nhập */
+.prejoin-no-username .lk-username-container input,
+.prejoin-no-username .lk-username-container input#username {
+  display: none !important;
+}
+
+.prejoin-no-username .lk-username-container {
+  display: flex !important;
+  justify-content: center !important;
+}
+
+/* Participant tile: nền tối khi camera tắt (cả lúc vào phòng không bật cam) */
+.lk-participant-tile[data-lk-source='camera']:not(:has(video)) {
+  background-color: #000 !important;
+}
+
+/* Placeholder: hiển thị khi vào phòng không bật cam (TrackReferencePlaceholder - không có video) */
+.lk-participant-tile[data-lk-source='camera']:not(:has(video)) .lk-participant-placeholder {
+  opacity: 1 !important;
+  background-color: #000 !important;
+}
+
+/* Placeholder avatar: nền tối cho tương phản tốt khi camera tắt */
+.lk-participant-tile[data-lk-video-muted='true'][data-lk-source='camera'] .lk-participant-placeholder,
+.lk-participant-tile[data-lk-source='camera'] .lk-participant-placeholder {
+  background-color: #000 !important;
+}
+
+/* Username: hiển thị rõ trên tile (nền tối, chữ trắng) */
+.lk-participant-tile .lk-participant-metadata-item .lk-participant-name {
+  color: #fff !important;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+}
+
+.lk-participant-tile .lk-participant-metadata-item {
+  background-color: rgba(0, 0, 0, 0.75) !important;
 }
 
 /* Responsive Design */
