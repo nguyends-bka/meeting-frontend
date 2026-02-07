@@ -1026,6 +1026,21 @@ button:active:not(:disabled) {
   justify-content: center !important;
 }
 
+/* Nút Tham gia cuộc họp - màu xanh, nổi bật */
+.prejoin-no-username .lk-join-button,
+.lk-prejoin .lk-join-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4) !important;
+}
+
+.prejoin-no-username .lk-join-button:hover,
+.lk-prejoin .lk-join-button:hover {
+  filter: brightness(1.08) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5) !important;
+}
+
 /* Participant tile: nền tối khi camera tắt (cả lúc vào phòng không bật cam) */
 .lk-participant-tile[data-lk-source='camera']:not(:has(video)) {
   background-color: #000 !important;

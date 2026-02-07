@@ -127,6 +127,17 @@ export default function ProfilePage() {
 
   return (
     <MainLayout>
+      {/* Hidden Forms để kết nối form instances khi chưa hiển thị (tránh warning useForm) */}
+      {!profile && (
+        <Form form={profileForm} style={{ display: 'none' }}>
+          <Form.Item name="dummy" hidden />
+        </Form>
+      )}
+      {!showPasswordForm && (
+        <Form form={passwordForm} style={{ display: 'none' }}>
+          <Form.Item name="dummy" hidden />
+        </Form>
+      )}
       <div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           {/* Profile Information or Change Password */}

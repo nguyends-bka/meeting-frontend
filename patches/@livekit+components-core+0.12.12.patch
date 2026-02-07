@@ -1,0 +1,118 @@
+diff --git a/node_modules/@livekit/components-core/dist/index.js b/node_modules/@livekit/components-core/dist/index.js
+index 3e04d47..bcfca8f 100644
+--- a/node_modules/@livekit/components-core/dist/index.js
++++ b/node_modules/@livekit/components-core/dist/index.js
+@@ -870,10 +870,29 @@ function findIndex(trackReference, trackReferences) {
+   return indexToReplace;
+ }
+ function swapItems(moveForward, moveBack, trackReferences) {
+-  const indexToReplace = findIndex(moveForward, trackReferences);
+-  const indexReplaceWith = findIndex(moveBack, trackReferences);
+-  trackReferences.splice(indexToReplace, 1, moveBack);
+-  trackReferences.splice(indexReplaceWith, 1, moveForward);
++  const indexForward = trackReferences.findIndex(
++    (tr) => getTrackReferenceId(tr) === getTrackReferenceId(moveForward)
++  );
++  const indexBack = trackReferences.findIndex(
++    (tr) => getTrackReferenceId(tr) === getTrackReferenceId(moveBack)
++  );
++  if (indexForward === -1 && indexBack !== -1) {
++    trackReferences.splice(indexBack, 1, moveForward);
++    return trackReferences;
++  }
++  if (indexForward !== -1 && indexBack === -1) {
++    trackReferences.splice(indexForward, 1, moveBack);
++    return trackReferences;
++  }
++  if (indexForward === -1 || indexBack === -1) {
++    throw new Error(
++      `Element not part of the array: ${getTrackReferenceId(
++        moveForward
++      )} not in ${flatTrackReferenceArray(trackReferences)}`
++    );
++  }
++  trackReferences.splice(indexForward, 1, moveBack);
++  trackReferences.splice(indexBack, 1, moveForward);
+   return trackReferences;
+ }
+ function dropItem(itemToDrop, list) {
+diff --git a/node_modules/@livekit/components-core/dist/index.mjs b/node_modules/@livekit/components-core/dist/index.mjs
+index 7eb40e0..369e986 100644
+--- a/node_modules/@livekit/components-core/dist/index.mjs
++++ b/node_modules/@livekit/components-core/dist/index.mjs
+@@ -736,10 +736,29 @@ function findIndex(trackReference, trackReferences) {
+   return indexToReplace;
+ }
+ function swapItems(moveForward, moveBack, trackReferences) {
+-  const indexToReplace = findIndex(moveForward, trackReferences);
+-  const indexReplaceWith = findIndex(moveBack, trackReferences);
+-  trackReferences.splice(indexToReplace, 1, moveBack);
+-  trackReferences.splice(indexReplaceWith, 1, moveForward);
++  const indexForward = trackReferences.findIndex(
++    (tr) => getTrackReferenceId(tr) === getTrackReferenceId(moveForward)
++  );
++  const indexBack = trackReferences.findIndex(
++    (tr) => getTrackReferenceId(tr) === getTrackReferenceId(moveBack)
++  );
++  if (indexForward === -1 && indexBack !== -1) {
++    trackReferences.splice(indexBack, 1, moveForward);
++    return trackReferences;
++  }
++  if (indexForward !== -1 && indexBack === -1) {
++    trackReferences.splice(indexForward, 1, moveBack);
++    return trackReferences;
++  }
++  if (indexForward === -1 || indexBack === -1) {
++    throw new Error(
++      `Element not part of the array: ${getTrackReferenceId(
++        moveForward
++      )} not in ${flatTrackReferenceArray(trackReferences)}`
++    );
++  }
++  trackReferences.splice(indexForward, 1, moveBack);
++  trackReferences.splice(indexBack, 1, moveForward);
+   return trackReferences;
+ }
+ function dropItem(itemToDrop, list) {
+diff --git a/node_modules/@livekit/components-core/src/sorting/tile-array-update.ts b/node_modules/@livekit/components-core/src/sorting/tile-array-update.ts
+index adf0acd..545d98d 100644
+--- a/node_modules/@livekit/components-core/src/sorting/tile-array-update.ts
++++ b/node_modules/@livekit/components-core/src/sorting/tile-array-update.ts
+@@ -52,12 +52,31 @@ export function swapItems<T extends UpdatableItem>(
+   moveBack: T,
+   trackReferences: T[],
+ ): T[] {
+-  const indexToReplace = findIndex(moveForward, trackReferences);
+-  const indexReplaceWith = findIndex(moveBack, trackReferences);
+-
+-  trackReferences.splice(indexToReplace, 1, moveBack);
+-  trackReferences.splice(indexReplaceWith, 1, moveForward);
+-
++  const indexForward = trackReferences.findIndex(
++    (tr) => getTrackReferenceId(tr) === getTrackReferenceId(moveForward),
++  );
++  const indexBack = trackReferences.findIndex(
++    (tr) => getTrackReferenceId(tr) === getTrackReferenceId(moveBack),
++  );
++  // Handle replacement case: when switching camera <-> screen_share, the "added" item
++  // may not be in the list yet. Replace instead of swap.
++  if (indexForward === -1 && indexBack !== -1) {
++    trackReferences.splice(indexBack, 1, moveForward);
++    return trackReferences;
++  }
++  if (indexForward !== -1 && indexBack === -1) {
++    trackReferences.splice(indexForward, 1, moveBack);
++    return trackReferences;
++  }
++  if (indexForward === -1 || indexBack === -1) {
++    throw new Error(
++      `Element not part of the array: ${getTrackReferenceId(
++        moveForward,
++      )} not in ${flatTrackReferenceArray(trackReferences)}`,
++    );
++  }
++  trackReferences.splice(indexForward, 1, moveBack);
++  trackReferences.splice(indexBack, 1, moveForward);
+   return trackReferences;
+ }
+ 

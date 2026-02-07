@@ -18,49 +18,46 @@ export default function MeetingPage() {
   const [token, setToken] = useState<string | null>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState(true);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [currentMeetingId, setCurrentMeetingId] = useState<string | null>(null);
-  const [hasJoined, setHasJoined] = useState(false); // Guard để tránh join nhiều lần
   const [preJoinDone, setPreJoinDone] = useState(false);
   const [userChoices, setUserChoices] = useState<LocalUserChoices | null>(null);
+  const [joining, setJoining] = useState(false); // Đang gọi API sau khi ấn Tham gia cuộc họp
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/login');
       return;
     }
+  }, [authLoading, isAuthenticated, router]);
 
-    if (!isAuthenticated || !meetingId || hasJoined) return;
-
-    const joinMeeting = async () => {
-      // Đánh dấu đã join để tránh gọi lại
-      setHasJoined(true);
-      setConnecting(true);
+  const handlePreJoinSubmit = useCallback(
+    async (choices: LocalUserChoices) => {
+      if (!meetingId || joining) return;
+      setJoining(true);
       setError(null);
 
-      // Join bằng link (không cần passcode)
       const result = await apiService.joinMeetingByLink(meetingId);
 
       if (result.error) {
         setError(result.error);
-        setConnecting(false);
-        setHasJoined(false); // Reset nếu có lỗi để có thể thử lại
+        setJoining(false);
         return;
       }
 
       if (result.data) {
+        setUserChoices(choices);
         setToken(result.data.token);
         setUrl(result.data.liveKitUrl);
         setParticipantId(result.data.participantId);
         setCurrentMeetingId(result.data.meetingId);
-        setConnecting(false);
+        setPreJoinDone(true);
+        setJoining(false);
       }
-    };
-
-    joinMeeting();
-  }, [meetingId, isAuthenticated, authLoading, router, hasJoined]);
+    },
+    [meetingId, joining],
+  );
 
   const handleError = useCallback((error: Error) => {
     console.error('LiveKit room error:', error);
@@ -80,7 +77,7 @@ export default function MeetingPage() {
     router.push('/');
   }, [router, participantId, currentMeetingId]);
 
-  if (authLoading) {
+  if (authLoading || (!isAuthenticated && !authLoading)) {
     return (
       <div style={styles.container}>
         <div style={styles.loading}>Đang tải...</div>
@@ -95,8 +92,14 @@ export default function MeetingPage() {
           <h2 style={styles.errorTitle}>Lỗi kết nối</h2>
           <p style={styles.errorMessage}>{error}</p>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => setError(null)}
             style={styles.backButton}
+          >
+            Thử lại
+          </button>
+          <button
+            onClick={() => router.push('/')}
+            style={{ ...styles.backButton, marginLeft: '10px', backgroundColor: '#666' }}
           >
             Quay lại trang chủ
           </button>
@@ -105,28 +108,20 @@ export default function MeetingPage() {
     );
   }
 
-  if (connecting || !token || !url) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner}></div>
-          <p style={styles.loadingText}>Đang kết nối đến meeting...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Màn hình chọn thiết bị (Microphone, Camera) trước khi vào meeting - không có Username vì đã đăng nhập
+  // Màn hình chọn thiết bị (Microphone, Camera) - chỉ khi ấn "Tham gia cuộc họp" mới gọi API join
   if (!preJoinDone) {
     return (
       <div style={styles.container}>
-        <div style={styles.preJoinWrapper} className="prejoin-no-username">
+        <div style={{ ...styles.preJoinWrapper, position: 'relative' }} className="prejoin-no-username">
+          {joining && (
+            <div style={styles.joiningOverlay}>
+              <div style={styles.spinner}></div>
+              <p style={styles.loadingText}>Đang tham gia cuộc họp...</p>
+            </div>
+          )}
           <PreJoin
             onValidate={() => true}
-            onSubmit={(choices) => {
-              setUserChoices(choices);
-              setPreJoinDone(true);
-            }}
+            onSubmit={(choices) => void handlePreJoinSubmit(choices)}
             onError={(err) => console.error('PreJoin error:', err)}
             joinLabel="Tham gia cuộc họp"
             micLabel="Microphone"
@@ -134,6 +129,17 @@ export default function MeetingPage() {
             persistUserChoices={true}
             defaults={{ username: user?.username || 'user' }}
           />
+        </div>
+      </div>
+    );
+  }
+
+  if (!token || !url) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.loadingContainer}>
+          <div style={styles.spinner}></div>
+          <p style={styles.loadingText}>Đang chuẩn bị phòng họp...</p>
         </div>
       </div>
     );
@@ -272,5 +278,16 @@ const styles: { [key: string]: React.CSSProperties } = {
   preJoinWrapper: {
     width: '100%',
     maxWidth: '640px',
+  },
+  joiningOverlay: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    zIndex: 10,
+    borderRadius: '8px',
   },
 };

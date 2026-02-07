@@ -2,7 +2,7 @@ import '@livekit/components-styles';
 import 'antd/dist/reset.css';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth';
-import { App as AntdApp } from 'antd';
+import { App as AntdApp, ConfigProvider } from 'antd';
 import ThemeProvider from '@/components/ThemeProvider';
 
 export const metadata = {
@@ -61,11 +61,13 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <ConfigProvider wave={{ disabled: true }}>
         <AntdApp>
           <ThemeProvider>
             <AuthProvider>{children}</AuthProvider>
           </ThemeProvider>
         </AntdApp>
+        </ConfigProvider>
       </body>
     </html>
   );
