@@ -171,14 +171,16 @@ export default function MeetingPage() {
     );
   }
 
+  // Use 'ideal' instead of 'exact' for deviceId so deployed env (different device/browser)
+  // can fall back to any available camera/mic and avoid OverconstrainedError.
   const audioOptions = userChoices
     ? userChoices.audioEnabled
-      ? (userChoices.audioDeviceId ? { deviceId: { exact: userChoices.audioDeviceId } } : true)
+      ? (userChoices.audioDeviceId ? { deviceId: { ideal: userChoices.audioDeviceId } } : true)
       : false
     : true;
   const videoOptions = userChoices
     ? userChoices.videoEnabled
-      ? (userChoices.videoDeviceId ? { deviceId: { exact: userChoices.videoDeviceId } } : true)
+      ? (userChoices.videoDeviceId ? { deviceId: { ideal: userChoices.videoDeviceId } } : true)
       : false
     : true;
 

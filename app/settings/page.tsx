@@ -132,34 +132,38 @@ export default function SettingsPage() {
   const applyTheme = (theme: string) => {
     const html = document.documentElement;
     const body = document.body;
-    
-    // Xóa tất cả các class theme cũ
+    if (!html) return;
     html.classList.remove('light-theme', 'dark-theme', 'auto-theme');
-    body.classList.remove('light-theme', 'dark-theme', 'auto-theme');
-    
+    if (body) body.classList.remove('light-theme', 'dark-theme', 'auto-theme');
     // Xác định theme thực tế (nếu là auto thì dùng system preference)
     let actualTheme = theme;
     if (theme === 'auto') {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       actualTheme = prefersDark ? 'dark' : 'light';
     }
-    
-    // Áp dụng theme
-    if (actualTheme === 'dark') {
-      html.classList.add('dark-theme');
-      html.setAttribute('data-theme', 'dark');
-      body.classList.add('dark-theme');
-      body.style.backgroundColor = '#141414';
-      body.style.color = '#fff';
+    if (body) {
+      if (actualTheme === 'dark') {
+        html.classList.add('dark-theme');
+        html.setAttribute('data-theme', 'dark');
+        body.classList.add('dark-theme');
+        body.style.backgroundColor = '#141414';
+        body.style.color = '#fff';
+      } else {
+        html.classList.add('light-theme');
+        html.setAttribute('data-theme', 'light');
+        body.classList.add('light-theme');
+        body.style.backgroundColor = '#f5f5f5';
+        body.style.color = '#000';
+      }
     } else {
-      html.classList.add('light-theme');
-      html.setAttribute('data-theme', 'light');
-      body.classList.add('light-theme');
-      body.style.backgroundColor = '#f5f5f5';
-      body.style.color = '#000';
+      if (actualTheme === 'dark') {
+        html.classList.add('dark-theme');
+        html.setAttribute('data-theme', 'dark');
+      } else {
+        html.classList.add('light-theme');
+        html.setAttribute('data-theme', 'light');
+      }
     }
-    
-    // Lưu theme hiện tại vào localStorage để áp dụng ngay
     localStorage.setItem('current_theme', actualTheme);
   };
 

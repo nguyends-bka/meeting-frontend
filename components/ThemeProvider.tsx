@@ -36,23 +36,30 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
 function applyTheme(actualTheme: string) {
   const html = document.documentElement;
   const body = document.body;
-  
-  // Xóa tất cả các class theme cũ
+  if (!html) return;
   html.classList.remove('light-theme', 'dark-theme', 'auto-theme');
-  body.classList.remove('light-theme', 'dark-theme', 'auto-theme');
-  
-  // Áp dụng theme
-  if (actualTheme === 'dark') {
-    html.classList.add('dark-theme');
-    html.setAttribute('data-theme', 'dark');
-    body.classList.add('dark-theme');
-    body.style.backgroundColor = '#141414';
-    body.style.color = '#fff';
+  if (body) {
+    body.classList.remove('light-theme', 'dark-theme', 'auto-theme');
+    if (actualTheme === 'dark') {
+      html.classList.add('dark-theme');
+      html.setAttribute('data-theme', 'dark');
+      body.classList.add('dark-theme');
+      body.style.backgroundColor = '#141414';
+      body.style.color = '#fff';
+    } else {
+      html.classList.add('light-theme');
+      html.setAttribute('data-theme', 'light');
+      body.classList.add('light-theme');
+      body.style.backgroundColor = '#f5f5f5';
+      body.style.color = '#000';
+    }
   } else {
-    html.classList.add('light-theme');
-    html.setAttribute('data-theme', 'light');
-    body.classList.add('light-theme');
-    body.style.backgroundColor = '#f5f5f5';
-    body.style.color = '#000';
+    if (actualTheme === 'dark') {
+      html.classList.add('dark-theme');
+      html.setAttribute('data-theme', 'dark');
+    } else {
+      html.classList.add('light-theme');
+      html.setAttribute('data-theme', 'light');
+    }
   }
 }

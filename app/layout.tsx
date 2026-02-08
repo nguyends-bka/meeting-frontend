@@ -38,19 +38,29 @@ export default function RootLayout({
                   
                   const html = document.documentElement;
                   const body = document.body;
-                  
-                  if (actualTheme === 'dark') {
-                    html.classList.add('dark-theme');
-                    html.setAttribute('data-theme', 'dark');
-                    body.classList.add('dark-theme');
-                    body.style.backgroundColor = '#141414';
-                    body.style.color = '#fff';
+                  if (!html) return;
+                  if (body) {
+                    if (actualTheme === 'dark') {
+                      html.classList.add('dark-theme');
+                      html.setAttribute('data-theme', 'dark');
+                      body.classList.add('dark-theme');
+                      body.style.backgroundColor = '#141414';
+                      body.style.color = '#fff';
+                    } else {
+                      html.classList.add('light-theme');
+                      html.setAttribute('data-theme', 'light');
+                      body.classList.add('light-theme');
+                      body.style.backgroundColor = '#f5f5f5';
+                      body.style.color = '#000';
+                    }
                   } else {
-                    html.classList.add('light-theme');
-                    html.setAttribute('data-theme', 'light');
-                    body.classList.add('light-theme');
-                    body.style.backgroundColor = '#f5f5f5';
-                    body.style.color = '#000';
+                    if (actualTheme === 'dark') {
+                      html.classList.add('dark-theme');
+                      html.setAttribute('data-theme', 'dark');
+                    } else {
+                      html.classList.add('light-theme');
+                      html.setAttribute('data-theme', 'light');
+                    }
                   }
                 } catch (e) {
                   console.error('Error applying theme:', e);
