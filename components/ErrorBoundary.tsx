@@ -24,6 +24,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: any) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    // Lỗi LiveKit khi rời phòng (camera bật): placeholder không còn trong mảng → chuyển về trang chủ
+    const msg = error?.message ?? '';
+    if (msg.includes('Element not part of the array') || msg.includes('updatePages')) {
+      window.location.href = '/';
+    }
   }
 
   render() {

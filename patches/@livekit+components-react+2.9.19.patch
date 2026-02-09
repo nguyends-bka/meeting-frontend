@@ -1,0 +1,46 @@
+diff --git a/node_modules/@livekit/components-react/dist/contexts-CsO1QZ3r.mjs b/node_modules/@livekit/components-react/dist/contexts-CsO1QZ3r.mjs
+index 0000000..1111111 100644
+--- a/node_modules/@livekit/components-react/dist/contexts-CsO1QZ3r.mjs
++++ b/node_modules/@livekit/components-react/dist/contexts-CsO1QZ3r.mjs
+@@ -2843,21 +2843,23 @@ function xo(e) {
+ function dt(e, t) {
+   const n = t.findIndex(
+     (r) => N(r) === N(e)
+   );
+-  if (n === -1)
+-    throw new Error(
+-      `Element not part of the array: ${N(
+-        e
+-      )} not in ${ft(t)}`
+-    );
+   return n;
+ }
+ function So(e, t, n) {
+-  const r = dt(e, n), i = dt(t, n);
+-  return n.splice(r, 1, t), n.splice(i, 1, e), n;
++  const r = n.findIndex((i) => N(i) === N(e)), i = n.findIndex((i) => N(i) === N(t));
++  if (r === -1 && i !== -1) {
++    return n.splice(i, 1, e), n;
++  }
++  if (r !== -1 && i === -1) {
++    return n.splice(r, 1, t), n;
++  }
++  if (r === -1 || i === -1) return n;
++  return n.splice(r, 1, t), n.splice(i, 1, e), n;
+ }
+ function To(e, t) {
+   const n = dt(e, t);
++  if (n === -1) return t;
+   return t.splice(n, 1), t;
+ }
+ function Eo(e, t) {
+@@ -2883,9 +2883,5 @@ function bs(e, t, n) {
+         { changes: l }
+       ), l.added.length === l.dropped.length && Ht(l.added, l.dropped).forEach(([f, v]) => {
+         if (f && v)
+           r = So(f, v, r);
+-        else
+-          throw new Error(
+-            `For a swap action we need a addition and a removal one is missing: ${f}, ${v}`
+-          );
+       }), l.added.length === 0 && l.dropped.length > 0 && l.dropped.forEach((f) => {

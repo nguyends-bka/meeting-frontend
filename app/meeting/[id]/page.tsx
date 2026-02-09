@@ -126,8 +126,12 @@ export default function MeetingPage() {
             joinLabel="Tham gia cuộc họp"
             micLabel="Microphone"
             camLabel="Camera"
-            persistUserChoices={true}
-            defaults={{ username: user?.username || 'user' }}
+            persistUserChoices={false}
+            defaults={{
+              username: user?.username || 'user',
+              videoEnabled: false,
+              audioEnabled: false,
+            }}
           />
         </div>
       </div>
