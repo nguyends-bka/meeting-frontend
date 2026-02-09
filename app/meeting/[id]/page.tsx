@@ -24,6 +24,9 @@ export default function MeetingPage() {
   const [preJoinDone, setPreJoinDone] = useState(false);
   const [userChoices, setUserChoices] = useState<LocalUserChoices | null>(null);
   const [joining, setJoining] = useState(false); // Đang gọi API sau khi ấn Tham gia cuộc họp
+  const [noCamera, setNoCamera] = useState(false);
+  const [noMic, setNoMic] = useState(false);
+  const [deviceErrorResetKey, setDeviceErrorResetKey] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -112,7 +115,17 @@ export default function MeetingPage() {
   if (!preJoinDone) {
     return (
       <div style={styles.container}>
-        <div style={{ ...styles.preJoinWrapper, position: 'relative' }} className="prejoin-no-username">
+        <div
+          style={{ ...styles.preJoinWrapper, position: 'relative' }}
+          className="prejoin-no-username"
+        >
+          {(noCamera || noMic) && (
+            <div style={styles.deviceWarning}>
+              {noCamera && noMic && 'Không tìm thấy camera và microphone. Vui lòng kiểm tra lại thiết bị của bạn!'}
+              {noCamera && !noMic && 'Không tìm thấy camera. Vui lòng kiểm tra lại thiết bị của bạn!'}
+              {!noCamera && noMic && 'Không tìm thấy microphone. Vui lòng kiểm tra lại thiết bị của bạn!'}
+            </div>
+          )}
           {joining && (
             <div style={styles.joiningOverlay}>
               <div style={styles.spinner}></div>
@@ -120,9 +133,31 @@ export default function MeetingPage() {
             </div>
           )}
           <PreJoin
+            key={`prejoin-${noCamera}-${noMic}-${deviceErrorResetKey}`}
             onValidate={() => true}
             onSubmit={(choices) => void handlePreJoinSubmit(choices)}
-            onError={(err) => console.error('PreJoin error:', err)}
+            onError={async (err) => {
+              const msg = err?.message ?? '';
+              const isDeviceNotFound =
+                err?.name === 'NotFoundError' ||
+                /requested device not found|device not found|not found/i.test(msg);
+              if (isDeviceNotFound) {
+                try {
+                  const devices = await navigator.mediaDevices.enumerateDevices();
+                  const hasVideo = devices.some((d) => d.kind === 'videoinput');
+                  const hasAudio = devices.some((d) => d.kind === 'audioinput');
+                  setNoCamera(!hasVideo);
+                  setNoMic(!hasAudio);
+                  setDeviceErrorResetKey((k) => k + 1);
+                } catch {
+                  setNoCamera(true);
+                  setNoMic(true);
+                  setDeviceErrorResetKey((k) => k + 1);
+                }
+              } else {
+                console.error('PreJoin error:', err);
+              }
+            }}
             joinLabel="Tham gia cuộc họp"
             micLabel="Microphone"
             camLabel="Camera"
@@ -284,6 +319,16 @@ const styles: { [key: string]: React.CSSProperties } = {
   preJoinWrapper: {
     width: '100%',
     maxWidth: '640px',
+  },
+  deviceWarning: {
+    padding: '14px 20px',
+    marginBottom: '12px',
+    backgroundColor: '#fff8e6',
+    border: '1px solid #f0c674',
+    borderRadius: '8px',
+    fontSize: '14px',
+    color: '#7d5a00',
+    textAlign: 'center',
   },
   joiningOverlay: {
     position: 'absolute',

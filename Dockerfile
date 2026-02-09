@@ -7,6 +7,7 @@ ARG NEXT_PUBLIC_VIRTUAL_MIC_WS_URL=
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
+COPY patches ./patches
 RUN npm install
 
 FROM node:20-alpine AS build
