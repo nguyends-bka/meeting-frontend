@@ -35,11 +35,58 @@ export default function MeetingPage() {
     }
   }, [authLoading, isAuthenticated, router]);
 
+  // Khi đang ở màn PreJoin: phát hiện camera/mic mất kết nối hoặc có lại → cập nhật thông báo và trạng thái
+  useEffect(() => {
+    if (preJoinDone) return;
+    let hadVideo = true;
+    let hadAudio = true;
+    const interval = setInterval(async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasVideo = devices.some((d) => d.kind === 'videoinput');
+        const hasAudio = devices.some((d) => d.kind === 'audioinput');
+        const lostVideo = hadVideo && !hasVideo;
+        const lostAudio = hadAudio && !hasAudio;
+        hadVideo = hasVideo;
+        hadAudio = hasAudio;
+        if (lostVideo || lostAudio) {
+          setNoCamera(!hasVideo);
+          setNoMic(!hasAudio);
+          setDeviceErrorResetKey((k) => k + 1);
+        } else {
+          // Có camera/mic lại → bỏ thông báo
+          if (hasVideo) setNoCamera(false);
+          if (hasAudio) setNoMic(false);
+        }
+      } catch {
+        setDeviceErrorResetKey((k) => k + 1);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [preJoinDone]);
+
   const handlePreJoinSubmit = useCallback(
     async (choices: LocalUserChoices) => {
       if (!meetingId || joining) return;
       setJoining(true);
       setError(null);
+
+      // Kiểm tra lại thiết bị trước khi vào phòng: nếu mất camera/mic thì ép tắt để tránh lỗi khi join
+      let normalizedChoices = choices;
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasVideo = devices.some((d) => d.kind === 'videoinput');
+        const hasAudio = devices.some((d) => d.kind === 'audioinput');
+        if (!hasVideo || !hasAudio) {
+          normalizedChoices = {
+            ...choices,
+            videoEnabled: hasVideo ? choices.videoEnabled : false,
+            audioEnabled: hasAudio ? choices.audioEnabled : false,
+          };
+        }
+      } catch {
+        normalizedChoices = { ...choices, videoEnabled: false, audioEnabled: false };
+      }
 
       const result = await apiService.joinMeetingByLink(meetingId);
 
@@ -50,7 +97,7 @@ export default function MeetingPage() {
       }
 
       if (result.data) {
-        setUserChoices(choices);
+        setUserChoices(normalizedChoices);
         setToken(result.data.token);
         setUrl(result.data.liveKitUrl);
         setParticipantId(result.data.participantId);
@@ -63,6 +110,16 @@ export default function MeetingPage() {
   );
 
   const handleError = useCallback((error: Error) => {
+    const msg = error?.message ?? '';
+    const name = error?.name ?? '';
+    const isDeviceLost =
+      name === 'NotFoundError' ||
+      name === 'NotReadableError' ||
+      /requested device not found|device not found|client initiated disconnect|could not start video source|could not start audio source/i.test(msg);
+    if (isDeviceLost) {
+      console.warn('LiveKit: thiết bị mất kết nối, tham gia trong trạng thái mic/camere tắt:', error);
+      return;
+    }
     console.error('LiveKit room error:', error);
     setRoomError(error.message || 'Có lỗi xảy ra trong meeting room');
   }, []);
@@ -138,10 +195,13 @@ export default function MeetingPage() {
             onSubmit={(choices) => void handlePreJoinSubmit(choices)}
             onError={async (err) => {
               const msg = err?.message ?? '';
-              const isDeviceNotFound =
-                err?.name === 'NotFoundError' ||
-                /requested device not found|device not found|not found/i.test(msg);
-              if (isDeviceNotFound) {
+              const name = err?.name ?? '';
+              const isDeviceRelated =
+                name === 'NotFoundError' ||
+                name === 'NotReadableError' ||
+                name === 'OverconstrainedError' ||
+                /requested device not found|device not found|not found|ended|disconnect|not readable|track/i.test(msg);
+              if (isDeviceRelated) {
                 try {
                   const devices = await navigator.mediaDevices.enumerateDevices();
                   const hasVideo = devices.some((d) => d.kind === 'videoinput');

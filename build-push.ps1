@@ -27,7 +27,11 @@ $buildArgs += "-f", "Dockerfile", "."
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Write-Host "Build OK: $FullImage" -ForegroundColor Green
 if ($NoPush) {
-    Write-Host "No push. To save: docker save $FullImage -o frontend.tar" -ForegroundColor Yellow
+    $TarPath = Join-Path $PSScriptRoot "frontend.tar"
+    Write-Host "Saving image to $TarPath ..." -ForegroundColor Cyan
+    & docker save $FullImage -o $TarPath
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Write-Host "Saved: $TarPath" -ForegroundColor Green
     exit 0
 }
 Write-Host "Pushing: $FullImage" -ForegroundColor Cyan
