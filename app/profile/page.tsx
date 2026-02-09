@@ -130,12 +130,12 @@ export default function ProfilePage() {
       {/* Hidden Forms để kết nối form instances khi chưa hiển thị (tránh warning useForm) */}
       {!profile && (
         <Form form={profileForm} style={{ display: 'none' }}>
-          <Form.Item name="dummy" hidden />
+          <Form.Item hidden />
         </Form>
       )}
       {!showPasswordForm && (
         <Form form={passwordForm} style={{ display: 'none' }}>
-          <Form.Item name="dummy" hidden />
+          <Form.Item hidden />
         </Form>
       )}
       <div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}>

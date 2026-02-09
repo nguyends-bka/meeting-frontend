@@ -8,7 +8,7 @@ param(
 )
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
-if (-not $ImageName) { $ImageName = "nguyendsbka/meeting-frontend" }
+if (-not $ImageName) { $ImageName = "nguyends/frontend" }
 if (-not $Tag) { $Tag = "latest" }
 if (-not $ApiUrl) { $ApiUrl = "https://meeting.soict.io" }
 $FullImage = "${ImageName}:${Tag}"

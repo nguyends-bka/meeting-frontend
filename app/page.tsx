@@ -148,16 +148,8 @@ export default function HomePage() {
         <Card style={{ marginBottom: 24 }}>
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Typography.Title level={2} style={{ margin: 0 }}>
-              Chào mừng, {user?.username}! 👋
+              Chào mừng, {user?.fullName}👋
             </Typography.Title>
-            <Space>
-              <Tag icon={<TeamOutlined />} color="blue">
-                {user?.username}
-              </Tag>
-              {isAdmin && (
-                <Tag color="red">Admin</Tag>
-              )}
-            </Space>
           </Space>
         </Card>
 

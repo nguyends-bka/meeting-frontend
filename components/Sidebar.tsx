@@ -276,7 +276,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
             {!collapsed && (
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Text strong ellipsis style={{ display: 'block', fontSize: 14 }}>
-                  {user?.username}
+                  {user?.fullName}
                 </Text>
                 {isAdmin && (
                   <Tag color="red" style={{ marginTop: 4 }}>
