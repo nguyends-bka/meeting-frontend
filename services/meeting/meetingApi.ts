@@ -28,14 +28,14 @@ export const meetingApi = {
   },
 
   join: async (request: JoinMeetingRequest) => {
-    const body: any = {};
+    const body: Record<string, unknown> = {};
     if (request.meetingId) {
-      body.MeetingId = request.meetingId;
+      body.meetingId = request.meetingId;
     }
     if (request.meetingCode) {
-      body.MeetingCode = request.meetingCode.toUpperCase();
+      body.meetingCode = request.meetingCode.toUpperCase();
     }
-    body.Passcode = request.passcode;
+    body.passcode = request.passcode;
 
     return apiClient.request<JoinMeetingResponse>('/api/meeting/join', {
       method: 'POST',
@@ -44,12 +44,12 @@ export const meetingApi = {
   },
 
   leave: async (request: LeaveMeetingRequest) => {
-    const body: any = {};
+    const body: Record<string, unknown> = {};
     if (request.participantId) {
-      body.ParticipantId = request.participantId;
+      body.participantId = request.participantId;
     }
     if (request.meetingId) {
-      body.MeetingId = request.meetingId;
+      body.meetingId = request.meetingId;
     }
 
     return apiClient.request<LeaveMeetingResponse>('/api/meeting/leave', {

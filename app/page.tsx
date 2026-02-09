@@ -72,6 +72,7 @@ export default function HomePage() {
         activeMeetings: meetings.length, // TODO: Tính active meetings
       });
     }
+    // 401 đã được apiClient xử lý (đăng xuất + redirect /login)
   };
 
   const onCreateMeeting = async () => {

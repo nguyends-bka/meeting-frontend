@@ -33,6 +33,13 @@ class ApiClient {
       });
 
       if (!response.ok) {
+        if (response.status === 401 && typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return { error: 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.' };
+        }
+
         const errorText = await response.text();
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         try {

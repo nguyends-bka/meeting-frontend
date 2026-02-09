@@ -1,8 +1,18 @@
 diff --git a/node_modules/@livekit/components-core/dist/index.js b/node_modules/@livekit/components-core/dist/index.js
-index 3e04d47..bcfca8f 100644
+index 3e04d47..ebd3564 100644
 --- a/node_modules/@livekit/components-core/dist/index.js
 +++ b/node_modules/@livekit/components-core/dist/index.js
-@@ -870,10 +870,29 @@ function findIndex(trackReference, trackReferences) {
+@@ -860,24 +860,33 @@ function findIndex(trackReference, trackReferences) {
+   const indexToReplace = trackReferences.findIndex(
+     (trackReference_) => getTrackReferenceId(trackReference_) === getTrackReferenceId(trackReference)
+   );
+-  if (indexToReplace === -1) {
+-    throw new Error(
+-      `Element not part of the array: ${getTrackReferenceId(
+-        trackReference
+-      )} not in ${flatTrackReferenceArray(trackReferences)}`
+-    );
+-  }
    return indexToReplace;
  }
  function swapItems(moveForward, moveBack, trackReferences) {
@@ -25,22 +35,33 @@ index 3e04d47..bcfca8f 100644
 +    return trackReferences;
 +  }
 +  if (indexForward === -1 || indexBack === -1) {
-+    throw new Error(
-+      `Element not part of the array: ${getTrackReferenceId(
-+        moveForward
-+      )} not in ${flatTrackReferenceArray(trackReferences)}`
-+    );
++    return trackReferences;
 +  }
 +  trackReferences.splice(indexForward, 1, moveBack);
 +  trackReferences.splice(indexBack, 1, moveForward);
    return trackReferences;
  }
  function dropItem(itemToDrop, list) {
+   const indexOfElementToDrop = findIndex(itemToDrop, list);
++  if (indexOfElementToDrop === -1) return list;
+   list.splice(indexOfElementToDrop, 1);
+   return list;
+ }
 diff --git a/node_modules/@livekit/components-core/dist/index.mjs b/node_modules/@livekit/components-core/dist/index.mjs
-index 7eb40e0..369e986 100644
+index 7eb40e0..53d50af 100644
 --- a/node_modules/@livekit/components-core/dist/index.mjs
 +++ b/node_modules/@livekit/components-core/dist/index.mjs
-@@ -736,10 +736,29 @@ function findIndex(trackReference, trackReferences) {
+@@ -726,24 +726,33 @@ function findIndex(trackReference, trackReferences) {
+   const indexToReplace = trackReferences.findIndex(
+     (trackReference_) => getTrackReferenceId(trackReference_) === getTrackReferenceId(trackReference)
+   );
+-  if (indexToReplace === -1) {
+-    throw new Error(
+-      `Element not part of the array: ${getTrackReferenceId(
+-        trackReference
+-      )} not in ${flatTrackReferenceArray(trackReferences)}`
+-    );
+-  }
    return indexToReplace;
  }
  function swapItems(moveForward, moveBack, trackReferences) {
@@ -63,22 +84,37 @@ index 7eb40e0..369e986 100644
 +    return trackReferences;
 +  }
 +  if (indexForward === -1 || indexBack === -1) {
-+    throw new Error(
-+      `Element not part of the array: ${getTrackReferenceId(
-+        moveForward
-+      )} not in ${flatTrackReferenceArray(trackReferences)}`
-+    );
++    return trackReferences;
 +  }
 +  trackReferences.splice(indexForward, 1, moveBack);
 +  trackReferences.splice(indexBack, 1, moveForward);
    return trackReferences;
  }
  function dropItem(itemToDrop, list) {
+   const indexOfElementToDrop = findIndex(itemToDrop, list);
++  if (indexOfElementToDrop === -1) return list;
+   list.splice(indexOfElementToDrop, 1);
+   return list;
+ }
 diff --git a/node_modules/@livekit/components-core/src/sorting/tile-array-update.ts b/node_modules/@livekit/components-core/src/sorting/tile-array-update.ts
-index adf0acd..545d98d 100644
+index adf0acd..b6d78d2 100644
 --- a/node_modules/@livekit/components-core/src/sorting/tile-array-update.ts
 +++ b/node_modules/@livekit/components-core/src/sorting/tile-array-update.ts
-@@ -52,12 +52,31 @@ export function swapItems<T extends UpdatableItem>(
+@@ -36,13 +36,6 @@ export function findIndex<T extends UpdatableItem>(
+     (trackReference_) =>
+       getTrackReferenceId(trackReference_) === getTrackReferenceId(trackReference),
+   );
+-  if (indexToReplace === -1) {
+-    throw new Error(
+-      `Element not part of the array: ${getTrackReferenceId(
+-        trackReference,
+-      )} not in ${flatTrackReferenceArray(trackReferences)}`,
+-    );
+-  }
+   return indexToReplace;
+ }
+ 
+@@ -52,18 +45,33 @@ export function swapItems<T extends UpdatableItem>(
    moveBack: T,
    trackReferences: T[],
  ): T[] {
@@ -105,14 +141,17 @@ index adf0acd..545d98d 100644
 +    return trackReferences;
 +  }
 +  if (indexForward === -1 || indexBack === -1) {
-+    throw new Error(
-+      `Element not part of the array: ${getTrackReferenceId(
-+        moveForward,
-+      )} not in ${flatTrackReferenceArray(trackReferences)}`,
-+    );
++    return trackReferences;
 +  }
 +  trackReferences.splice(indexForward, 1, moveBack);
 +  trackReferences.splice(indexBack, 1, moveForward);
    return trackReferences;
  }
  
+ export function dropItem<T extends UpdatableItem>(itemToDrop: T, list: T[]): T[] {
+   const indexOfElementToDrop = findIndex(itemToDrop, list);
+-  // const indexOfElementToDrop = list.findIndex((item) => item === itemToDrop, list);
++  if (indexOfElementToDrop === -1) return list;
+   list.splice(indexOfElementToDrop, 1);
+   return list;
+ }
