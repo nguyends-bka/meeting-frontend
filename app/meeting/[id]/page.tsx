@@ -1,13 +1,96 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { LiveKitRoom, VideoConference, PreJoin } from '@livekit/components-react';
+import {
+  LiveKitRoom,
+  VideoConference,
+  PreJoin,
+  useRoomContext,
+} from '@livekit/components-react';
 import type { LocalUserChoices } from '@livekit/components-core';
+import { LocalAudioTrack } from 'livekit-client';
 import { useAuth } from '@/lib/auth';
 import { apiService } from '@/services/api';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
 import '@livekit/components-styles';
+
+type AudioSourceMode = 'real' | 'virtual';
+
+function VirtualMicPublisher({
+  enabled,
+  wsUrl,
+  onError,
+}: {
+  enabled: boolean;
+  wsUrl: string;
+  onError: (message: string) => void;
+}) {
+  const room = useRoomContext();
+  const publishedTrackRef = useRef<LocalAudioTrack | null>(null);
+  const stopReceiverRef = useRef<(() => Promise<void>) | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const publishVirtualMic = async () => {
+      if (!enabled) return;
+      if (!room) return;
+      if (publishedTrackRef.current) return;
+
+      try {
+        const receiver = await startVirtualMicReceiver(wsUrl);
+        if (!mounted) {
+          await receiver.stop();
+          return;
+        }
+
+        const localAudioTrack = new LocalAudioTrack(receiver.track);
+        await room.localParticipant.publishTrack(localAudioTrack);
+
+        publishedTrackRef.current = localAudioTrack;
+        stopReceiverRef.current = receiver.stop;
+      } catch (error) {
+        console.error('Virtual mic publish failed:', error);
+        const message =
+          error instanceof Error ? error.message : 'Không thể khởi tạo micro ảo';
+        onError(message);
+      }
+    };
+
+    void publishVirtualMic();
+
+    return () => {
+      mounted = false;
+
+      const cleanup = async () => {
+        try {
+          if (publishedTrackRef.current) {
+            await room.localParticipant.unpublishTrack(publishedTrackRef.current);
+            publishedTrackRef.current.stop();
+            publishedTrackRef.current = null;
+          }
+        } catch (error) {
+          console.error('Failed to unpublish virtual mic track:', error);
+        }
+
+        try {
+          if (stopReceiverRef.current) {
+            await stopReceiverRef.current();
+            stopReceiverRef.current = null;
+          }
+        } catch (error) {
+          console.error('Failed to stop virtual mic receiver:', error);
+        }
+      };
+
+      void cleanup();
+    };
+  }, [enabled, room, wsUrl, onError]);
+
+  return null;
+}
 
 export default function MeetingPage() {
   const params = useParams();
@@ -23,10 +106,13 @@ export default function MeetingPage() {
   const [currentMeetingId, setCurrentMeetingId] = useState<string | null>(null);
   const [preJoinDone, setPreJoinDone] = useState(false);
   const [userChoices, setUserChoices] = useState<LocalUserChoices | null>(null);
-  const [joining, setJoining] = useState(false); // Đang gọi API sau khi ấn Tham gia cuộc họp
+  const [joining, setJoining] = useState(false);
   const [noCamera, setNoCamera] = useState(false);
   const [noMic, setNoMic] = useState(false);
   const [deviceErrorResetKey, setDeviceErrorResetKey] = useState(0);
+
+  const [audioSource, setAudioSource] = useState<AudioSourceMode>('real');
+  const [virtualMicWsUrl, setVirtualMicWsUrl] = useState('ws://127.0.0.1:9001/audio');
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -35,57 +121,83 @@ export default function MeetingPage() {
     }
   }, [authLoading, isAuthenticated, router]);
 
-  // Khi đang ở màn PreJoin: phát hiện camera/mic mất kết nối hoặc có lại → cập nhật thông báo và trạng thái
   useEffect(() => {
     if (preJoinDone) return;
+
     let hadVideo = true;
     let hadAudio = true;
+
     const interval = setInterval(async () => {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const hasVideo = devices.some((d) => d.kind === 'videoinput');
         const hasAudio = devices.some((d) => d.kind === 'audioinput');
+
         const lostVideo = hadVideo && !hasVideo;
         const lostAudio = hadAudio && !hasAudio;
+
         hadVideo = hasVideo;
         hadAudio = hasAudio;
+
         if (lostVideo || lostAudio) {
           setNoCamera(!hasVideo);
-          setNoMic(!hasAudio);
+          // nếu đang chọn mic ảo thì không cần cảnh báo mất mic thật
+          setNoMic(audioSource === 'real' ? !hasAudio : false);
           setDeviceErrorResetKey((k) => k + 1);
         } else {
-          // Có camera/mic lại → bỏ thông báo
           if (hasVideo) setNoCamera(false);
-          if (hasAudio) setNoMic(false);
+          if (hasAudio || audioSource === 'virtual') setNoMic(false);
         }
       } catch {
         setDeviceErrorResetKey((k) => k + 1);
       }
     }, 1000);
+
     return () => clearInterval(interval);
-  }, [preJoinDone]);
+  }, [preJoinDone, audioSource]);
+
+  useEffect(() => {
+    if (audioSource === 'virtual') {
+      setNoMic(false);
+    }
+  }, [audioSource]);
 
   const handlePreJoinSubmit = useCallback(
     async (choices: LocalUserChoices) => {
       if (!meetingId || joining) return;
+
       setJoining(true);
       setError(null);
 
-      // Kiểm tra lại thiết bị trước khi vào phòng: nếu mất camera/mic thì ép tắt để tránh lỗi khi join
       let normalizedChoices = choices;
+
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const hasVideo = devices.some((d) => d.kind === 'videoinput');
         const hasAudio = devices.some((d) => d.kind === 'audioinput');
-        if (!hasVideo || !hasAudio) {
+
+        const shouldUseRealMic = audioSource === 'real';
+
+        if (!hasVideo || (shouldUseRealMic && !hasAudio)) {
           normalizedChoices = {
             ...choices,
             videoEnabled: hasVideo ? choices.videoEnabled : false,
-            audioEnabled: hasAudio ? choices.audioEnabled : false,
+            audioEnabled: shouldUseRealMic ? (hasAudio ? choices.audioEnabled : false) : false,
+          };
+        }
+
+        if (audioSource === 'virtual') {
+          normalizedChoices = {
+            ...normalizedChoices,
+            audioEnabled: false, // mic thật phải tắt để tránh LiveKit tự lấy hardware mic
           };
         }
       } catch {
-        normalizedChoices = { ...choices, videoEnabled: false, audioEnabled: false };
+        normalizedChoices = {
+          ...choices,
+          videoEnabled: false,
+          audioEnabled: false,
+        };
       }
 
       const result = await apiService.joinMeetingByLink(meetingId);
@@ -106,7 +218,7 @@ export default function MeetingPage() {
         setJoining(false);
       }
     },
-    [meetingId, joining],
+    [meetingId, joining, audioSource],
   );
 
   const handleError = useCallback((error: Error) => {
@@ -115,18 +227,20 @@ export default function MeetingPage() {
     const isDeviceLost =
       name === 'NotFoundError' ||
       name === 'NotReadableError' ||
-      /requested device not found|device not found|client initiated disconnect|could not start video source|could not start audio source/i.test(msg);
+      /requested device not found|device not found|client initiated disconnect|could not start video source|could not start audio source/i.test(
+        msg,
+      );
+
     if (isDeviceLost) {
-      console.warn('LiveKit: thiết bị mất kết nối, tham gia trong trạng thái mic/camere tắt:', error);
+      console.warn('LiveKit: thiết bị mất kết nối, tham gia trong trạng thái mic/camera tắt:', error);
       return;
     }
+
     console.error('LiveKit room error:', error);
     setRoomError(error.message || 'Có lỗi xảy ra trong meeting room');
   }, []);
 
   const handleDisconnected = useCallback(async () => {
-    // Ghi lại lịch sử rời meeting
-    // Gửi cả ParticipantId và MeetingId để backend có thể cập nhật tất cả active sessions
     if (participantId && currentMeetingId) {
       try {
         await apiService.leaveMeeting(participantId, currentMeetingId);
@@ -134,6 +248,7 @@ export default function MeetingPage() {
         console.error('Failed to record leave:', error);
       }
     }
+
     router.push('/');
   }, [router, participantId, currentMeetingId]);
 
@@ -151,10 +266,7 @@ export default function MeetingPage() {
         <div style={styles.errorContainer}>
           <h2 style={styles.errorTitle}>Lỗi kết nối</h2>
           <p style={styles.errorMessage}>{error}</p>
-          <button
-            onClick={() => setError(null)}
-            style={styles.backButton}
-          >
+          <button onClick={() => setError(null)} style={styles.backButton}>
             Thử lại
           </button>
           <button
@@ -168,66 +280,102 @@ export default function MeetingPage() {
     );
   }
 
-  // Màn hình chọn thiết bị (Microphone, Camera) - chỉ khi ấn "Tham gia cuộc họp" mới gọi API join
   if (!preJoinDone) {
+    const showMicWarning = audioSource === 'real' && noMic;
+
     return (
       <div style={styles.container}>
-        <div
-          style={{ ...styles.preJoinWrapper, position: 'relative' }}
-          className="prejoin-no-username"
-        >
-          {(noCamera || noMic) && (
-            <div style={styles.deviceWarning}>
-              {noCamera && noMic && 'Không tìm thấy camera và microphone. Vui lòng kiểm tra lại thiết bị của bạn!'}
-              {noCamera && !noMic && 'Không tìm thấy camera. Vui lòng kiểm tra lại thiết bị của bạn!'}
-              {!noCamera && noMic && 'Không tìm thấy microphone. Vui lòng kiểm tra lại thiết bị của bạn!'}
+        <div style={styles.preJoinWrapper} className="prejoin-no-username">
+          
+          {/* Giao diện chọn thiết bị mới */}
+          <div style={styles.setupCard}>
+            <h2 style={styles.cardTitle}>Cài đặt thiết bị</h2>
+            
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Nguồn Microphone</label>
+              <select
+                value={audioSource}
+                onChange={(e) => setAudioSource(e.target.value as AudioSourceMode)}
+                style={styles.select}
+              >
+                <option value="real">Microphone mặc định của máy</option>
+                <option value="virtual">Microphone ảo (WS 9001)</option>
+              </select>
             </div>
-          )}
-          {joining && (
-            <div style={styles.joiningOverlay}>
-              <div style={styles.spinner}></div>
-              <p style={styles.loadingText}>Đang tham gia cuộc họp...</p>
-            </div>
-          )}
-          <PreJoin
-            key={`prejoin-${noCamera}-${noMic}-${deviceErrorResetKey}`}
-            onValidate={() => true}
-            onSubmit={(choices) => void handlePreJoinSubmit(choices)}
-            onError={async (err) => {
-              const msg = err?.message ?? '';
-              const name = err?.name ?? '';
-              const isDeviceRelated =
-                name === 'NotFoundError' ||
-                name === 'NotReadableError' ||
-                name === 'OverconstrainedError' ||
-                /requested device not found|device not found|not found|ended|disconnect|not readable|track/i.test(msg);
-              if (isDeviceRelated) {
-                try {
-                  const devices = await navigator.mediaDevices.enumerateDevices();
-                  const hasVideo = devices.some((d) => d.kind === 'videoinput');
-                  const hasAudio = devices.some((d) => d.kind === 'audioinput');
-                  setNoCamera(!hasVideo);
-                  setNoMic(!hasAudio);
-                  setDeviceErrorResetKey((k) => k + 1);
-                } catch {
-                  setNoCamera(true);
-                  setNoMic(true);
-                  setDeviceErrorResetKey((k) => k + 1);
+
+            {audioSource === 'virtual' && (
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Địa chỉ WebSocket</label>
+                <input
+                  value={virtualMicWsUrl}
+                  onChange={(e) => setVirtualMicWsUrl(e.target.value)}
+                  style={styles.input}
+                  placeholder="ws://127.0.0.1:9001/audio"
+                />
+                <span style={styles.hint}>
+                  LiveKit sẽ không lấy mic thật mà sử dụng âm thanh từ kết nối này.
+                </span>
+              </div>
+            )}
+            
+            {(noCamera || showMicWarning) && (
+              <div style={styles.deviceWarning}>
+                {noCamera && showMicWarning && 'Không tìm thấy camera và microphone. Vui lòng kiểm tra lại thiết bị!'}
+                {noCamera && !showMicWarning && 'Không tìm thấy camera. Vui lòng kiểm tra lại thiết bị!'}
+                {!noCamera && showMicWarning && 'Không tìm thấy microphone. Vui lòng kiểm tra lại thiết bị!'}
+              </div>
+            )}
+          </div>
+
+          <div style={{ position: 'relative' }}>
+            {joining && (
+              <div style={styles.joiningOverlay}>
+                <div style={styles.spinner}></div>
+                <p style={styles.loadingText}>Đang tham gia cuộc họp...</p>
+              </div>
+            )}
+
+            <PreJoin
+              key={`prejoin-${audioSource}-${noCamera}-${showMicWarning}-${deviceErrorResetKey}`}
+              onValidate={() => true}
+              onSubmit={(choices) => void handlePreJoinSubmit(choices)}
+              onError={async (err) => {
+                const msg = err?.message ?? '';
+                const name = err?.name ?? '';
+                const isDeviceRelated =
+                  name === 'NotFoundError' ||
+                  name === 'NotReadableError' ||
+                  name === 'OverconstrainedError' ||
+                  /requested device not found|device not found|not found|ended|disconnect|not readable|track/i.test(msg);
+
+                if (isDeviceRelated) {
+                  try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const hasVideo = devices.some((d) => d.kind === 'videoinput');
+                    const hasAudio = devices.some((d) => d.kind === 'audioinput');
+                    setNoCamera(!hasVideo);
+                    setNoMic(audioSource === 'real' ? !hasAudio : false);
+                    setDeviceErrorResetKey((k) => k + 1);
+                  } catch {
+                    setNoCamera(true);
+                    setNoMic(audioSource === 'real');
+                    setDeviceErrorResetKey((k) => k + 1);
+                  }
+                } else {
+                  console.error('PreJoin error:', err);
                 }
-              } else {
-                console.error('PreJoin error:', err);
-              }
-            }}
-            joinLabel="Tham gia cuộc họp"
-            micLabel="Microphone"
-            camLabel="Camera"
-            persistUserChoices={false}
-            defaults={{
-              username: user?.username || 'user',
-              videoEnabled: false,
-              audioEnabled: false,
-            }}
-          />
+              }}
+              joinLabel="Tham gia cuộc họp"
+              micLabel="Microphone"
+              camLabel="Camera"
+              persistUserChoices={false}
+              defaults={{
+                username: user?.username || 'user',
+                videoEnabled: false,
+                audioEnabled: false, 
+              }}
+            />
+          </div>
         </div>
       </div>
     );
@@ -270,50 +418,70 @@ export default function MeetingPage() {
     );
   }
 
-  // Use 'ideal' instead of 'exact' for deviceId so deployed env (different device/browser)
-  // can fall back to any available camera/mic and avoid OverconstrainedError.
-  const audioOptions = userChoices
-    ? userChoices.audioEnabled
-      ? (userChoices.audioDeviceId ? { deviceId: { ideal: userChoices.audioDeviceId } } : true)
-      : false
-    : true;
+  const useHardwareAudio = audioSource === 'real';
+
+  const audioOptions = useHardwareAudio
+    ? userChoices
+      ? userChoices.audioEnabled
+        ? userChoices.audioDeviceId
+          ? { deviceId: { ideal: userChoices.audioDeviceId } }
+          : true
+        : false
+      : true
+    : false;
+
   const videoOptions = userChoices
     ? userChoices.videoEnabled
-      ? (userChoices.videoDeviceId ? { deviceId: { ideal: userChoices.videoDeviceId } } : true)
+      ? userChoices.videoDeviceId
+        ? { deviceId: { ideal: userChoices.videoDeviceId } }
+        : true
       : false
     : true;
 
-  // Note: LiveKit may show internal warnings about camera placeholders
-  // These are typically non-critical and don't affect functionality
   return (
     <ErrorBoundary>
-      <div style={{
-        height: '100vh',
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}>
-    <div
-      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-      data-lk-theme="default"
-    >
-    <LiveKitRoom
-      token={token}
-      serverUrl={url}
-          connect={true}
-          audio={audioOptions}
-          video={videoOptions}
-          options={{
-            adaptiveStream: true,
-            dynacast: true,
+      <div
+        style={{
+          height: '100vh',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
           }}
-          onError={handleError}
-          onDisconnected={handleDisconnected}
-    >
-      <VideoConference />
-    </LiveKitRoom>
-    </div>
+          data-lk-theme="default"
+        >
+          <LiveKitRoom
+            token={token}
+            serverUrl={url}
+            connect={true}
+            audio={audioOptions}
+            video={videoOptions}
+            options={{
+              adaptiveStream: true,
+              dynacast: true,
+            }}
+            onError={handleError}
+            onDisconnected={handleDisconnected}
+          >
+            {audioSource === 'virtual' && (
+              <VirtualMicPublisher
+                enabled={true}
+                wsUrl={virtualMicWsUrl}
+                onError={(message) => setRoomError(message)}
+              />
+            )}
+            <VideoConference />
+          </LiveKitRoom>
+        </div>
       </div>
     </ErrorBoundary>
   );
@@ -325,7 +493,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f3f4f6', 
   },
   loadingContainer: {
     textAlign: 'center',
@@ -354,7 +522,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '8px',
     boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
     textAlign: 'center',
-    maxWidth: '500px',
+    maxWidth: '560px',
   },
   errorTitle: {
     margin: '0 0 15px 0',
@@ -365,6 +533,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: '0 0 25px 0',
     fontSize: '16px',
     color: '#666',
+    whiteSpace: 'pre-wrap',
   },
   backButton: {
     padding: '12px 24px',
@@ -378,16 +547,71 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   preJoinWrapper: {
     width: '100%',
-    maxWidth: '640px',
+    maxWidth: '600px', 
+    padding: '0 20px',
+  },
+  setupCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: '16px',
+    padding: '24px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+    marginBottom: '20px',
+  },
+  cardTitle: {
+    margin: '0 0 20px 0',
+    fontSize: '18px',
+    fontWeight: 600,
+    color: '#111827',
+  },
+  formGroup: {
+    marginBottom: '16px',
+  },
+  label: {
+    display: 'block',
+    fontSize: '14px',
+    fontWeight: 500,
+    color: '#374151',
+    marginBottom: '8px',
+  },
+  select: {
+    width: '100%',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    border: '1px solid #d1d5db',
+    backgroundColor: '#f9fafb',
+    fontSize: '15px',
+    color: '#111827',
+    outline: 'none',
+    cursor: 'pointer',
+    boxSizing: 'border-box',
+    transition: 'border-color 0.2s',
+  },
+  input: {
+    width: '100%',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    border: '1px solid #d1d5db',
+    backgroundColor: '#f9fafb',
+    fontSize: '15px',
+    color: '#111827',
+    outline: 'none',
+    boxSizing: 'border-box',
+    transition: 'border-color 0.2s',
+  },
+  hint: {
+    display: 'block',
+    marginTop: '6px',
+    fontSize: '13px',
+    color: '#6b7280',
   },
   deviceWarning: {
-    padding: '14px 20px',
-    marginBottom: '12px',
-    backgroundColor: '#fff8e6',
-    border: '1px solid #f0c674',
+    marginTop: '16px',
+    padding: '12px 16px',
+    backgroundColor: '#fef3c7',
+    border: '1px solid #fde68a',
     borderRadius: '8px',
     fontSize: '14px',
-    color: '#7d5a00',
+    color: '#92400e',
     textAlign: 'center',
   },
   joiningOverlay: {
@@ -397,8 +621,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(255,255,255,0.85)',
     zIndex: 10,
-    borderRadius: '8px',
+    borderRadius: '16px', 
   },
 };
