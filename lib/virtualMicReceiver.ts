@@ -78,7 +78,7 @@ function pcm16ToFloat32(pcm16: Int16Array): Float32Array {
 
 export async function startVirtualMicReceiver(
   wsUrl: string,
-  sampleRate = 48000,
+  sampleRate = 16000,
 ): Promise<VirtualMicReceiver> {
   const audioContext = new AudioContext({
     sampleRate,

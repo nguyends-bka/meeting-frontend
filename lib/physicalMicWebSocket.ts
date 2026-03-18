@@ -34,7 +34,7 @@ export async function startPhysicalMicWebSocket(
   });
 
   const audioContext = new AudioContext({
-    sampleRate: 48000,
+    sampleRate: 16000,
     latencyHint: 'interactive',
   });
 

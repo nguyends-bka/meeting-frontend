@@ -9,11 +9,12 @@ import {
   useRoomContext,
 } from '@livekit/components-react';
 import type { LocalUserChoices } from '@livekit/components-core';
-import { LocalAudioTrack } from 'livekit-client';
+import { LocalAudioTrack, RoomEvent, Track } from 'livekit-client';
 import { useAuth } from '@/lib/auth';
 import { apiService } from '@/services/api';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
+import { startPhysicalMicWebSocket } from '@/lib/physicalMicWebSocket';
 import '@livekit/components-styles';
 
 type AudioSourceMode = 'real' | 'virtual';
@@ -92,6 +93,115 @@ function VirtualMicPublisher({
   return null;
 }
 
+function PhysicalMicForwarder({
+  enabled,
+  wsUrl,
+  preferredDeviceId,
+  onError,
+}: {
+  enabled: boolean;
+  wsUrl: string;
+  preferredDeviceId?: string | null;
+  onError: (message: string) => void;
+}) {
+  const room = useRoomContext();
+  const stopSenderRef = useRef<(() => Promise<void>) | null>(null);
+  const runningRef = useRef(false);
+
+  const stopSender = useCallback(async () => {
+    try {
+      if (stopSenderRef.current) {
+        await stopSenderRef.current();
+        stopSenderRef.current = null;
+      }
+    } catch (error) {
+      console.error('Failed to stop physical mic sender:', error);
+    } finally {
+      runningRef.current = false;
+    }
+  }, []);
+
+  const startSender = useCallback(async () => {
+    if (!enabled) return;
+    if (runningRef.current) return;
+
+    try {
+      runningRef.current = true;
+      const session = await startPhysicalMicWebSocket(wsUrl, preferredDeviceId);
+      stopSenderRef.current = session.stop;
+    } catch (error) {
+      runningRef.current = false;
+      console.error('Physical mic forward failed:', error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Không thể gửi âm thanh mic thật qua websocket';
+      onError(message);
+    }
+  }, [enabled, onError, preferredDeviceId, wsUrl]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const syncWithMicState = async () => {
+      const micPublication = Array.from(
+        room.localParticipant.trackPublications.values(),
+      ).find((pub) => pub.source === Track.Source.Microphone);
+
+      const micActive = Boolean(micPublication?.track) && !micPublication?.isMuted;
+
+      if (!enabled || !micActive) {
+        await stopSender();
+        return;
+      }
+
+      if (mounted) {
+        await startSender();
+      }
+    };
+
+    void syncWithMicState();
+
+    const handleLocalTrackPublished = async () => {
+      await syncWithMicState();
+    };
+
+    const handleLocalTrackUnpublished = async () => {
+      await syncWithMicState();
+    };
+
+    const handleTrackMuted = async () => {
+      await syncWithMicState();
+    };
+
+    const handleTrackUnmuted = async () => {
+      await syncWithMicState();
+    };
+
+    room.on(RoomEvent.LocalTrackPublished, handleLocalTrackPublished);
+    room.on(RoomEvent.LocalTrackUnpublished, handleLocalTrackUnpublished);
+    room.on(RoomEvent.TrackMuted, handleTrackMuted);
+    room.on(RoomEvent.TrackUnmuted, handleTrackUnmuted);
+
+    return () => {
+      mounted = false;
+      room.off(RoomEvent.LocalTrackPublished, handleLocalTrackPublished);
+      room.off(RoomEvent.LocalTrackUnpublished, handleLocalTrackUnpublished);
+      room.off(RoomEvent.TrackMuted, handleTrackMuted);
+      room.off(RoomEvent.TrackUnmuted, handleTrackUnmuted);
+      void stopSender();
+    };
+  }, [enabled, room, startSender, stopSender]);
+
+  useEffect(() => {
+    if (!enabled) {
+      void stopSender();
+    }
+  }, [enabled, stopSender]);
+
+  return null;
+}
+
 export default function MeetingPage() {
   const params = useParams();
   const router = useRouter();
@@ -113,6 +223,7 @@ export default function MeetingPage() {
 
   const [audioSource, setAudioSource] = useState<AudioSourceMode>('real');
   const [virtualMicWsUrl, setVirtualMicWsUrl] = useState('ws://127.0.0.1:9001/audio');
+  const [physicalMicWsUrl] = useState('ws://127.0.0.1:9001/audioPhisical');
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -141,7 +252,6 @@ export default function MeetingPage() {
 
         if (lostVideo || lostAudio) {
           setNoCamera(!hasVideo);
-          // nếu đang chọn mic ảo thì không cần cảnh báo mất mic thật
           setNoMic(audioSource === 'real' ? !hasAudio : false);
           setDeviceErrorResetKey((k) => k + 1);
         } else {
@@ -189,7 +299,7 @@ export default function MeetingPage() {
         if (audioSource === 'virtual') {
           normalizedChoices = {
             ...normalizedChoices,
-            audioEnabled: false, // mic thật phải tắt để tránh LiveKit tự lấy hardware mic
+            audioEnabled: false,
           };
         }
       } catch {
@@ -286,11 +396,9 @@ export default function MeetingPage() {
     return (
       <div style={styles.container}>
         <div style={styles.preJoinWrapper} className="prejoin-no-username">
-          
-          {/* Giao diện chọn thiết bị mới */}
           <div style={styles.setupCard}>
             <h2 style={styles.cardTitle}>Cài đặt thiết bị</h2>
-            
+
             <div style={styles.formGroup}>
               <label style={styles.label}>Nguồn Microphone</label>
               <select
@@ -317,7 +425,7 @@ export default function MeetingPage() {
                 </span>
               </div>
             )}
-            
+
             {(noCamera || showMicWarning) && (
               <div style={styles.deviceWarning}>
                 {noCamera && showMicWarning && 'Không tìm thấy camera và microphone. Vui lòng kiểm tra lại thiết bị!'}
@@ -372,7 +480,7 @@ export default function MeetingPage() {
               defaults={{
                 username: user?.username || 'user',
                 videoEnabled: false,
-                audioEnabled: false, 
+                audioEnabled: false,
               }}
             />
           </div>
@@ -479,6 +587,16 @@ export default function MeetingPage() {
                 onError={(message) => setRoomError(message)}
               />
             )}
+
+            {audioSource === 'real' && (
+              <PhysicalMicForwarder
+                enabled={true}
+                wsUrl={physicalMicWsUrl}
+                preferredDeviceId={userChoices?.audioDeviceId ?? null}
+                onError={(message) => setRoomError(message)}
+              />
+            )}
+
             <VideoConference />
           </LiveKitRoom>
         </div>
@@ -493,7 +611,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f3f4f6', 
+    backgroundColor: '#f3f4f6',
   },
   loadingContainer: {
     textAlign: 'center',
@@ -547,71 +665,61 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   preJoinWrapper: {
     width: '100%',
-    maxWidth: '600px', 
-    padding: '0 20px',
+    maxWidth: '760px',
   },
   setupCard: {
     backgroundColor: '#ffffff',
-    borderRadius: '16px',
-    padding: '24px',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-    marginBottom: '20px',
+    padding: '20px',
+    borderRadius: '12px',
+    marginBottom: '16px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    border: '1px solid #e5e7eb',
   },
   cardTitle: {
-    margin: '0 0 20px 0',
-    fontSize: '18px',
-    fontWeight: 600,
+    fontSize: '20px',
+    fontWeight: '700',
+    margin: '0 0 16px 0',
     color: '#111827',
   },
   formGroup: {
     marginBottom: '16px',
+    display: 'flex',
+    flexDirection: 'column',
   },
   label: {
-    display: 'block',
     fontSize: '14px',
-    fontWeight: 500,
-    color: '#374151',
+    fontWeight: '600',
     marginBottom: '8px',
+    color: '#374151',
   },
   select: {
     width: '100%',
-    padding: '12px 16px',
+    padding: '10px 12px',
     borderRadius: '8px',
     border: '1px solid #d1d5db',
-    backgroundColor: '#f9fafb',
-    fontSize: '15px',
-    color: '#111827',
-    outline: 'none',
-    cursor: 'pointer',
-    boxSizing: 'border-box',
-    transition: 'border-color 0.2s',
+    fontSize: '14px',
+    backgroundColor: '#fff',
   },
   input: {
     width: '100%',
-    padding: '12px 16px',
+    padding: '10px 12px',
     borderRadius: '8px',
     border: '1px solid #d1d5db',
-    backgroundColor: '#f9fafb',
-    fontSize: '15px',
-    color: '#111827',
-    outline: 'none',
-    boxSizing: 'border-box',
-    transition: 'border-color 0.2s',
+    fontSize: '14px',
+    backgroundColor: '#fff',
   },
   hint: {
-    display: 'block',
     marginTop: '6px',
-    fontSize: '13px',
+    fontSize: '12px',
     color: '#6b7280',
   },
   deviceWarning: {
-    marginTop: '16px',
-    padding: '12px 16px',
-    backgroundColor: '#fef3c7',
-    border: '1px solid #fde68a',
+    padding: '14px 20px',
+    backgroundColor: '#fff8e6',
+    border: '1px solid #f0c674',
     borderRadius: '8px',
     fontSize: '14px',
-    color: '#92400e',
+    color: '#7d5a00',
     textAlign: 'center',
   },
   joiningOverlay: {
@@ -621,8 +729,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    backgroundColor: 'rgba(255,255,255,0.9)',
     zIndex: 10,
-    borderRadius: '16px', 
+    borderRadius: '8px',
   },
 };
