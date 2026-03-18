@@ -15,6 +15,7 @@ import { apiService } from '@/services/api';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
 import { startPhysicalMicWebSocket } from '@/lib/physicalMicWebSocket';
+import TranscriptPanel from '@/components/TranscriptPanel';
 import '@livekit/components-styles';
 
 type AudioSourceMode = 'real' | 'virtual';
@@ -207,6 +208,7 @@ export default function MeetingPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading, user } = useAuth();
   const meetingId = params.id as string;
+  const transcriptDisplayName =user?.fullName || user?.username || 'Current user'
 
   const [token, setToken] = useState<string | null>(null);
   const [url, setUrl] = useState<string | null>(null);
@@ -224,6 +226,7 @@ export default function MeetingPage() {
   const [audioSource, setAudioSource] = useState<AudioSourceMode>('real');
   const [virtualMicWsUrl, setVirtualMicWsUrl] = useState('ws://127.0.0.1:9001/audio');
   const [physicalMicWsUrl] = useState('ws://127.0.0.1:9001/audioPhisical');
+  const [transcriptWsUrl] = useState('ws://127.0.0.1:9001/transcript');
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -597,7 +600,14 @@ export default function MeetingPage() {
               />
             )}
 
-            <VideoConference />
+            {/* <VideoConference /> */}
+            <div className="meeting-room-shell">
+              <VideoConference />
+              <TranscriptPanel
+                wsUrl={transcriptWsUrl}
+                currentUserName={transcriptDisplayName}
+              />
+            </div>
           </LiveKitRoom>
         </div>
       </div>
