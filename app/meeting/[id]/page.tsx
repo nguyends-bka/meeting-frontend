@@ -227,6 +227,8 @@ export default function MeetingPage() {
   const [virtualMicWsUrl, setVirtualMicWsUrl] = useState('ws://127.0.0.1:9001/audio');
   const [physicalMicWsUrl] = useState('ws://127.0.0.1:9001/audioPhisical');
   const [transcriptWsUrl] = useState('ws://127.0.0.1:9001/transcript');
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
