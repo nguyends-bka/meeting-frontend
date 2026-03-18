@@ -16,6 +16,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
 import { startPhysicalMicWebSocket } from '@/lib/physicalMicWebSocket';
 import TranscriptPanel from '@/components/TranscriptPanel';
+import MeetingShellEnhancements from '@/components/MeetingShellEnhancements';
 import '@livekit/components-styles';
 
 type AudioSourceMode = 'real' | 'virtual';
@@ -228,7 +229,7 @@ export default function MeetingPage() {
   const [physicalMicWsUrl] = useState('ws://127.0.0.1:9001/audioPhisical');
   const [transcriptWsUrl] = useState('ws://127.0.0.1:9001/transcript');
   const [transcriptOpen, setTranscriptOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  const meetingShellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -602,8 +603,16 @@ export default function MeetingPage() {
               />
             )}
 
-            {/* <VideoConference /> */}
-            <div className="meeting-room-shell">
+            <div
+              ref={meetingShellRef}
+              className="meeting-room-shell"
+              data-meeting-layout="neither"
+            >
+              <MeetingShellEnhancements
+                shellRef={meetingShellRef}
+                transcriptOpen={transcriptOpen}
+                setTranscriptOpen={setTranscriptOpen}
+              />
               <VideoConference />
               <TranscriptPanel
                 wsUrl={transcriptWsUrl}

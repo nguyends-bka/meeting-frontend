@@ -1079,7 +1079,7 @@ button:active:not(:disabled) {
   /* Main layout sẽ được xử lý bằng inline styles */
 }
 
-/* ===== Transcript panel ===== */
+/* ===== Transcript + Chat layout (data-meeting-layout từ MeetingShellEnhancements) ===== */
 
 .meeting-room-shell {
   position: relative;
@@ -1089,24 +1089,104 @@ button:active:not(:disabled) {
   height: 100%;
 }
 
-/* Chừa chỗ cho transcript panel ở phần video bên trái chat */
-.meeting-room-shell .lk-video-conference-inner {
-  margin-right: 340px !important;
+/* Nút Transcript trên control bar (cạnh Chat) */
+.meeting-transcript-toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  color: inherit !important;
 }
 
-/* Panel transcript nằm bên trái khung chat */
-.meeting-transcript-panel {
+.meeting-transcript-toggle svg {
+  display: block;
+}
+
+.meeting-transcript-toggle[data-active='true'],
+.meeting-transcript-toggle[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95) !important;
+  outline: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Không mở transcript/chat: video full width */
+.meeting-room-shell[data-meeting-layout='neither'] .lk-video-conference-inner {
+  margin-right: 0 !important;
+}
+
+.meeting-room-shell[data-meeting-layout='neither'] .meeting-transcript-panel {
+  display: none !important;
+}
+
+/* Chỉ chat: LiveKit layout mặc định */
+.meeting-room-shell[data-meeting-layout='chat-only'] .lk-video-conference-inner {
+  margin-right: 0 !important;
+}
+
+.meeting-room-shell[data-meeting-layout='chat-only'] .meeting-transcript-panel {
+  display: none !important;
+}
+
+/* Chỉ transcript: cột phải toàn bộ cho transcript */
+.meeting-room-shell[data-meeting-layout='transcript-only'] .lk-video-conference-inner {
+  margin-right: clamp(280px, 35vw, 420px) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='transcript-only'] .meeting-transcript-panel {
+  display: flex !important;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: clamp(280px, 35vw, 420px) !important;
+  max-width: none !important;
+  z-index: 5;
+}
+
+/* Cả transcript + chat: chia đôi cột phải */
+.meeting-room-shell[data-meeting-layout='both'] .lk-video-conference {
+  position: relative !important;
+}
+
+.meeting-room-shell[data-meeting-layout='both'] .lk-video-conference-inner {
+  margin-right: min(720px, 44vw) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='both'] .lk-chat {
+  position: absolute !important;
+  right: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: calc(min(720px, 44vw) / 2) !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  flex-shrink: 0 !important;
+  display: grid !important;
+  z-index: 6 !important;
+  border-left: 1px solid #e8eaed !important;
+}
+
+.meeting-room-shell[data-meeting-layout='both'] .meeting-transcript-panel {
+  display: flex !important;
   position: absolute;
   top: 0;
   bottom: 0;
-  right: clamp(280px, 35%, 420px);
-  width: 340px;
-  display: flex;
+  right: calc(min(720px, 44vw) / 2);
+  width: calc(min(720px, 44vw) / 2) !important;
+  max-width: none !important;
+  z-index: 5;
+  border-right: 1px solid #e5e7eb;
+}
+
+/* Panel transcript (ẩn khi không dùng — vẫn mount để giữ WebSocket) */
+.meeting-transcript-panel {
+  display: none;
   flex-direction: column;
   border-left: 1px solid #e8eaed;
   background: linear-gradient(180deg, #fafbfc 0%, #f5f6f8 100%);
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.04);
-  z-index: 5;
   overflow: hidden;
 }
 
