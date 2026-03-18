@@ -1,134 +1,112 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
+import { useTranscriptRoom } from '@/components/TranscriptRoomProvider';
 
-type TranscriptItem = {
-  id: string;
-  text: string;
-};
-
-function normalizeTranscriptMessage(raw: string): TranscriptItem | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-
-  return {
-    id: crypto.randomUUID(),
-    text: trimmed,
-  };
+function formatReceivedTime(ts: number): string {
+  const d = new Date(ts);
+  return d.toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
 
 export default function TranscriptPanel({
-  wsUrl,
   title = 'Transcript',
   currentUserName,
 }: {
-  wsUrl: string;
   title?: string;
   currentUserName?: string;
 }) {
-  const [items, setItems] = useState<TranscriptItem[]>([]);
-  const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>(
-    'connecting',
-  );
+  const {
+    finalized,
+    draftText,
+    transcriptServiceReady,
+    isRelay,
+    wsRelayStatus,
+    hasRoomTranscriptData,
+  } = useTranscriptRoom();
 
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    let socket: WebSocket | null = null;
-    let isUnmounted = false;
-
-    try {
-      setStatus('connecting');
-      socket = new WebSocket(wsUrl);
-
-      socket.onopen = () => {
-        if (isUnmounted) return;
-        setStatus('connected');
-      };
-
-      socket.onmessage = async (event) => {
-        if (isUnmounted) return;
-
-        let raw = '';
-
-        if (typeof event.data === 'string') {
-          raw = event.data;
-        } else if (event.data instanceof Blob) {
-          raw = await event.data.text();
-        } else {
-          raw = String(event.data);
-        }
-
-        const nextItem = normalizeTranscriptMessage(raw);
-        if (!nextItem) return;
-
-        setItems((prev) => [...prev, nextItem]);
-      };
-
-      socket.onerror = () => {
-        if (isUnmounted) return;
-        setStatus('error');
-      };
-
-      socket.onclose = () => {
-        if (isUnmounted) return;
-        setStatus('disconnected');
-      };
-    } catch (error) {
-      console.error('Transcript websocket failed:', error);
-      setStatus('error');
-    }
-
-    return () => {
-      isUnmounted = true;
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.close();
-      }
-    };
-  }, [wsUrl]);
-
+  const scrollDeps = finalized.length + (draftText ?? '').length;
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [items]);
+  }, [scrollDeps, draftText]);
 
-  const statusLabel = useMemo(() => {
-    switch (status) {
-      case 'connecting':
-        return 'Connecting...';
-      case 'connected':
-        return 'Connected';
-      case 'disconnected':
-        return 'Disconnected';
-      case 'error':
-        return 'Error';
-      default:
-        return '';
+  const { statusLabel, statusClass } = useMemo(() => {
+    if (isRelay) {
+      if (wsRelayStatus === 'connecting') {
+        return { statusLabel: 'Đang kết nối nguồn…', statusClass: 'status-connecting' };
+      }
+      if (wsRelayStatus === 'error') {
+        return { statusLabel: 'Lỗi nguồn transcript', statusClass: 'status-error' };
+      }
+      if (wsRelayStatus === 'closed') {
+        return { statusLabel: 'Mất nguồn (thử lại sau)', statusClass: 'status-disconnected' };
+      }
+    } else if (!hasRoomTranscriptData) {
+      return { statusLabel: 'Đang đồng bộ với phòng…', statusClass: 'status-waiting' };
     }
-  }, [status]);
+
+    if (transcriptServiceReady) {
+      return { statusLabel: 'Transcript đã kết nối', statusClass: 'status-transcript-ready' };
+    }
+    if (hasRoomTranscriptData || (isRelay && wsRelayStatus === 'open')) {
+      return { statusLabel: 'Đang chờ transcript…', statusClass: 'status-waiting' };
+    }
+    return { statusLabel: 'Đang kết nối…', statusClass: 'status-connecting' };
+  }, [
+    isRelay,
+    wsRelayStatus,
+    hasRoomTranscriptData,
+    transcriptServiceReady,
+  ]);
+
+  const hasContent = finalized.length > 0 || (draftText != null && draftText !== '');
+  const showEmpty = !hasContent;
 
   return (
     <aside className="meeting-transcript-panel">
       <div className="meeting-transcript-header">
         <span>{title}</span>
-        <span className={`meeting-transcript-status status-${status}`}>{statusLabel}</span>
+        <span className={`meeting-transcript-status ${statusClass}`}>{statusLabel}</span>
       </div>
 
       <div ref={listRef} className="meeting-transcript-messages">
-        {items.length === 0 ? (
+        {showEmpty ? (
           <div className="meeting-transcript-empty">Chưa có transcript...</div>
         ) : (
-          items.map((item) => (
-            <div key={item.id} className="meeting-transcript-entry">
-              <div className="meeting-transcript-meta">
-                <span className="meeting-transcript-speaker">
-                  {currentUserName || 'Current user'}
-                </span>
+          <>
+            {finalized.map((item) => (
+              <div key={item.id} className="meeting-transcript-entry">
+                <div className="meeting-transcript-meta">
+                  <span className="meeting-transcript-speaker">
+                    {currentUserName || 'Current user'}
+                  </span>
+                  <span className="meeting-transcript-time">{formatReceivedTime(item.receivedAt)}</span>
+                </div>
+                <div className="meeting-transcript-body">{item.text}</div>
               </div>
-              <div className="meeting-transcript-body">{item.text}</div>
-            </div>
-          ))
+            ))}
+            {draftText != null && draftText !== '' && (
+              <div className="meeting-transcript-entry meeting-transcript-entry--draft">
+                <div className="meeting-transcript-meta">
+                  <span className="meeting-transcript-speaker">
+                    {currentUserName || 'Current user'}
+                  </span>
+                  <span className="meeting-transcript-draft-label">Đang nhận…</span>
+                </div>
+                <div className="meeting-transcript-body">{draftText}</div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </aside>

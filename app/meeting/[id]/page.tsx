@@ -16,6 +16,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
 import { startPhysicalMicWebSocket } from '@/lib/physicalMicWebSocket';
 import TranscriptPanel from '@/components/TranscriptPanel';
+import { TranscriptRoomProvider } from '@/components/TranscriptRoomProvider';
 import MeetingShellEnhancements from '@/components/MeetingShellEnhancements';
 import '@livekit/components-styles';
 
@@ -603,22 +604,21 @@ export default function MeetingPage() {
               />
             )}
 
-            <div
-              ref={meetingShellRef}
-              className="meeting-room-shell"
-              data-meeting-layout="neither"
-            >
-              <MeetingShellEnhancements
-                shellRef={meetingShellRef}
-                transcriptOpen={transcriptOpen}
-                setTranscriptOpen={setTranscriptOpen}
-              />
-              <VideoConference />
-              <TranscriptPanel
-                wsUrl={transcriptWsUrl}
-                currentUserName={transcriptDisplayName}
-              />
-            </div>
+            <TranscriptRoomProvider wsUrl={transcriptWsUrl}>
+              <div
+                ref={meetingShellRef}
+                className="meeting-room-shell"
+                data-meeting-layout="neither"
+              >
+                <MeetingShellEnhancements
+                  shellRef={meetingShellRef}
+                  transcriptOpen={transcriptOpen}
+                  setTranscriptOpen={setTranscriptOpen}
+                />
+                <VideoConference />
+                <TranscriptPanel currentUserName={transcriptDisplayName} />
+              </div>
+            </TranscriptRoomProvider>
           </LiveKitRoom>
         </div>
       </div>

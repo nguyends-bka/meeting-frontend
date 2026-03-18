@@ -16,11 +16,21 @@ function findControlBar(root: HTMLElement | Document): HTMLElement | null {
   return root.querySelector?.('.lk-control-bar') as HTMLElement | null;
 }
 
-const TRANSCRIPT_ICON_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-  <path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h14"/>
-</svg>
-`;
+/** Thứ tự cố định: … → Transcript → Chat → … → Leave (không append xuống cuối). */
+function placeTranscriptButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
+  const chatToggle = bar.querySelector('.lk-chat-toggle');
+  const disconnectBtn = bar.querySelector('.lk-disconnect-button');
+  const anchor = (chatToggle ?? disconnectBtn) as HTMLElement | null;
+  if (!anchor?.parentNode) return;
+  const parent = anchor.parentNode;
+  if (btn.nextSibling === anchor && btn.parentNode === parent) return;
+  parent.insertBefore(btn, anchor);
+}
+
+/** Cùng kiểu với Chat: icon + nhãn */
+const TRANSCRIPT_BUTTON_INNER =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>' +
+  '<span class="meeting-transcript-btn-label">Transcript</span>';
 
 type MeetingLayout = 'neither' | 'transcript-only' | 'chat-only' | 'both';
 
@@ -114,15 +124,17 @@ export default function MeetingShellEnhancements({
         btn.className = 'lk-button meeting-transcript-toggle';
         btn.setAttribute('aria-label', 'Transcript');
         btn.setAttribute('title', 'Transcript');
-        btn.innerHTML = TRANSCRIPT_ICON_SVG;
+        btn.innerHTML = TRANSCRIPT_BUTTON_INNER;
+        btn.dataset.lkTranscriptLabeled = '1';
         btn.addEventListener('click', () => setTranscriptOpen((v) => !v));
-        const chatToggle = bar.querySelector('.lk-chat-toggle');
-        if (chatToggle?.parentNode) {
-          chatToggle.parentNode.insertBefore(btn, chatToggle);
-        } else {
-          bar.appendChild(btn);
-        }
+        placeTranscriptButtonInBar(bar, btn);
         createdBtn = btn;
+      } else {
+        placeTranscriptButtonInBar(bar, btn);
+        if (!btn.dataset.lkTranscriptLabeled) {
+          btn.innerHTML = TRANSCRIPT_BUTTON_INNER;
+          btn.dataset.lkTranscriptLabeled = '1';
+        }
       }
       syncActive(btn);
     };
