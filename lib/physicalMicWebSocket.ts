@@ -96,8 +96,32 @@ export async function startPhysicalMicWebSocket(
       } catch {}
 
       try {
-        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-          ws.close();
+        if (
+          ws.readyState === WebSocket.OPEN ||
+          ws.readyState === WebSocket.CONNECTING
+        ) {
+          await new Promise<void>((resolve) => {
+            let resolved = false;
+
+            const cleanup = () => {
+              if (resolved) return;
+              resolved = true;
+              ws.removeEventListener('close', handleClose);
+              resolve();
+            };
+
+            const handleClose = () => {
+              clearTimeout(timeoutId);
+              cleanup();
+            };
+
+            const timeoutId = window.setTimeout(() => {
+              cleanup();
+            }, 3000);
+
+            ws.addEventListener('close', handleClose);
+            ws.close();
+          });
         }
       } catch {}
 

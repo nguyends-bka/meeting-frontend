@@ -108,32 +108,48 @@ function PhysicalMicForwarder({
   onError: (message: string) => void;
 }) {
   const room = useRoomContext();
+
+  // lưu stop function của session hiện tại
   const stopSenderRef = useRef<(() => Promise<void>) | null>(null);
-  const runningRef = useRef(false);
+
+  // đảm bảo stop xong mới được start
+  const lifecycleRef = useRef<Promise<void> | null>(null);
 
   const stopSender = useCallback(async () => {
+    if (!stopSenderRef.current) return;
+
+    const stopPromise = stopSenderRef.current();
+    lifecycleRef.current = stopPromise;
+
     try {
-      if (stopSenderRef.current) {
-        await stopSenderRef.current();
-        stopSenderRef.current = null;
-      }
+      await stopPromise;
     } catch (error) {
       console.error('Failed to stop physical mic sender:', error);
     } finally {
-      runningRef.current = false;
+      stopSenderRef.current = null;
+      lifecycleRef.current = null;
     }
   }, []);
 
   const startSender = useCallback(async () => {
     if (!enabled) return;
-    if (runningRef.current) return;
+
+    // nếu đang stop thì đợi stop xong
+    if (lifecycleRef.current) {
+      await lifecycleRef.current;
+    }
+
+    // nếu đã có sender đang chạy thì không start lại
+    if (stopSenderRef.current) return;
 
     try {
-      runningRef.current = true;
-      const session = await startPhysicalMicWebSocket(wsUrl, preferredDeviceId);
+      const session = await startPhysicalMicWebSocket(
+        wsUrl,
+        preferredDeviceId,
+      );
+
       stopSenderRef.current = session.stop;
     } catch (error) {
-      runningRef.current = false;
       console.error('Physical mic forward failed:', error);
       const message =
         error instanceof Error
