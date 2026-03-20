@@ -1105,7 +1105,7 @@ button:active:not(:disabled) {
 }
 
 /* Khi control bar thu hẹp: ẩn nhãn "Transcript" như các icon khác */
-@media (max-width: 1300px) {
+@media (max-width: 760px) {
   .lk-control-bar .meeting-transcript-toggle .meeting-transcript-btn-label {
     display: none !important;
   }
