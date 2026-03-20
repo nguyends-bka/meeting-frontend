@@ -25,9 +25,9 @@ export default function TranscriptPanel({
   const {
     finalized,
     draftText,
+    draftSpeaker,
     transcriptServiceReady,
-    isRelay,
-    wsRelayStatus,
+    transcriptWsStatus,
     hasRoomTranscriptData,
   } = useTranscriptRoom();
 
@@ -41,33 +41,37 @@ export default function TranscriptPanel({
   }, [scrollDeps, draftText]);
 
   const { statusLabel, statusClass } = useMemo(() => {
-    if (isRelay) {
-      if (wsRelayStatus === 'connecting') {
-        return { statusLabel: 'Đang kết nối nguồn…', statusClass: 'status-connecting' };
-      }
-      if (wsRelayStatus === 'error') {
-        return { statusLabel: 'Lỗi nguồn transcript', statusClass: 'status-error' };
-      }
-      if (wsRelayStatus === 'closed') {
-        return { statusLabel: 'Mất nguồn (thử lại sau)', statusClass: 'status-disconnected' };
-      }
-    } else if (!hasRoomTranscriptData) {
+    if (transcriptWsStatus === 'connecting') {
+      return {
+        statusLabel: 'Đang kết nối WS transcript (máy bạn)…',
+        statusClass: 'status-connecting',
+      };
+    }
+    if (transcriptWsStatus === 'error') {
+      return {
+        statusLabel: 'Lỗi WS transcript (máy bạn)',
+        statusClass: 'status-error',
+      };
+    }
+    if (transcriptWsStatus === 'closed') {
+      return {
+        statusLabel: 'WS transcript ngắt (đang thử lại)…',
+        statusClass: 'status-disconnected',
+      };
+    }
+
+    if (!hasRoomTranscriptData) {
       return { statusLabel: 'Đang đồng bộ với phòng…', statusClass: 'status-waiting' };
     }
 
     if (transcriptServiceReady) {
       return { statusLabel: 'Transcript đã kết nối', statusClass: 'status-transcript-ready' };
     }
-    if (hasRoomTranscriptData || (isRelay && wsRelayStatus === 'open')) {
+    if (hasRoomTranscriptData || transcriptWsStatus === 'open') {
       return { statusLabel: 'Đang chờ transcript…', statusClass: 'status-waiting' };
     }
     return { statusLabel: 'Đang kết nối…', statusClass: 'status-connecting' };
-  }, [
-    isRelay,
-    wsRelayStatus,
-    hasRoomTranscriptData,
-    transcriptServiceReady,
-  ]);
+  }, [transcriptWsStatus, hasRoomTranscriptData, transcriptServiceReady]);
 
   const hasContent = finalized.length > 0 || (draftText != null && draftText !== '');
   const showEmpty = !hasContent;
@@ -88,7 +92,7 @@ export default function TranscriptPanel({
               <div key={item.id} className="meeting-transcript-entry">
                 <div className="meeting-transcript-meta">
                   <span className="meeting-transcript-speaker">
-                    {currentUserName || 'Current user'}
+                    {item.speaker || currentUserName || 'Current user'}
                   </span>
                   <span className="meeting-transcript-time">{formatReceivedTime(item.receivedAt)}</span>
                 </div>
@@ -99,7 +103,7 @@ export default function TranscriptPanel({
               <div className="meeting-transcript-entry meeting-transcript-entry--draft">
                 <div className="meeting-transcript-meta">
                   <span className="meeting-transcript-speaker">
-                    {currentUserName || 'Current user'}
+                    {draftSpeaker || currentUserName || 'Current user'}
                   </span>
                   <span className="meeting-transcript-draft-label">Đang nhận…</span>
                 </div>

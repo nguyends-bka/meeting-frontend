@@ -1,18 +1,15 @@
 'use client';
 
 /**
- * Đồng bộ transcript cho cả phòng qua LiveKit publishData (topic bkmt-transcript), tương tự chat.
+ * Đồng bộ transcript cho cả phòng qua LiveKit publishData (topic bkmt-transcript).
  *
- * - Một client "relay": identity LiveKit nhỏ nhất (so sánh chuỗi) mở WebSocket tới nguồn transcript
- *   và broadcast mọi tin nhận được lên phòng.
- * - Các client khác chỉ nhận qua RoomEvent.DataReceived — không cần truy cập WS nguồn.
- * - Máy chạy ASR / transcript.html nên dùng tài khoản có identity nhỏ (vào phòng trước) hoặc
- *   đảm bảo URL WS tới được từ máy relay.
+ * - Mỗi client mở WebSocket tới wsUrl (thường ws://127.0.0.1:9001/transcript trên máy của họ),
+ *   nhận tin từ ASR/local, gắn speaker (ưu tiên fullName đăng nhập) rồi publishData lên phòng.
+ * - Mọi client cũng lắng RoomEvent.DataReceived để nhận transcript từ người khác (bỏ qua echo từ chính mình).
  */
 
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -21,6 +18,7 @@ import {
 } from 'react';
 import { useRoomContext } from '@livekit/components-react';
 import { ConnectionState, RoomEvent } from 'livekit-client';
+import { useAuth } from '@/lib/auth';
 import {
   applyTranscriptRaw,
   resetTranscriptState,
@@ -32,12 +30,42 @@ export const TRANSCRIPT_DATA_TOPIC = 'bkmt-transcript';
 type WsRelayStatus = 'idle' | 'connecting' | 'open' | 'error' | 'closed';
 
 type TranscriptRoomContextValue = TranscriptRoomState & {
-  isRelay: boolean;
-  wsRelayStatus: WsRelayStatus;
+  /** Trạng thái WebSocket transcript trên máy client hiện tại (mỗi user một kết nối). */
+  transcriptWsStatus: WsRelayStatus;
   hasRoomTranscriptData: boolean;
 };
 
 const TranscriptRoomContext = createContext<TranscriptRoomContextValue | null>(null);
+
+function enrichTranscriptWithRelaySpeaker(
+  raw: string,
+  relaySpeaker: string | null,
+): string {
+  if (!relaySpeaker) return raw;
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith('{')) return raw;
+
+  try {
+    const payload = JSON.parse(trimmed) as Record<string, unknown>;
+    if (payload.type !== 'partial' && payload.type !== 'final') return raw;
+
+    const currentSpeaker =
+      (typeof payload.speaker === 'string' && payload.speaker.trim()) ||
+      (typeof payload.displayName === 'string' && payload.displayName.trim()) ||
+      (typeof payload.senderName === 'string' && payload.senderName.trim()) ||
+      (typeof payload.username === 'string' && payload.username.trim()) ||
+      (typeof payload.user === 'string' && payload.user.trim());
+
+    if (currentSpeaker) return raw;
+
+    return JSON.stringify({
+      ...payload,
+      speaker: relaySpeaker,
+    });
+  } catch {
+    return raw;
+  }
+}
 
 export function useTranscriptRoom(): TranscriptRoomContextValue {
   const ctx = useContext(TranscriptRoomContext);
@@ -45,19 +73,6 @@ export function useTranscriptRoom(): TranscriptRoomContextValue {
     throw new Error('useTranscriptRoom must be used inside TranscriptRoomProvider');
   }
   return ctx;
-}
-
-/** Participant có identity nhỏ nhất trong phòng đảm nhiệm kết nối WS → publishData (tránh trùng lặp). */
-function computeTranscriptRelayIdentity(room: {
-  state: ConnectionState;
-  localParticipant: { identity: string };
-  remoteParticipants: Map<string, { identity: string }>;
-}): boolean {
-  if (room.state !== ConnectionState.Connected) return false;
-  const ids = [room.localParticipant.identity];
-  room.remoteParticipants.forEach((p) => ids.push(p.identity));
-  const sorted = [...new Set(ids)].sort((a, b) => a.localeCompare(b));
-  return sorted[0] === room.localParticipant.identity;
 }
 
 export function TranscriptRoomProvider({
@@ -68,32 +83,16 @@ export function TranscriptRoomProvider({
   children: React.ReactNode;
 }) {
   const room = useRoomContext();
+  const { user } = useAuth();
   const [state, setState] = useState<TranscriptRoomState>(() => resetTranscriptState());
-  const [isRelay, setIsRelay] = useState(false);
-  const [wsRelayStatus, setWsRelayStatus] = useState<WsRelayStatus>('idle');
+  const [transcriptWsStatus, setTranscriptWsStatus] = useState<WsRelayStatus>('idle');
   const [hasRoomTranscriptData, setHasRoomTranscriptData] = useState(false);
-
-  const updateRelayFlag = useCallback(() => {
-    setIsRelay(computeTranscriptRelayIdentity(room));
-  }, [room]);
-
-  useEffect(() => {
-    updateRelayFlag();
-    room.on(RoomEvent.Connected, updateRelayFlag);
-    room.on(RoomEvent.ParticipantConnected, updateRelayFlag);
-    room.on(RoomEvent.ParticipantDisconnected, updateRelayFlag);
-    return () => {
-      room.off(RoomEvent.Connected, updateRelayFlag);
-      room.off(RoomEvent.ParticipantConnected, updateRelayFlag);
-      room.off(RoomEvent.ParticipantDisconnected, updateRelayFlag);
-    };
-  }, [room, updateRelayFlag]);
 
   useEffect(() => {
     if (room.state === ConnectionState.Disconnected) {
       setState(resetTranscriptState());
       setHasRoomTranscriptData(false);
-      setWsRelayStatus('idle');
+      setTranscriptWsStatus('idle');
     }
   }, [room.state]);
 
@@ -125,7 +124,7 @@ export function TranscriptRoomProvider({
     };
   }, [room]);
 
-  // Chỉ relay: WebSocket → publishData tới cả phòng
+  // WebSocket trên máy client → publishData tới cả phòng
   const publishRef = useRef<(raw: string) => void>(() => {});
 
   useEffect(() => {
@@ -143,8 +142,8 @@ export function TranscriptRoomProvider({
   }, [room]);
 
   useEffect(() => {
-    if (!isRelay || !wsUrl?.trim()) {
-      setWsRelayStatus('idle');
+    if (!wsUrl?.trim()) {
+      setTranscriptWsStatus('idle');
       return;
     }
     if (room.state !== ConnectionState.Connected) {
@@ -156,7 +155,7 @@ export function TranscriptRoomProvider({
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
     const openSocket = () => {
-      if (cancelled || !computeTranscriptRelayIdentity(room)) return;
+      if (cancelled) return;
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
         reconnectTimer = undefined;
@@ -170,20 +169,20 @@ export function TranscriptRoomProvider({
         socket = null;
       }
 
-      setWsRelayStatus('connecting');
+      setTranscriptWsStatus('connecting');
       let s: WebSocket;
       try {
         s = new WebSocket(wsUrl);
         socket = s;
       } catch {
-        setWsRelayStatus('error');
+        setTranscriptWsStatus('error');
         reconnectTimer = setTimeout(openSocket, 2800);
         return;
       }
 
       s.onopen = () => {
         if (cancelled || socket !== s) return;
-        setWsRelayStatus('open');
+        setTranscriptWsStatus('open');
       };
 
       s.onmessage = async (event) => {
@@ -196,20 +195,26 @@ export function TranscriptRoomProvider({
         } else {
           raw = String(event.data);
         }
+        const relaySpeaker =
+          user?.fullName?.trim() ||
+          room.localParticipant.name?.trim() ||
+          room.localParticipant.identity?.trim() ||
+          null;
+        const normalizedRaw = enrichTranscriptWithRelaySpeaker(raw, relaySpeaker);
         setHasRoomTranscriptData(true);
-        setState((prev) => applyTranscriptRaw(prev, raw));
-        publishRef.current(raw);
+        setState((prev) => applyTranscriptRaw(prev, normalizedRaw));
+        publishRef.current(normalizedRaw);
       };
 
       s.onerror = () => {
         if (cancelled || socket !== s) return;
-        setWsRelayStatus('error');
+        setTranscriptWsStatus('error');
       };
 
       s.onclose = () => {
         if (socket === s) socket = null;
         if (cancelled) return;
-        setWsRelayStatus('closed');
+        setTranscriptWsStatus('closed');
         reconnectTimer = setTimeout(openSocket, 2800);
       };
     };
@@ -222,16 +227,15 @@ export function TranscriptRoomProvider({
       socket?.close();
       socket = null;
     };
-  }, [isRelay, wsUrl, room.state, room]);
+  }, [wsUrl, room.state, room, user?.fullName]);
 
   const value = useMemo<TranscriptRoomContextValue>(
     () => ({
       ...state,
-      isRelay,
-      wsRelayStatus,
+      transcriptWsStatus,
       hasRoomTranscriptData,
     }),
-    [state, isRelay, wsRelayStatus, hasRoomTranscriptData],
+    [state, transcriptWsStatus, hasRoomTranscriptData],
   );
 
   return (
