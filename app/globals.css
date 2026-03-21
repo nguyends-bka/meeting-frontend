@@ -1097,16 +1097,22 @@ button:active:not(:disabled) {
   gap: 0.5rem !important;
   color: inherit !important;
   white-space: nowrap !important;
+  width: auto !important; /* Đảm bảo không bị set cứng width */
 }
 
+.lk-control-bar[data-lk-collapsed="true"] .meeting-transcript-toggle .lk-button-text,
+.lk-control-bar .meeting-transcript-toggle .lk-button-text {
+  /* Sử dụng biến của LiveKit để đồng bộ trạng thái ẩn/hiện */
+  display: var(--lk-control-bar-button-display, inline-block);
+}
 .meeting-transcript-toggle svg {
   flex-shrink: 0;
   display: block;
 }
 
 /* Khi control bar thu hẹp: ẩn nhãn "Transcript" như các icon khác */
-@media (max-width: 760px) {
-  .lk-control-bar .meeting-transcript-toggle .meeting-transcript-btn-label {
+@media (max-width: 768px) {
+  .lk-control-bar .meeting-transcript-toggle .lk-button-text {
     display: none !important;
   }
 }

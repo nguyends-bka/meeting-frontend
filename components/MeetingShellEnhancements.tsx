@@ -16,7 +16,7 @@ function findControlBar(root: HTMLElement | Document): HTMLElement | null {
   return root.querySelector?.('.lk-control-bar') as HTMLElement | null;
 }
 
-/** Thứ tự cố định: … → Transcript → Chat → … → Leave (không append xuống cuối). */
+/** Thứ tự cố định: … → Transcript → Chat → … → Leave */
 function placeTranscriptButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
   const chatToggle = bar.querySelector('.lk-chat-toggle');
   const disconnectBtn = bar.querySelector('.lk-disconnect-button');
@@ -27,16 +27,13 @@ function placeTranscriptButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
   parent.insertBefore(btn, anchor);
 }
 
-/** Cùng kiểu với Chat: icon + nhãn */
+/** * Cấu trúc này cực kỳ quan trọng:
+ * Thẻ span phải có class lk-button-text để LiveKit tự động ẩn bằng Container Queries
+ */
 const TRANSCRIPT_BUTTON_INNER =
   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>' +
-  '<span class="meeting-transcript-btn-label">Transcript</span>';
+  '<span class="lk-button-text">Transcript</span>';
 
-type MeetingLayout = 'neither' | 'transcript-only' | 'chat-only' | 'both';
-
-/**
- * Đồng bộ layout transcript/chat: nút bật transcript cạnh chat, data-meeting-layout cho CSS.
- */
 export default function MeetingShellEnhancements({
   shellRef,
   transcriptOpen,
@@ -51,12 +48,10 @@ export default function MeetingShellEnhancements({
   const updateShellLayout = useCallback(() => {
     const shell = shellRef.current;
     if (!shell) return;
-
-    let layout: MeetingLayout = 'neither';
+    let layout: 'neither' | 'transcript-only' | 'chat-only' | 'both' = 'neither';
     if (transcriptOpen && chatOpen) layout = 'both';
     else if (transcriptOpen) layout = 'transcript-only';
     else if (chatOpen) layout = 'chat-only';
-
     shell.dataset.meetingLayout = layout;
   }, [shellRef, transcriptOpen, chatOpen]);
 
@@ -64,37 +59,23 @@ export default function MeetingShellEnhancements({
     updateShellLayout();
   }, [updateShellLayout]);
 
-  // Theo dõi panel chat LiveKit (mở/đóng)
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
-
     const checkChat = () => {
       const chat = shell.querySelector('.lk-chat') as HTMLElement | null;
       setChatOpen(isElementVisible(chat));
     };
-
     checkChat();
-
     const obs = new MutationObserver(checkChat);
     const conference = shell.querySelector('.lk-video-conference');
     if (conference) {
-      obs.observe(conference, {
-        attributes: true,
-        subtree: true,
-        attributeFilter: ['style', 'class', 'hidden'],
-        childList: true,
-      });
+      obs.observe(conference, { attributes: true, subtree: true, childList: true });
     }
-
     const poll = window.setInterval(checkChat, 350);
-    return () => {
-      obs.disconnect();
-      window.clearInterval(poll);
-    };
+    return () => { obs.disconnect(); window.clearInterval(poll); };
   }, [shellRef]);
 
-  // Nút Transcript trên control bar (cạnh Chat)
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -105,10 +86,10 @@ export default function MeetingShellEnhancements({
     const syncActive = (btn: HTMLButtonElement) => {
       if (transcriptOpen) {
         btn.setAttribute('data-active', 'true');
-        btn.setAttribute('aria-pressed', 'true');
+        btn.classList.add('lk-button-active'); // Thêm class active của LiveKit
       } else {
         btn.removeAttribute('data-active');
-        btn.setAttribute('aria-pressed', 'false');
+        btn.classList.remove('lk-button-active');
       }
     };
 
@@ -121,19 +102,16 @@ export default function MeetingShellEnhancements({
       if (!btn) {
         btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'lk-button meeting-transcript-toggle';
-        btn.setAttribute('aria-label', 'Transcript');
-        btn.setAttribute('title', 'Transcript');
+        // lk-chat-toggle là class mấu chốt để hưởng CSS ẩn text của LiveKit
+        btn.className = 'lk-button lk-chat-toggle meeting-transcript-toggle';
         btn.innerHTML = TRANSCRIPT_BUTTON_INNER;
-        btn.dataset.lkTranscriptLabeled = '1';
         btn.addEventListener('click', () => setTranscriptOpen((v) => !v));
         placeTranscriptButtonInBar(bar, btn);
         createdBtn = btn;
       } else {
         placeTranscriptButtonInBar(bar, btn);
-        if (!btn.dataset.lkTranscriptLabeled) {
-          btn.innerHTML = TRANSCRIPT_BUTTON_INNER;
-          btn.dataset.lkTranscriptLabeled = '1';
+        if (!btn.classList.contains('lk-chat-toggle')) {
+          btn.classList.add('lk-chat-toggle');
         }
       }
       syncActive(btn);
@@ -141,13 +119,9 @@ export default function MeetingShellEnhancements({
 
     attach();
     const t = window.setInterval(attach, 350);
-
     return () => {
       cancelled = true;
       window.clearInterval(t);
-      shellRef.current
-        ?.querySelector('.lk-control-bar .meeting-transcript-toggle')
-        ?.remove();
       createdBtn?.remove();
     };
   }, [shellRef, setTranscriptOpen, transcriptOpen]);
