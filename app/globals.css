@@ -1089,6 +1089,18 @@ button:active:not(:disabled) {
   height: 100%;
 }
 
+/*
+ * Khi chat/panel làm hẹp vùng video, viewport vẫn rộng — LiveKit vẫn hiển thị chữ trên nút gốc.
+ * MeetingShellEnhancements set data-meeting-bar-compact khi thanh thực tế hẹp hoặc đủ breakpoint.
+ */
+.meeting-room-shell .lk-control-bar[data-meeting-bar-compact='true'] .lk-button-text {
+  display: none !important;
+}
+
+.meeting-room-shell .lk-control-bar[data-meeting-bar-compact='true'] .lk-button {
+  gap: 0;
+}
+
 /* Nút Transcript trên control bar (cạnh Chat) */
 /* GHI CHÚ: Đã XÓA TOÀN BỘ CSS ép hiển thị, gap, width, display để nút kế thừa hoàn toàn Responsive Container Queries mặc định của LiveKit */
 

@@ -16,6 +16,39 @@ function findControlBar(root: HTMLElement | Document): HTMLElement | null {
   return root.querySelector?.('.lk-control-bar') as HTMLElement | null;
 }
 
+/** Matches LiveKit ControlBar `useMediaQuery` (see `@livekit/components-react` prefabs/ControlBar.tsx). */
+const CONTROL_BAR_BREAKPOINT_CHAT_OPEN = 1000;
+const CONTROL_BAR_BREAKPOINT_CHAT_CLOSED = 760;
+
+/**
+ * When chat/side panels squeeze the bar, viewport can still be wide so LiveKit stays "verbose".
+ * Collapse labels when the bar itself is narrower than this (px).
+ */
+const MEETING_BAR_COMPACT_WIDTH_PX = 1200;
+
+function isControlBarIconOnlyMode(chatOpen: boolean): boolean {
+  const max = chatOpen ? CONTROL_BAR_BREAKPOINT_CHAT_OPEN : CONTROL_BAR_BREAKPOINT_CHAT_CLOSED;
+  return window.matchMedia(`(max-width: ${max}px)`).matches;
+}
+
+function shouldCompactControlBar(bar: HTMLElement, chatOpen: boolean): boolean {
+  if (isControlBarIconOnlyMode(chatOpen)) return true;
+  const w = bar.clientWidth;
+  return w > 0 && w < MEETING_BAR_COMPACT_WIDTH_PX;
+}
+
+/**
+ * Sets `data-meeting-bar-compact` so CSS hides all `.lk-button-text` (see globals.css), matching
+ * LiveKit minimal when the bar is squeezed or the viewport breakpoint hits.
+ */
+function syncControlBarCompact(bar: HTMLElement, chatOpen: boolean) {
+  if (shouldCompactControlBar(bar, chatOpen)) {
+    bar.dataset.meetingBarCompact = 'true';
+  } else {
+    delete bar.dataset.meetingBarCompact;
+  }
+}
+
 /** Vote → Transcript → Chat → Leave */
 function placeVoteButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
   const transcriptBtn = bar.querySelector('.meeting-transcript-toggle');
@@ -70,6 +103,8 @@ export default function MeetingShellEnhancements({
   setVoteOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const [chatOpen, setChatOpen] = useState(false);
+  const chatOpenRef = useRef(chatOpen);
+  chatOpenRef.current = chatOpen;
   const transcriptOpenRef = useRef(transcriptOpen);
   transcriptOpenRef.current = transcriptOpen;
   const voteOpenRef = useRef(voteOpen);
@@ -120,6 +155,14 @@ export default function MeetingShellEnhancements({
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
+    const bar = findControlBar(shell);
+    if (!bar) return;
+    syncControlBarCompact(bar, chatOpen);
+  }, [shellRef, chatOpen]);
+
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
 
     let cancelled = false;
     let voteBtnEl: HTMLButtonElement | null = null;
@@ -150,23 +193,7 @@ export default function MeetingShellEnhancements({
       if (cancelled) return;
       const bar = findControlBar(shell);
       if (!bar) return;
-      const refBtn = bar.querySelector(
-        '.lk-chat-toggle:not(.meeting-transcript-toggle), .lk-disconnect-button',
-      ) as HTMLElement;
-      if (!refBtn) return;
-      const refRect = refBtn.getBoundingClientRect();
-      const isIconOnly = refRect.width < 60;
-      const refStyle = window.getComputedStyle(refBtn);
-
-      for (const btn of [voteBtnEl, transcriptBtnEl]) {
-        if (!btn) continue;
-        const textSpan = btn.querySelector('.lk-button-text') as HTMLElement;
-        if (textSpan) {
-          textSpan.style.display = isIconOnly ? 'none' : 'inline-block';
-          btn.style.padding = refStyle.padding;
-          btn.style.gap = isIconOnly ? '0px' : refStyle.gap;
-        }
-      }
+      syncControlBarCompact(bar, chatOpenRef.current);
     };
 
     const attach = () => {
@@ -221,6 +248,8 @@ export default function MeetingShellEnhancements({
       cancelled = true;
       window.clearInterval(t);
       if (resizeObserver) resizeObserver.disconnect();
+      const bar = findControlBar(shell);
+      if (bar) delete bar.dataset.meetingBarCompact;
       voteBtnEl?.remove();
       transcriptBtnEl?.remove();
     };
