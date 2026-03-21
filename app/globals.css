@@ -1117,10 +1117,11 @@ button:active:not(:disabled) {
   }
 }
 
+/* Chỉ dùng box-shadow (không border/outline thêm vào box) để không làm lệch flex control bar */
 .meeting-transcript-toggle[data-active='true'],
 .meeting-transcript-toggle[aria-pressed='true'] {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95) !important;
-  outline: 1px solid rgba(255, 255, 255, 0.4);
+  outline: none;
 }
 
 /* Không mở transcript/chat: video full width */

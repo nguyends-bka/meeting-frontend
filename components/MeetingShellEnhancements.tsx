@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 function isElementVisible(el: HTMLElement | null): boolean {
   if (!el) return false;
@@ -44,6 +44,9 @@ export default function MeetingShellEnhancements({
   setTranscriptOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const [chatOpen, setChatOpen] = useState(false);
+  /** Tránh đưa transcriptOpen vào deps của effect gắn nút — mỗi lần đổi state cleanup sẽ remove nút và gây nhảy layout */
+  const transcriptOpenRef = useRef(transcriptOpen);
+  transcriptOpenRef.current = transcriptOpen;
 
   const updateShellLayout = useCallback(() => {
     const shell = shellRef.current;
@@ -84,7 +87,7 @@ export default function MeetingShellEnhancements({
     let createdBtn: HTMLButtonElement | null = null;
 
     const syncActive = (btn: HTMLButtonElement) => {
-      if (transcriptOpen) {
+      if (transcriptOpenRef.current) {
         btn.setAttribute('data-active', 'true');
         btn.classList.add('lk-button-active'); // Thêm class active của LiveKit
       } else {
@@ -124,7 +127,21 @@ export default function MeetingShellEnhancements({
       window.clearInterval(t);
       createdBtn?.remove();
     };
-  }, [shellRef, setTranscriptOpen, transcriptOpen]);
+  }, [shellRef, setTranscriptOpen]);
+
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const btn = shell.querySelector('.meeting-transcript-toggle') as HTMLButtonElement | null;
+    if (!btn) return;
+    if (transcriptOpen) {
+      btn.setAttribute('data-active', 'true');
+      btn.classList.add('lk-button-active');
+    } else {
+      btn.removeAttribute('data-active');
+      btn.classList.remove('lk-button-active');
+    }
+  }, [shellRef, transcriptOpen]);
 
   return null;
 }
