@@ -16,9 +16,19 @@ function findControlBar(root: HTMLElement | Document): HTMLElement | null {
   return root.querySelector?.('.lk-control-bar') as HTMLElement | null;
 }
 
-/** Thứ tự cố định: … → Transcript → Chat → … → Leave */
+/** Vote → Transcript → Chat → Leave */
+function placeVoteButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
+  const transcriptBtn = bar.querySelector('.meeting-transcript-toggle');
+  const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)');
+  const disconnectBtn = bar.querySelector('.lk-disconnect-button');
+  const anchor = (transcriptBtn ?? chatToggle ?? disconnectBtn) as HTMLElement | null;
+  if (!anchor?.parentNode) return;
+  const parent = anchor.parentNode;
+  if (btn.nextSibling === anchor && btn.parentNode === parent) return;
+  parent.insertBefore(btn, anchor);
+}
+
 function placeTranscriptButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
-  // Tìm nút Chat thật (loại trừ nút transcript nếu có lỡ trùng class) hoặc nút Leave
   const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)');
   const disconnectBtn = bar.querySelector('.lk-disconnect-button');
   const anchor = (chatToggle ?? disconnectBtn) as HTMLElement | null;
@@ -28,32 +38,60 @@ function placeTranscriptButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
   parent.insertBefore(btn, anchor);
 }
 
+const VOTE_BUTTON_INNER =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>' +
+  '<span class="lk-button-text">Biểu quyết</span>';
+
 const TRANSCRIPT_BUTTON_INNER =
   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>' +
   '<span class="lk-button-text">Transcript</span>';
+
+export type MeetingLayoutDataset =
+  | 'neither'
+  | 'transcript-only'
+  | 'vote-only'
+  | 'chat-only'
+  | 'transcript-vote'
+  | 'both'
+  | 'vote-chat'
+  | 'transcript-vote-chat';
 
 export default function MeetingShellEnhancements({
   shellRef,
   transcriptOpen,
   setTranscriptOpen,
+  voteOpen,
+  setVoteOpen,
 }: {
   shellRef: React.RefObject<HTMLDivElement | null>;
   transcriptOpen: boolean;
   setTranscriptOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  voteOpen: boolean;
+  setVoteOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const [chatOpen, setChatOpen] = useState(false);
   const transcriptOpenRef = useRef(transcriptOpen);
   transcriptOpenRef.current = transcriptOpen;
+  const voteOpenRef = useRef(voteOpen);
+  voteOpenRef.current = voteOpen;
 
   const updateShellLayout = useCallback(() => {
     const shell = shellRef.current;
     if (!shell) return;
-    let layout: 'neither' | 'transcript-only' | 'chat-only' | 'both' = 'neither';
-    if (transcriptOpen && chatOpen) layout = 'both';
-    else if (transcriptOpen) layout = 'transcript-only';
-    else if (chatOpen) layout = 'chat-only';
+    const t = transcriptOpen;
+    const v = voteOpen;
+    const c = chatOpen;
+    let layout: MeetingLayoutDataset = 'neither';
+    if (t && v && c) layout = 'transcript-vote-chat';
+    else if (t && v) layout = 'transcript-vote';
+    else if (v && c) layout = 'vote-chat';
+    else if (t && c) layout = 'both';
+    else if (t) layout = 'transcript-only';
+    else if (v) layout = 'vote-only';
+    else if (c) layout = 'chat-only';
+    else layout = 'neither';
     shell.dataset.meetingLayout = layout;
-  }, [shellRef, transcriptOpen, chatOpen]);
+  }, [shellRef, transcriptOpen, voteOpen, chatOpen]);
 
   useEffect(() => {
     updateShellLayout();
@@ -73,7 +111,10 @@ export default function MeetingShellEnhancements({
       obs.observe(conference, { attributes: true, subtree: true, childList: true });
     }
     const poll = window.setInterval(checkChat, 350);
-    return () => { obs.disconnect(); window.clearInterval(poll); };
+    return () => {
+      obs.disconnect();
+      window.clearInterval(poll);
+    };
   }, [shellRef]);
 
   useEffect(() => {
@@ -81,10 +122,11 @@ export default function MeetingShellEnhancements({
     if (!shell) return;
 
     let cancelled = false;
-    let createdBtn: HTMLButtonElement | null = null;
+    let voteBtnEl: HTMLButtonElement | null = null;
+    let transcriptBtnEl: HTMLButtonElement | null = null;
     let resizeObserver: ResizeObserver | null = null;
 
-    const syncActive = (btn: HTMLButtonElement) => {
+    const syncTranscriptActive = (btn: HTMLButtonElement) => {
       if (transcriptOpenRef.current) {
         btn.setAttribute('data-active', 'true');
         btn.classList.add('lk-button-active');
@@ -94,31 +136,36 @@ export default function MeetingShellEnhancements({
       }
     };
 
-    // Hàm đồng bộ UI của nút Transcript với các nút khác (VD: Chat/Leave)
+    const syncVoteActive = (btn: HTMLButtonElement) => {
+      if (voteOpenRef.current) {
+        btn.setAttribute('data-active', 'true');
+        btn.classList.add('lk-button-active');
+      } else {
+        btn.removeAttribute('data-active');
+        btn.classList.remove('lk-button-active');
+      }
+    };
+
     const syncButtonUI = () => {
-      if (cancelled || !createdBtn) return;
+      if (cancelled) return;
       const bar = findControlBar(shell);
       if (!bar) return;
-
-      // Lấy nút Chat hoặc Leave làm nút chuẩn để so sánh
-      const refBtn = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle), .lk-disconnect-button') as HTMLElement;
+      const refBtn = bar.querySelector(
+        '.lk-chat-toggle:not(.meeting-transcript-toggle), .lk-disconnect-button',
+      ) as HTMLElement;
       if (!refBtn) return;
+      const refRect = refBtn.getBoundingClientRect();
+      const isIconOnly = refRect.width < 60;
+      const refStyle = window.getComputedStyle(refBtn);
 
-      const textSpan = createdBtn.querySelector('.lk-button-text') as HTMLElement;
-      if (textSpan) {
-        const refRect = refBtn.getBoundingClientRect();
-        
-        // LiveKit tự thu các nút thành hình vuông (thường có width khoảng 40px-48px)
-        // Nếu width của nút chuẩn < 60px, chứng tỏ nó đang ở dạng Icon Only
-        const isIconOnly = refRect.width < 60;
-        
-        // Ẩn/Hiện chữ
-        textSpan.style.display = isIconOnly ? 'none' : 'inline-block';
-
-        // Copy y hệt padding và khoảng cách (gap) từ nút chuẩn sang
-        const refStyle = window.getComputedStyle(refBtn);
-        createdBtn.style.padding = refStyle.padding;
-        createdBtn.style.gap = isIconOnly ? '0px' : refStyle.gap;
+      for (const btn of [voteBtnEl, transcriptBtnEl]) {
+        if (!btn) continue;
+        const textSpan = btn.querySelector('.lk-button-text') as HTMLElement;
+        if (textSpan) {
+          textSpan.style.display = isIconOnly ? 'none' : 'inline-block';
+          btn.style.padding = refStyle.padding;
+          btn.style.gap = isIconOnly ? '0px' : refStyle.gap;
+        }
       }
     };
 
@@ -127,28 +174,40 @@ export default function MeetingShellEnhancements({
       const bar = findControlBar(shell);
       if (!bar) return;
 
-      let btn = bar.querySelector('.meeting-transcript-toggle') as HTMLButtonElement | null;
-      if (!btn) {
-        btn = document.createElement('button');
-        btn.type = 'button';
-        // Chỉ dùng lk-button để kế thừa nền/hover của LiveKit
-        btn.className = 'lk-button meeting-transcript-toggle';
-        btn.innerHTML = TRANSCRIPT_BUTTON_INNER;
-        btn.addEventListener('click', () => setTranscriptOpen((v) => !v));
-        placeTranscriptButtonInBar(bar, btn);
-        createdBtn = btn;
+      let vBtn = bar.querySelector('.meeting-vote-toggle') as HTMLButtonElement | null;
+      if (!vBtn) {
+        vBtn = document.createElement('button');
+        vBtn.type = 'button';
+        vBtn.className = 'lk-button meeting-vote-toggle';
+        vBtn.innerHTML = VOTE_BUTTON_INNER;
+        vBtn.addEventListener('click', () => setVoteOpen((x) => !x));
+        placeVoteButtonInBar(bar, vBtn);
+        voteBtnEl = vBtn;
       } else {
-        placeTranscriptButtonInBar(bar, btn);
-        createdBtn = btn;
+        placeVoteButtonInBar(bar, vBtn);
+        voteBtnEl = vBtn;
       }
-      
-      syncActive(btn);
-      syncButtonUI(); // Cập nhật UI ngay khi attach
 
-      // Theo dõi mọi thay đổi kích thước của thanh Control Bar
+      let tBtn = bar.querySelector('.meeting-transcript-toggle') as HTMLButtonElement | null;
+      if (!tBtn) {
+        tBtn = document.createElement('button');
+        tBtn.type = 'button';
+        tBtn.className = 'lk-button meeting-transcript-toggle';
+        tBtn.innerHTML = TRANSCRIPT_BUTTON_INNER;
+        tBtn.addEventListener('click', () => setTranscriptOpen((x) => !x));
+        placeTranscriptButtonInBar(bar, tBtn);
+        transcriptBtnEl = tBtn;
+      } else {
+        placeTranscriptButtonInBar(bar, tBtn);
+        transcriptBtnEl = tBtn;
+      }
+
+      syncVoteActive(vBtn);
+      syncTranscriptActive(tBtn);
+      syncButtonUI();
+
       if (!resizeObserver) {
         resizeObserver = new ResizeObserver(() => {
-          // Khi thanh này co lại/phóng to, lập tức tính toán lại
           syncButtonUI();
         });
         resizeObserver.observe(bar);
@@ -157,28 +216,40 @@ export default function MeetingShellEnhancements({
 
     attach();
     const t = window.setInterval(attach, 350);
-    
+
     return () => {
       cancelled = true;
       window.clearInterval(t);
       if (resizeObserver) resizeObserver.disconnect();
-      createdBtn?.remove();
+      voteBtnEl?.remove();
+      transcriptBtnEl?.remove();
     };
-  }, [shellRef, setTranscriptOpen]);
+  }, [shellRef, setTranscriptOpen, setVoteOpen]);
 
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
-    const btn = shell.querySelector('.meeting-transcript-toggle') as HTMLButtonElement | null;
-    if (!btn) return;
-    if (transcriptOpen) {
-      btn.setAttribute('data-active', 'true');
-      btn.classList.add('lk-button-active');
-    } else {
-      btn.removeAttribute('data-active');
-      btn.classList.remove('lk-button-active');
+    const vBtn = shell.querySelector('.meeting-vote-toggle') as HTMLButtonElement | null;
+    if (vBtn) {
+      if (voteOpen) {
+        vBtn.setAttribute('data-active', 'true');
+        vBtn.classList.add('lk-button-active');
+      } else {
+        vBtn.removeAttribute('data-active');
+        vBtn.classList.remove('lk-button-active');
+      }
     }
-  }, [shellRef, transcriptOpen]);
+    const tBtn = shell.querySelector('.meeting-transcript-toggle') as HTMLButtonElement | null;
+    if (tBtn) {
+      if (transcriptOpen) {
+        tBtn.setAttribute('data-active', 'true');
+        tBtn.classList.add('lk-button-active');
+      } else {
+        tBtn.removeAttribute('data-active');
+        tBtn.classList.remove('lk-button-active');
+      }
+    }
+  }, [shellRef, voteOpen, transcriptOpen]);
 
   return null;
 }

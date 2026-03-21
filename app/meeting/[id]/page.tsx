@@ -17,6 +17,8 @@ import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
 import { startPhysicalMicWebSocket } from '@/lib/physicalMicWebSocket';
 import TranscriptPanel from '@/components/TranscriptPanel';
 import { TranscriptRoomProvider } from '@/components/TranscriptRoomProvider';
+import { VoteRoomProvider } from '@/components/VoteRoomProvider';
+import VotePanel from '@/components/VotePanel';
 import MeetingShellEnhancements from '@/components/MeetingShellEnhancements';
 import '@livekit/components-styles';
 
@@ -246,6 +248,7 @@ export default function MeetingPage() {
   const [physicalMicWsUrl] = useState('ws://127.0.0.1:9001/audioPhisical');
   const [transcriptWsUrl] = useState('ws://127.0.0.1:9001/transcript');
   const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const [voteOpen, setVoteOpen] = useState(false);
   const meetingShellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -621,19 +624,26 @@ export default function MeetingPage() {
             )}
 
             <TranscriptRoomProvider wsUrl={transcriptWsUrl}>
-              <div
-                ref={meetingShellRef}
-                className="meeting-room-shell"
-                data-meeting-layout="neither"
-              >
-                <MeetingShellEnhancements
-                  shellRef={meetingShellRef}
-                  transcriptOpen={transcriptOpen}
-                  setTranscriptOpen={setTranscriptOpen}
-                />
-                <VideoConference />
-                <TranscriptPanel currentUserName={transcriptDisplayName} />
-              </div>
+              <VoteRoomProvider>
+                <div
+                  ref={meetingShellRef}
+                  className="meeting-room-shell"
+                  data-meeting-layout="neither"
+                >
+                  <MeetingShellEnhancements
+                    shellRef={meetingShellRef}
+                    transcriptOpen={transcriptOpen}
+                    setTranscriptOpen={setTranscriptOpen}
+                    voteOpen={voteOpen}
+                    setVoteOpen={setVoteOpen}
+                  />
+                  <VideoConference />
+                  <div className="meeting-side-stack">
+                    <TranscriptPanel currentUserName={transcriptDisplayName} />
+                    <VotePanel />
+                  </div>
+                </div>
+              </VoteRoomProvider>
             </TranscriptRoomProvider>
           </LiveKitRoom>
         </div>
