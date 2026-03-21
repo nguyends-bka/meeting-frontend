@@ -1092,12 +1092,15 @@ button:active:not(:disabled) {
 /*
  * Khi chat/panel làm hẹp vùng video, viewport vẫn rộng — LiveKit vẫn hiển thị chữ trên nút gốc.
  * MeetingShellEnhancements set data-meeting-bar-compact khi thanh thực tế hẹp hoặc đủ breakpoint.
+ *
+ * LiveKit (TrackToggle, ChatToggle, …) không bọc chữ trong .lk-button-text — chỉ có nút tùy chỉnh
+ * (Biểu quyết, Transcript) dùng span. Chỉ ẩn .lk-button-text sẽ làm hai nút đó “lọt” chế độ icon trước.
+ * Thu nhỏ font trên nút có icon (svg con trực tiếp) để ẩn chữ nhưng giữ kích thước svg (width/height).
+ * Nút chỉ chữ (vd. Start media) không có svg con — không áp dụng, vẫn đọc được.
  */
-.meeting-room-shell .lk-control-bar[data-meeting-bar-compact='true'] .lk-button-text {
-  display: none !important;
-}
-
-.meeting-room-shell .lk-control-bar[data-meeting-bar-compact='true'] .lk-button {
+.meeting-room-shell .lk-control-bar[data-meeting-bar-compact='true'] .lk-button:has(> svg) {
+  font-size: 0;
+  line-height: 0;
   gap: 0;
 }
 

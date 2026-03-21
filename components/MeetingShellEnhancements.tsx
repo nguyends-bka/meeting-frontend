@@ -38,8 +38,8 @@ function shouldCompactControlBar(bar: HTMLElement, chatOpen: boolean): boolean {
 }
 
 /**
- * Sets `data-meeting-bar-compact` so CSS hides all `.lk-button-text` (see globals.css), matching
- * LiveKit minimal when the bar is squeezed or the viewport breakpoint hits.
+ * Sets `data-meeting-bar-compact` so CSS collapses labels on all icon buttons (see globals.css).
+ * Native LiveKit buttons use plain text nodes, not `.lk-button-text`, so CSS must target `.lk-button:has(> svg)`.
  */
 function syncControlBarCompact(bar: HTMLElement, chatOpen: boolean) {
   if (shouldCompactControlBar(bar, chatOpen)) {
