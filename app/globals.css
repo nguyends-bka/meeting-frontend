@@ -1090,32 +1090,7 @@ button:active:not(:disabled) {
 }
 
 /* Nút Transcript trên control bar (cạnh Chat) */
-/* Giống nút Chat: icon + chữ trên cùng một hàng */
-.meeting-transcript-toggle {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
-  color: inherit !important;
-  white-space: nowrap !important;
-  width: auto !important; /* Đảm bảo không bị set cứng width */
-}
-
-.lk-control-bar[data-lk-collapsed="true"] .meeting-transcript-toggle .lk-button-text,
-.lk-control-bar .meeting-transcript-toggle .lk-button-text {
-  /* Sử dụng biến của LiveKit để đồng bộ trạng thái ẩn/hiện */
-  display: var(--lk-control-bar-button-display, inline-block);
-}
-.meeting-transcript-toggle svg {
-  flex-shrink: 0;
-  display: block;
-}
-
-/* Khi control bar thu hẹp: ẩn nhãn "Transcript" như các icon khác */
-@media (max-width: 768px) {
-  .lk-control-bar .meeting-transcript-toggle .lk-button-text {
-    display: none !important;
-  }
-}
+/* GHI CHÚ: Đã XÓA TOÀN BỘ CSS ép hiển thị, gap, width, display để nút kế thừa hoàn toàn Responsive Container Queries mặc định của LiveKit */
 
 /* Chỉ dùng box-shadow (không border/outline thêm vào box) để không làm lệch flex control bar */
 .meeting-transcript-toggle[data-active='true'],
