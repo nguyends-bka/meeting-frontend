@@ -16,7 +16,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useRoomContext } from '@livekit/components-react';
+import { useConnectionState, useRoomContext } from '@livekit/components-react';
 import { ConnectionState, RoomEvent } from 'livekit-client';
 import { useAuth } from '@/lib/auth';
 import {
@@ -83,18 +83,20 @@ export function TranscriptRoomProvider({
   children: React.ReactNode;
 }) {
   const room = useRoomContext();
+  /** Subscribe trạng thái phòng — room.state trong deps không luôn gây re-render; cần hook này để mở WS transcript ngay khi Connected */
+  const connectionState = useConnectionState(room);
   const { user } = useAuth();
   const [state, setState] = useState<TranscriptRoomState>(() => resetTranscriptState());
   const [transcriptWsStatus, setTranscriptWsStatus] = useState<WsRelayStatus>('idle');
   const [hasRoomTranscriptData, setHasRoomTranscriptData] = useState(false);
 
   useEffect(() => {
-    if (room.state === ConnectionState.Disconnected) {
+    if (connectionState === ConnectionState.Disconnected) {
       setState(resetTranscriptState());
       setHasRoomTranscriptData(false);
       setTranscriptWsStatus('idle');
     }
-  }, [room.state]);
+  }, [connectionState]);
 
   // Mọi người (trừ echo từ chính relay): nhận transcript qua LiveKit Data
   useEffect(() => {
@@ -129,7 +131,7 @@ export function TranscriptRoomProvider({
 
   useEffect(() => {
     publishRef.current = (raw: string) => {
-      if (room.state !== ConnectionState.Connected) return;
+      if (connectionState !== ConnectionState.Connected) return;
       try {
         void room.localParticipant.publishData(new TextEncoder().encode(raw), {
           reliable: true,
@@ -139,14 +141,14 @@ export function TranscriptRoomProvider({
         console.warn('Transcript publishData failed:', e);
       }
     };
-  }, [room]);
+  }, [room, connectionState]);
 
   useEffect(() => {
     if (!wsUrl?.trim()) {
       setTranscriptWsStatus('idle');
       return;
     }
-    if (room.state !== ConnectionState.Connected) {
+    if (connectionState !== ConnectionState.Connected) {
       return;
     }
 
@@ -227,7 +229,7 @@ export function TranscriptRoomProvider({
       socket?.close();
       socket = null;
     };
-  }, [wsUrl, room.state, room, user?.fullName]);
+  }, [wsUrl, connectionState, room, user?.fullName]);
 
   const value = useMemo<TranscriptRoomContextValue>(
     () => ({
