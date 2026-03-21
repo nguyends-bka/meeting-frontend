@@ -4,6 +4,10 @@ export interface PhysicalMicWebSocketSession {
   stop: () => Promise<void>;
 }
 
+const INITIAL_CONNECT_TIMEOUT_MS = 5000;
+const RECONNECT_MIN_DELAY_MS = 1000;
+const RECONNECT_MAX_DELAY_MS = 30_000;
+
 function floatTo16BitPCM(float32Array: Float32Array): Int16Array {
   const buffer = new Int16Array(float32Array.length);
   for (let i = 0; i < float32Array.length; i++) {
@@ -40,42 +44,122 @@ export async function startPhysicalMicWebSocket(
 
   const source = audioContext.createMediaStreamSource(stream);
 
-  // ScriptProcessor đơn giản, dễ chạy
   const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
-  const ws = new WebSocket(wsUrl);
-  ws.binaryType = 'arraybuffer';
+  const wsHolder = { current: null as WebSocket | null };
+  let stopped = false;
+  /** Browser: setTimeout trả về number (khác NodeJS.Timeout) */
+  let reconnectTimer: number | null = null;
+  /** Tăng khi mất kết nối hoặc reconnect thất bại; reset về 0 khi mở lại được */
+  let failureCount = 0;
 
-  await new Promise<void>((resolve, reject) => {
-    let settled = false;
+  const clearReconnectTimer = () => {
+    if (reconnectTimer != null) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+  };
 
-    const timeout = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      reject(new Error(`Timeout khi kết nối websocket: ${wsUrl}`));
-    }, 5000);
+  const scheduleReconnect = () => {
+    if (stopped) return;
+    if (reconnectTimer != null) return;
+    const exp = Math.min(
+      RECONNECT_MAX_DELAY_MS,
+      RECONNECT_MIN_DELAY_MS * 2 ** Math.min(failureCount, 10),
+    );
+    const delay = exp + Math.random() * 250;
+    reconnectTimer = window.setTimeout(() => {
+      reconnectTimer = null;
+      void attemptConnect(false);
+    }, delay);
+  };
 
-    ws.onopen = () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      resolve();
-    };
+  function attemptConnect(isFirst: boolean): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (stopped) {
+        if (isFirst) reject(new Error('Đã dừng'));
+        return;
+      }
 
-    ws.onerror = () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      reject(new Error(`Không kết nối được websocket: ${wsUrl}`));
-    };
-  });
+      const w = new WebSocket(wsUrl);
+      w.binaryType = 'arraybuffer';
+
+      if (stopped) {
+        try {
+          w.close();
+        } catch {}
+        if (isFirst) reject(new Error('Đã dừng'));
+        else resolve();
+        return;
+      }
+
+      let settled = false;
+      const timeoutId = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        try {
+          w.close();
+        } catch {}
+        failureCount++;
+        scheduleReconnect();
+        resolve();
+      }, INITIAL_CONNECT_TIMEOUT_MS);
+
+      const handleEarlyFailure = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        failureCount++;
+        scheduleReconnect();
+        resolve();
+      };
+
+      w.onopen = () => {
+        if (stopped) {
+          try {
+            w.close();
+          } catch {}
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeoutId);
+          if (isFirst) reject(new Error('Đã dừng'));
+          else resolve();
+          return;
+        }
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        failureCount = 0;
+        wsHolder.current = w;
+        w.onclose = () => {
+          wsHolder.current = null;
+          if (stopped) return;
+          failureCount++;
+          scheduleReconnect();
+        };
+        resolve();
+      };
+
+      w.onclose = () => {
+        if (settled) return;
+        handleEarlyFailure();
+      };
+
+      w.onerror = () => {
+        /* thường kèm onclose */
+      };
+    });
+  }
+
+  await attemptConnect(true);
 
   processor.onaudioprocess = (event) => {
-    if (ws.readyState !== WebSocket.OPEN) return;
+    const w = wsHolder.current;
+    if (!w || w.readyState !== WebSocket.OPEN) return;
 
     const input = event.inputBuffer.getChannelData(0);
     const pcm16 = floatTo16BitPCM(input);
-    ws.send(pcm16.buffer);
+    w.send(pcm16.buffer);
   };
 
   source.connect(processor);
@@ -83,6 +167,12 @@ export async function startPhysicalMicWebSocket(
 
   return {
     stop: async () => {
+      stopped = true;
+      clearReconnectTimer();
+
+      const w = wsHolder.current;
+      wsHolder.current = null;
+
       try {
         processor.disconnect();
       } catch {}
@@ -97,8 +187,9 @@ export async function startPhysicalMicWebSocket(
 
       try {
         if (
-          ws.readyState === WebSocket.OPEN ||
-          ws.readyState === WebSocket.CONNECTING
+          w &&
+          (w.readyState === WebSocket.OPEN ||
+            w.readyState === WebSocket.CONNECTING)
         ) {
           await new Promise<void>((resolve) => {
             let resolved = false;
@@ -106,7 +197,7 @@ export async function startPhysicalMicWebSocket(
             const cleanup = () => {
               if (resolved) return;
               resolved = true;
-              ws.removeEventListener('close', handleClose);
+              w.removeEventListener('close', handleClose);
               resolve();
             };
 
@@ -119,8 +210,8 @@ export async function startPhysicalMicWebSocket(
               cleanup();
             }, 3000);
 
-            ws.addEventListener('close', handleClose);
-            ws.close();
+            w.addEventListener('close', handleClose);
+            w.close();
           });
         }
       } catch {}
