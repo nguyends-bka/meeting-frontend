@@ -1097,8 +1097,11 @@ button:active:not(:disabled) {
  * (Biểu quyết, Transcript) dùng span. Chỉ ẩn .lk-button-text sẽ làm hai nút đó “lọt” chế độ icon trước.
  * Thu nhỏ font trên nút có icon (svg con trực tiếp) để ẩn chữ nhưng giữ kích thước svg (width/height).
  * Nút chỉ chữ (vd. Start media) không có svg con — không áp dụng, vẫn đọc được.
+ *
+ * Leave dùng class .lk-disconnect-button (không có .lk-button) — phải liệt kê riêng.
  */
-.meeting-room-shell .lk-control-bar[data-meeting-bar-compact='true'] .lk-button:has(> svg) {
+.meeting-room-shell .lk-control-bar[data-meeting-bar-compact='true'] .lk-button:has(> svg),
+.meeting-room-shell .lk-control-bar[data-meeting-bar-compact='true'] .lk-disconnect-button:has(> svg) {
   font-size: 0;
   line-height: 0;
   gap: 0;
