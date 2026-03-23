@@ -38,6 +38,13 @@ type User = {
   id: string;
   username: string;
   role: string;
+  fullName?: string | null;
+  email?: string | null;
+  position?: string | null;
+  academicRank?: string | null;
+  academicDegree?: string | null;
+  organizationUnitName?: string | null;
+  hasFaceTemplate?: boolean;
   createdAt: string;
 };
 
@@ -145,6 +152,19 @@ export default function AdminPage() {
         <Tag color={role === 'Admin' ? 'red' : 'blue'}>
           {role === 'Admin' ? <SettingOutlined /> : <UserOutlined />} {role}
         </Tag>
+      ),
+    },
+    {
+      title: 'Thông tin bổ sung',
+      key: 'extraInfo',
+      width: 320,
+      render: (_: unknown, record: User) => (
+        <Space direction="vertical" size={0}>
+          <Typography.Text type="secondary">Chức vụ: {record.position || '-'}</Typography.Text>
+          <Typography.Text type="secondary">Học hàm/học vị: {record.academicRank || '-'} / {record.academicDegree || '-'}</Typography.Text>
+          <Typography.Text type="secondary">Đơn vị: {record.organizationUnitName || '-'}</Typography.Text>
+          <Typography.Text type="secondary">Face template: {record.hasFaceTemplate ? 'Đã có' : 'Chưa có'}</Typography.Text>
+        </Space>
       ),
     },
     {

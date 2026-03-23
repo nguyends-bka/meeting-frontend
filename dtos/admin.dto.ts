@@ -4,6 +4,14 @@ export interface AdminUser {
   id: string;
   username: string;
   role: string;
+  fullName?: string | null;
+  email?: string | null;
+  position?: string | null;
+  academicRank?: string | null;
+  academicDegree?: string | null;
+  organizationUnitId?: string | null;
+  organizationUnitName?: string | null;
+  hasFaceTemplate?: boolean;
   createdAt: string;
 }
 

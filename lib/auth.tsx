@@ -9,6 +9,11 @@ interface User {
   username: string;
   role: string;
   fullName?: string | null;
+  position?: string | null;
+  academicRank?: 'GS' | 'PGS' | null;
+  academicDegree?: 'TS' | 'ThS' | 'CN' | 'KS' | null;
+  organizationUnitId?: string | null;
+  faceTemplate?: string | null;
 }
 
 interface AuthContextType {
@@ -17,6 +22,7 @@ interface AuthContextType {
   loading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (username: string, password: string, fullName?: string, email?: string) => Promise<{ success: boolean; error?: string }>;
+  updateUser: (patch: Partial<User>) => void;
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -75,6 +81,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return await login(username, password);
   };
 
+  const updateUser = (patch: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -95,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         login,
         register,
+        updateUser,
         logout,
         isAuthenticated: !!token && !!user,
         isAdmin: user?.role === 'Admin',

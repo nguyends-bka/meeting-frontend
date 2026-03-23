@@ -187,7 +187,7 @@ export default function HomePage() {
             <Col xs={24} sm={12}>
               <Card bordered={false} style={{ borderRadius: '12px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ padding: '16px', background: '#e6f7ff', borderRadius: '12px' }}>
+                  <div className="home-stat-icon home-stat-icon--primary" style={{ padding: '16px', background: '#e6f7ff', borderRadius: '12px' }}>
                     <VideoCameraOutlined style={{ fontSize: '28px', color: '#1890ff' }} />
                   </div>
                   <Statistic
@@ -201,7 +201,7 @@ export default function HomePage() {
             <Col xs={24} sm={12}>
               <Card bordered={false} style={{ borderRadius: '12px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ padding: '16px', background: '#f6ffed', borderRadius: '12px' }}>
+                  <div className="home-stat-icon home-stat-icon--success" style={{ padding: '16px', background: '#f6ffed', borderRadius: '12px' }}>
                     <CalendarOutlined style={{ fontSize: '28px', color: '#52c41a' }} />
                   </div>
                   <Statistic
@@ -225,7 +225,7 @@ export default function HomePage() {
               style={{ borderRadius: '12px', textAlign: 'center', height: '100%', border: '1px solid #91d5ff' }}
               bodyStyle={{ padding: '32px 16px' }}
             >
-              <div style={{ background: '#1890ff', color: '#fff', width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>
+              <div className="home-action-icon home-action-icon--create" style={{ background: '#1890ff', color: '#fff', width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>
                 <PlusOutlined />
               </div>
               <Title level={5} style={{ margin: 0 }}>Tạo cuộc họp</Title>
@@ -240,7 +240,7 @@ export default function HomePage() {
               style={{ borderRadius: '12px', textAlign: 'center', height: '100%' }}
               bodyStyle={{ padding: '32px 16px' }}
             >
-              <div style={{ background: '#52c41a', color: '#fff', width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>
+              <div className="home-action-icon home-action-icon--join" style={{ background: '#52c41a', color: '#fff', width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>
                 <RightCircleOutlined />
               </div>
               <Title level={5} style={{ margin: 0 }}>Tham gia</Title>
@@ -255,7 +255,7 @@ export default function HomePage() {
               style={{ borderRadius: '12px', textAlign: 'center', height: '100%' }}
               bodyStyle={{ padding: '32px 16px' }}
             >
-              <div style={{ background: '#722ed1', color: '#fff', width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>
+              <div className="home-action-icon home-action-icon--list" style={{ background: '#722ed1', color: '#fff', width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>
                 <UnorderedListOutlined />
               </div>
               <Title level={5} style={{ margin: 0 }}>Tất cả cuộc họp</Title>
@@ -270,7 +270,7 @@ export default function HomePage() {
               style={{ borderRadius: '12px', textAlign: 'center', height: '100%' }}
               bodyStyle={{ padding: '32px 16px' }}
             >
-              <div style={{ background: '#fa8c16', color: '#fff', width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>
+              <div className="home-action-icon home-action-icon--history" style={{ background: '#fa8c16', color: '#fff', width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>
                 <HistoryOutlined />
               </div>
               <Title level={5} style={{ margin: 0 }}>Lịch sử</Title>
@@ -460,6 +460,33 @@ export default function HomePage() {
           </Button>
         </Form>
       </Modal>
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+          .dark-theme .home-stat-icon {
+            border: 1px solid rgba(148, 163, 184, 0.35);
+          }
+          .dark-theme .home-stat-icon--primary {
+            background: rgba(59, 130, 246, 0.24) !important;
+          }
+          .dark-theme .home-stat-icon--success {
+            background: rgba(34, 197, 94, 0.24) !important;
+          }
+          .dark-theme .home-stat-icon .anticon {
+            color: #e2e8f0 !important;
+            opacity: 1 !important;
+          }
+          .dark-theme .home-action-icon {
+            border: 1px solid rgba(148, 163, 184, 0.3);
+          }
+          .dark-theme .home-action-icon .anticon {
+            color: #ffffff !important;
+            opacity: 1 !important;
+          }
+          `,
+        }}
+      />
     </MainLayout>
   );
 }

@@ -84,6 +84,22 @@ class ApiService {
     return userApi.updateProfile({ fullName, email });
   }
 
+  async updateProfileExtended(request: {
+    fullName?: string;
+    email?: string;
+    position?: string | null;
+    academicRank?: 'GS' | 'PGS' | null;
+    academicDegree?: 'TS' | 'ThS' | 'CN' | 'KS' | null;
+    organizationUnitId?: string | null;
+    faceTemplate?: string | null;
+  }) {
+    return userApi.updateProfile(request);
+  }
+
+  async getOrganizationUnits() {
+    return userApi.listOrganizationUnits();
+  }
+
   async changePassword(oldPassword: string, newPassword: string) {
     return userApi.changePassword({ oldPassword, newPassword });
   }

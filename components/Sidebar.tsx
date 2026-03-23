@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Layout, Menu, Typography, Avatar, Space, Tag, Button, ConfigProvider } from 'antd';
 import type { MenuProps } from 'antd';
@@ -34,7 +34,9 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAdmin, logout } = useAuth();
+  const avatarSrc = user?.faceTemplate ? `data:image/jpeg;base64,${user.faceTemplate}` : undefined;
   const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const [sidebarTheme, setSidebarTheme] = useState<'light' | 'dark'>('dark');
   
   const collapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed;
   const setCollapsed = (value: boolean) => {
@@ -45,9 +47,40 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
     }
   };
 
+  useEffect(() => {
+    const readTheme = (): 'light' | 'dark' => {
+      const fromStorage = (localStorage.getItem('current_theme') || '').toLowerCase();
+      if (fromStorage === 'light' || fromStorage === 'dark') return fromStorage;
+      const fromAttr = (document.documentElement.getAttribute('data-theme') || '').toLowerCase();
+      if (fromAttr === 'light' || fromAttr === 'dark') return fromAttr;
+      return 'light';
+    };
+
+    const syncTheme = () => setSidebarTheme(readTheme());
+    syncTheme();
+
+    window.addEventListener('storage', syncTheme);
+    window.addEventListener('theme-changed', syncTheme as EventListener);
+    return () => {
+      window.removeEventListener('storage', syncTheme);
+      window.removeEventListener('theme-changed', syncTheme as EventListener);
+    };
+  }, []);
+
+  const isDark = sidebarTheme === 'dark';
+
   // UI Component cho Tag "Sắp ra mắt" phù hợp với nền tối
   const ComingSoonTag = () => (
-    <Tag bordered={false} color="rgba(255, 255, 255, 0.2)" style={{ borderRadius: '10px', fontSize: '11px', margin: 0, color: '#e2e8f0' }}>
+    <Tag
+      bordered={false}
+      color={isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(15, 23, 42, 0.08)'}
+      style={{
+        borderRadius: '10px',
+        fontSize: '11px',
+        margin: 0,
+        color: isDark ? '#e2e8f0' : '#334155',
+      }}
+    >
       Sắp ra mắt
     </Tag>
   );
@@ -142,12 +175,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
         {
           key: '/admin/organization',
           icon: <ApartmentOutlined />, // Icon phù hợp cho sơ đồ tổ chức
-          label: (
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <span>Quản lý Cơ cấu tổ chức</span>
-              {!collapsed && <ComingSoonTag />}
-            </Space>
-          ),
+          label: 'Quản lý Cơ cấu tổ chức',
         },
         {
           key: '/admin',
@@ -258,6 +286,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
 
   return (
     <Sider
+      className="app-sidebar"
       collapsible
       collapsed={collapsed}
       onCollapse={setCollapsed}
@@ -272,16 +301,16 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
         zIndex: 100,
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#0E131F', // Màu nền Dark Navy giống hình
-        boxShadow: '4px 0 16px rgba(0, 0, 0, 0.15)',
+        backgroundColor: isDark ? '#0E131F' : '#ffffff',
+        boxShadow: isDark ? '4px 0 16px rgba(0, 0, 0, 0.15)' : '2px 0 12px rgba(15, 23, 42, 0.08)',
       }}
-      theme="dark" // Đổi sang theme dark
+      theme={isDark ? 'dark' : 'light'}
     >
       <div
         className="sidebar-header"
         style={{
           padding: collapsed ? '16px 8px' : '16px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)', // Viền mờ cho dark theme
+          borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #e5e7eb',
           marginBottom: 8,
           flexShrink: 0,
         }}
@@ -290,12 +319,13 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
           <Space>
             <Avatar
               size={collapsed ? 32 : 40}
+              src={avatarSrc}
               icon={<UserOutlined />}
-              style={{ backgroundColor: '#3b82f6' }} // Đổi màu avatar sang xanh sáng
+              style={{ backgroundColor: '#3b82f6' }}
             />
             {!collapsed && (
               <div style={{ flex: 1, minWidth: 0 }}>
-                <Text strong ellipsis style={{ display: 'block', fontSize: 14, color: '#ffffff' }}> {/* Chữ màu trắng */}
+                <Text strong ellipsis style={{ display: 'block', fontSize: 14, color: isDark ? '#ffffff' : '#0f172a' }}>
                   {user?.fullName}
                 </Text>
                 {isAdmin && (
@@ -316,11 +346,16 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
             components: {
               Menu: {
                 darkItemBg: 'transparent',
-                darkSubMenuItemBg: 'transparent', // Thay cho darkItemSubBg để fix lỗi TypeScript
-                darkItemSelectedBg: '#3b82f6', // Nền xanh dương khi click
+                darkSubMenuItemBg: 'transparent',
+                darkItemSelectedBg: '#3b82f6',
                 darkItemHoverBg: 'rgba(255, 255, 255, 0.08)',
-                darkItemColor: '#94a3b8', // Màu xám nhạt cho item bình thường
+                darkItemColor: '#94a3b8',
                 darkItemSelectedColor: '#ffffff',
+                itemBg: 'transparent',
+                itemHoverBg: isDark ? 'rgba(255, 255, 255, 0.08)' : '#f1f5f9',
+                itemColor: isDark ? '#94a3b8' : '#334155',
+                itemSelectedBg: '#3b82f6',
+                itemSelectedColor: '#ffffff',
                 itemBorderRadius: 8, // Bo góc tạo khối
                 itemMarginInline: 12, // Khoảng cách 2 lề tạo hiệu ứng lơ lửng
               },
@@ -328,7 +363,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
           }}
         >
           <Menu
-            theme="dark"
+            theme={isDark ? 'dark' : 'light'}
             mode="inline"
             selectedKeys={getSelectedKeys()}
             items={menuItems}
@@ -338,11 +373,42 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
         </ConfigProvider>
       </div>
 
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+          .app-sidebar .ant-menu .ant-menu-item.ant-menu-item-selected,
+          .app-sidebar .ant-menu-dark .ant-menu-item.ant-menu-item-selected,
+          .app-sidebar .ant-menu-light .ant-menu-item.ant-menu-item-selected {
+            background: ${isDark ? 'rgba(59, 130, 246, 0.22)' : '#4f7ff0'} !important;
+            border: 1px solid ${isDark ? 'rgba(96, 165, 250, 0.7)' : '#4f7ff0'} !important;
+            color: #ffffff !important;
+            font-weight: 600;
+            border-radius: 8px !important;
+            box-shadow: ${isDark ? '0 0 0 1px rgba(59, 130, 246, 0.15) inset' : 'none'};
+          }
+          .app-sidebar .ant-menu .ant-menu-item.ant-menu-item-selected:hover,
+          .app-sidebar .ant-menu-dark .ant-menu-item.ant-menu-item-selected:hover,
+          .app-sidebar .ant-menu-light .ant-menu-item.ant-menu-item-selected:hover {
+            background: ${isDark ? 'rgba(59, 130, 246, 0.30)' : '#4f7ff0'} !important;
+            color: #ffffff !important;
+          }
+          .app-sidebar .ant-menu .ant-menu-submenu.ant-menu-submenu-selected > .ant-menu-submenu-title {
+            color: ${isDark ? '#93c5fd' : '#4f7ff0'} !important;
+            font-weight: 600;
+          }
+          .app-sidebar .ant-menu .ant-menu-item.ant-menu-item-selected .ant-menu-item-icon,
+          .app-sidebar .ant-menu .ant-menu-item.ant-menu-item-selected .anticon {
+            color: #ffffff !important;
+          }
+          `,
+        }}
+      />
+
       <div
         className="sidebar-footer"
         style={{
           padding: '16px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)', // Viền mờ
+          borderTop: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #e5e7eb',
           backgroundColor: 'transparent',
           flexShrink: 0,
         }}

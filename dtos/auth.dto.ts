@@ -16,6 +16,12 @@ export interface AuthUser {
   id: string;
   username: string;
   role: string;
+  fullName?: string;
+  position?: string | null;
+  academicRank?: 'GS' | 'PGS' | null;
+  academicDegree?: 'TS' | 'ThS' | 'CN' | 'KS' | null;
+  organizationUnitId?: string | null;
+  faceTemplate?: string | null;
 }
 
 export interface LoginResponse {

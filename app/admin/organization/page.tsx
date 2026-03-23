@@ -150,7 +150,7 @@ export default function OrganizationPage() {
           {record.level > 1 && (
             <div style={{ width: 16, borderBottom: '1px solid #d9d9d9', marginRight: 8 }}></div>
           )}
-          <div style={{ width: 32, height: 32, background: '#f0f5ff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2f54eb' }}>
+          <div className="org-unit-icon-box" style={{ width: 32, height: 32, background: '#f0f5ff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2f54eb' }}>
             <ApartmentOutlined />
           </div>
           <Text strong={record.level === 1} style={{ fontSize: 14 }}>{record.name}</Text>
@@ -309,6 +309,13 @@ export default function OrganizationPage() {
                 columns={columns} 
                 dataSource={filteredUnits} 
                 loading={loading}
+                locale={{
+                  emptyText: (
+                    <div className="org-empty-state">
+                      Không tìm thấy đơn vị phù hợp
+                    </div>
+                  ),
+                }}
                 pagination={false} 
                 size="middle"
                 rowClassName={() => 'custom-table-row'}
@@ -385,6 +392,9 @@ export default function OrganizationPage() {
         .custom-table-row:hover {
           background-color: #f0f5ff !important;
         }
+        .custom-table-row:hover > td {
+          background-color: #f0f5ff !important;
+        }
         
         /* Chỉnh màu cho từng loại nút khi hover */
         .action-btn {
@@ -406,6 +416,67 @@ export default function OrganizationPage() {
         .action-btn.unlock-btn:hover {
           color: #059669 !important; 
           background-color: #ecfdf5 !important;
+        }
+
+        /* Dark mode fixes for table readability */
+        .dark-theme .ant-table-wrapper .ant-table {
+          background: #1f1f1f !important;
+          color: #e5e7eb !important;
+        }
+        .dark-theme .ant-table-wrapper .ant-table-placeholder > td {
+          background: #1f1f1f !important;
+        }
+        .dark-theme .ant-table-wrapper .ant-empty-description {
+          color: #94a3b8 !important;
+        }
+        .org-empty-state {
+          color: #64748b;
+          font-size: 14px;
+          padding: 20px 0;
+        }
+        .dark-theme .org-empty-state {
+          color: #94a3b8;
+        }
+        .dark-theme .ant-table-wrapper .ant-table-thead > tr > th {
+          background: #262626 !important;
+          color: #d1d5db !important;
+          border-bottom: 1px solid #3f3f46 !important;
+        }
+        .dark-theme .custom-table-row td {
+          border-bottom: 1px solid #3f3f46 !important;
+          color: #e5e7eb !important;
+          background: #1f1f1f !important;
+        }
+        .dark-theme .custom-table-row:hover,
+        .dark-theme .custom-table-row:hover > td,
+        .dark-theme .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td {
+          background-color: #30363f !important;
+        }
+        .dark-theme .ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td {
+          background: #30363f !important;
+        }
+        .dark-theme .action-btn {
+          color: #93c5fd !important;
+        }
+        .dark-theme .action-btn.view-btn:hover {
+          color: #bfdbfe !important;
+          background-color: rgba(59, 130, 246, 0.22) !important;
+        }
+        .dark-theme .action-btn.edit-btn:hover {
+          color: #fbbf24 !important;
+          background-color: rgba(245, 158, 11, 0.2) !important;
+        }
+        .dark-theme .action-btn.delete-btn:hover {
+          color: #f87171 !important;
+          background-color: rgba(239, 68, 68, 0.2) !important;
+        }
+        .dark-theme .action-btn.unlock-btn:hover {
+          color: #34d399 !important;
+          background-color: rgba(16, 185, 129, 0.2) !important;
+        }
+        .dark-theme .org-unit-icon-box {
+          background: #334155 !important;
+          color: #cbd5e1 !important;
         }
       `}} />
     </MainLayout>
@@ -741,7 +812,7 @@ function OrganizationDetail({
                   <div key={c.id}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
                       <Space size="middle">
-                         <div style={{ width: 36, height: 36, background: '#f0f5ff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' }}>
+                         <div className="org-unit-icon-box" style={{ width: 36, height: 36, background: '#f0f5ff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' }}>
                            <ApartmentOutlined style={{ fontSize: 16 }} />
                          </div>
                          <div>

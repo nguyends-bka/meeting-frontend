@@ -165,6 +165,7 @@ export default function SettingsPage() {
       }
     }
     localStorage.setItem('current_theme', actualTheme);
+    window.dispatchEvent(new Event('theme-changed'));
   };
 
 

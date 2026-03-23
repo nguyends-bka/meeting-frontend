@@ -5,12 +5,19 @@ import type {
   UpdateProfileResponse,
   ChangePasswordRequest,
   ChangePasswordResponse,
+  OrganizationUnitOption,
 } from '@/dtos/user.dto';
 
 // User domain API - React Query compatible
 export const userApi = {
   getProfile: async () => {
     return apiClient.request<UserProfile>('/api/user/profile', {
+      method: 'GET',
+    });
+  },
+
+  listOrganizationUnits: async () => {
+    return apiClient.request<OrganizationUnitOption[]>('/api/user/organization-units', {
       method: 'GET',
     });
   },
