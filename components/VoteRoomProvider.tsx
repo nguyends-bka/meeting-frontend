@@ -12,7 +12,9 @@ import { useConnectionState, useRoomContext } from '@livekit/components-react';
 import { ConnectionState, RoomEvent } from 'livekit-client';
 import { useAuth } from '@/lib/auth';
 import { meetingApi } from '@/services/meeting/meetingApi';
+import type { PollResponse } from '@/dtos/meeting.dto';
 import {
+  applyVoteMessage,
   applyVoteRaw,
   initialVoteState,
   type Poll,
@@ -116,6 +118,74 @@ export function VoteRoomProvider({
       room.off(RoomEvent.DataReceived, onData);
     };
   }, [room]);
+
+  useEffect(() => {
+    const mid = meetingId?.trim();
+    if (!mid || connectionState !== ConnectionState.Connected) return;
+
+    let cancelled = false;
+    void (async () => {
+      const res = await meetingApi.listPolls(mid);
+      if (cancelled || res.error || !res.data) return;
+
+      const next = res.data.reduce((acc, p: PollResponse) => {
+        const createMsg: VoteMessage = {
+          type: 'poll_create',
+          pollId: p.pollId,
+          title: p.title,
+          options: p.options,
+          createdBy: p.createdBy,
+          createdByName: p.createdByName,
+          createdAt: p.createdAt,
+          selectionMode: p.selectionMode === 'multiple' ? 'multiple' : 'single',
+          endAt: p.endAt ?? null,
+        };
+        let s = applyVoteMessage(acc, createMsg);
+        for (const v of p.votes ?? []) {
+          const voteMsg: VoteMessage = {
+            type: 'poll_vote',
+            pollId: p.pollId,
+            optionIndices: v.optionIndices ?? [],
+            voterIdentity: v.voterIdentity,
+            voterName: v.voterName,
+            at: v.at,
+          };
+          s = applyVoteMessage(s, voteMsg);
+        }
+        if (p.status === 'closed') {
+          const closeMsg: VoteMessage = {
+            type: 'poll_close',
+            pollId: p.pollId,
+            closedBy: p.closedBy ?? p.createdBy,
+            at: p.closedAt ?? Date.now(),
+          };
+          s = applyVoteMessage(s, closeMsg);
+        }
+        return s;
+      }, initialVoteState());
+
+      setState((prev) => {
+        const merged = { ...prev.polls };
+        for (const [id, poll] of Object.entries(next.polls)) {
+          const existing = merged[id];
+          if (!existing) {
+            merged[id] = poll;
+            continue;
+          }
+          merged[id] = {
+            ...existing,
+            ...poll,
+            votes: { ...existing.votes, ...poll.votes },
+          };
+        }
+        return { polls: merged };
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [meetingId, connectionState]);
 
   const createPoll = useCallback(
     (

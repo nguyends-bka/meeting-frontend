@@ -12,6 +12,10 @@ import type {
   PollCreateRequest,
   PollVoteRequest,
   PollCloseRequest,
+  PollResponse,
+  RoomLogResponse,
+  RoomChatCreateRequest,
+  RoomTranscriptCreateRequest,
 } from '@/dtos/meeting.dto';
 
 // Meeting domain API - React Query compatible
@@ -80,6 +84,13 @@ export const meetingApi = {
   },
 
   /** Lưu biểu quyết vào DB (host). pollId gửi lên để trùng với LiveKit. */
+  listPolls: async (meetingId: string) => {
+    return apiClient.request<PollResponse[]>(`/api/meeting/${encodeURIComponent(meetingId)}/polls`, {
+      method: 'GET',
+    });
+  },
+
+  /** Lưu biểu quyết vào DB (host). pollId gửi lên để trùng với LiveKit. */
   createPoll: async (meetingId: string, body: PollCreateRequest) => {
     return apiClient.request<unknown>(`/api/meeting/${encodeURIComponent(meetingId)}/polls`, {
       method: 'POST',
@@ -107,5 +118,25 @@ export const meetingApi = {
         body: JSON.stringify(body),
       },
     );
+  },
+
+  getRoomLog: async (meetingId: string) => {
+    return apiClient.request<RoomLogResponse>(`/api/meeting/${encodeURIComponent(meetingId)}/room-log`, {
+      method: 'GET',
+    });
+  },
+
+  appendRoomChat: async (meetingId: string, body: RoomChatCreateRequest) => {
+    return apiClient.request<unknown>(`/api/meeting/${encodeURIComponent(meetingId)}/room-log/chat`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  appendRoomTranscript: async (meetingId: string, body: RoomTranscriptCreateRequest) => {
+    return apiClient.request<unknown>(`/api/meeting/${encodeURIComponent(meetingId)}/room-log/transcript`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
   },
 };

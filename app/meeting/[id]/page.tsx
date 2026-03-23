@@ -17,6 +17,7 @@ import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
 import { startPhysicalMicWebSocket } from '@/lib/physicalMicWebSocket';
 import TranscriptPanel from '@/components/TranscriptPanel';
 import { TranscriptRoomProvider } from '@/components/TranscriptRoomProvider';
+import MeetingChatHistoryHydrator from '@/components/MeetingChatHistoryHydrator';
 import { VoteRoomProvider } from '@/components/VoteRoomProvider';
 import VotePanel from '@/components/VotePanel';
 import MeetingShellEnhancements from '@/components/MeetingShellEnhancements';
@@ -633,13 +634,14 @@ export default function MeetingPage() {
               />
             )}
 
-            <TranscriptRoomProvider wsUrl={transcriptWsUrl}>
+            <TranscriptRoomProvider wsUrl={transcriptWsUrl} meetingId={currentMeetingId ?? meetingId}>
               <VoteRoomProvider meetingId={currentMeetingId ?? meetingId}>
                 <div
                   ref={meetingShellRef}
                   className="meeting-room-shell"
                   data-meeting-layout="neither"
                 >
+                  <MeetingChatHistoryHydrator />
                   <MeetingShellEnhancements
                     shellRef={meetingShellRef}
                     transcriptOpen={transcriptOpen}

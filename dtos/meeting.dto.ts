@@ -93,3 +93,58 @@ export interface PollCloseRequest {
   closedBy: string;
   at: number;
 }
+
+export interface RoomChatCreateRequest {
+  clientMessageId?: string | null;
+  senderIdentity: string;
+  message: string;
+  at: number;
+}
+
+export interface RoomTranscriptCreateRequest {
+  speakerIdentity: string;
+  text: string;
+  at: number;
+}
+
+export interface RoomChatItem {
+  clientMessageId?: string | null;
+  senderIdentity: string;
+  senderName: string;
+  message: string;
+  at: number;
+}
+
+export interface RoomTranscriptItem {
+  speakerIdentity?: string | null;
+  speakerName: string;
+  text: string;
+  at: number;
+}
+
+export interface RoomLogResponse {
+  chatMessages: RoomChatItem[];
+  transcriptEntries: RoomTranscriptItem[];
+}
+
+export interface PollVoteEntry {
+  voterIdentity: string;
+  voterName: string;
+  optionIndices: number[];
+  at: number;
+}
+
+export interface PollResponse {
+  pollId: string;
+  title: string;
+  options: string[];
+  createdBy: string;
+  createdByName: string;
+  createdAt: number;
+  selectionMode: 'single' | 'multiple';
+  endAt: number | null;
+  status: 'open' | 'closed';
+  closedAt: number | null;
+  closedBy: string | null;
+  votes: PollVoteEntry[];
+}

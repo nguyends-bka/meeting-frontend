@@ -16,9 +16,11 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useConnectionState, useRoomContext } from '@livekit/components-react';
+import { useChat, useConnectionState, useRoomContext } from '@livekit/components-react';
 import { ConnectionState, RoomEvent } from 'livekit-client';
 import { useAuth } from '@/lib/auth';
+import { meetingApi } from '@/services/meeting/meetingApi';
+import type { RoomChatItem, RoomTranscriptItem } from '@/dtos/meeting.dto';
 import {
   applyTranscriptRaw,
   resetTranscriptState,
@@ -33,6 +35,7 @@ type TranscriptRoomContextValue = TranscriptRoomState & {
   /** Trạng thái WebSocket transcript trên máy client hiện tại (mỗi user một kết nối). */
   transcriptWsStatus: WsRelayStatus;
   hasRoomTranscriptData: boolean;
+  chatHistory: RoomChatItem[];
 };
 
 const TranscriptRoomContext = createContext<TranscriptRoomContextValue | null>(null);
@@ -77,26 +80,70 @@ export function useTranscriptRoom(): TranscriptRoomContextValue {
 
 export function TranscriptRoomProvider({
   wsUrl,
+  meetingId,
   children,
 }: {
   wsUrl: string;
+  meetingId: string;
   children: React.ReactNode;
 }) {
   const room = useRoomContext();
   /** Subscribe trạng thái phòng — room.state trong deps không luôn gây re-render; cần hook này để mở WS transcript ngay khi Connected */
   const connectionState = useConnectionState(room);
+  const { chatMessages } = useChat();
   const { user } = useAuth();
   const [state, setState] = useState<TranscriptRoomState>(() => resetTranscriptState());
   const [transcriptWsStatus, setTranscriptWsStatus] = useState<WsRelayStatus>('idle');
   const [hasRoomTranscriptData, setHasRoomTranscriptData] = useState(false);
+  const [chatHistory, setChatHistory] = useState<RoomChatItem[]>([]);
+  const persistedTranscriptKeysRef = useRef<Set<string>>(new Set());
+  const persistedChatIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (connectionState === ConnectionState.Disconnected) {
       setState(resetTranscriptState());
       setHasRoomTranscriptData(false);
       setTranscriptWsStatus('idle');
+      setChatHistory([]);
+      persistedTranscriptKeysRef.current = new Set();
+      persistedChatIdsRef.current = new Set();
     }
   }, [connectionState]);
+
+  useEffect(() => {
+    const mid = meetingId?.trim();
+    if (!mid || connectionState !== ConnectionState.Connected) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await meetingApi.getRoomLog(mid);
+      if (cancelled || res.error || !res.data) return;
+
+      const transcript = (res.data.transcriptEntries ?? []).map((x: RoomTranscriptItem) => ({
+        id: crypto.randomUUID(),
+        text: x.text,
+        receivedAt: x.at,
+        speaker: x.speakerName || null,
+      }));
+      const keys = new Set(
+        (res.data.transcriptEntries ?? []).map((x) => `${x.speakerName}|${x.text}|${x.at}`),
+      );
+      persistedTranscriptKeysRef.current = keys;
+      persistedChatIdsRef.current = new Set(
+        (res.data.chatMessages ?? [])
+          .map((x) => x.clientMessageId)
+          .filter((x): x is string => typeof x === 'string' && x.length > 0),
+      );
+      setChatHistory(res.data.chatMessages ?? []);
+      setHasRoomTranscriptData((res.data.transcriptEntries?.length ?? 0) > 0);
+      setState((prev) => ({
+        ...prev,
+        finalized: transcript,
+      }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [meetingId, connectionState]);
 
   // Mọi người (trừ echo từ chính relay): nhận transcript qua LiveKit Data
   useEffect(() => {
@@ -125,6 +172,48 @@ export function TranscriptRoomProvider({
       room.off(RoomEvent.DataReceived, onData);
     };
   }, [room]);
+
+  useEffect(() => {
+    const mid = meetingId?.trim();
+    if (!mid || chatMessages.length === 0) return;
+
+    const last = chatMessages[chatMessages.length - 1];
+    const senderIdentity = last.from?.identity?.trim() || '';
+    const msgText = last.message?.trim() || '';
+    if (!senderIdentity || !msgText) return;
+
+    const clientMessageId = last.id ?? null;
+    const senderName = last.from?.name?.trim() || senderIdentity;
+    const at = typeof last.timestamp === 'number' && Number.isFinite(last.timestamp)
+      ? last.timestamp
+      : Date.now();
+
+    setChatHistory((prev) => {
+      const exists = clientMessageId
+        ? prev.some((x) => x.clientMessageId === clientMessageId)
+        : prev.some((x) =>
+            x.senderIdentity === senderIdentity && x.at === at && x.message === msgText,
+          );
+      if (exists) return prev;
+      return [...prev, { clientMessageId, senderIdentity, senderName, message: msgText, at }];
+    });
+
+    if (senderIdentity !== room.localParticipant.identity) return;
+    if (clientMessageId && persistedChatIdsRef.current.has(clientMessageId)) return;
+    if (clientMessageId) persistedChatIdsRef.current.add(clientMessageId);
+
+    void (async () => {
+      const res = await meetingApi.appendRoomChat(mid, {
+        clientMessageId,
+        senderIdentity,
+        message: msgText,
+        at,
+      });
+      if (res.error) {
+        console.warn('[RoomLog] Failed to persist chat:', res.error);
+      }
+    })();
+  }, [chatMessages, meetingId, room.localParticipant.identity]);
 
   // WebSocket trên máy client → publishData tới cả phòng
   const publishRef = useRef<(raw: string) => void>(() => {});
@@ -206,6 +295,36 @@ export function TranscriptRoomProvider({
         setHasRoomTranscriptData(true);
         setState((prev) => applyTranscriptRaw(prev, normalizedRaw));
         publishRef.current(normalizedRaw);
+
+        const mid = meetingId?.trim();
+        if (!mid) return;
+        try {
+          const parsed = JSON.parse(normalizedRaw) as Record<string, unknown>;
+          if (parsed.type !== 'final') return;
+          const text = typeof parsed.text === 'string' ? parsed.text.trim() : '';
+          if (!text) return;
+          const speakerName =
+            (typeof parsed.speaker === 'string' && parsed.speaker.trim()) ||
+            relaySpeaker ||
+            user?.username?.trim() ||
+            room.localParticipant.identity;
+          const at = Date.now();
+          const key = `${speakerName}|${text}|${at}`;
+          if (persistedTranscriptKeysRef.current.has(key)) return;
+          persistedTranscriptKeysRef.current.add(key);
+          const senderIdentity = (user?.id?.trim() || room.localParticipant.identity || '').trim();
+          if (!senderIdentity) return;
+          const res = await meetingApi.appendRoomTranscript(mid, {
+            speakerIdentity: senderIdentity,
+            text,
+            at,
+          });
+          if (res.error) {
+            console.warn('[RoomLog] Failed to persist transcript:', res.error);
+          }
+        } catch {
+          // ignore non-json payload
+        }
       };
 
       s.onerror = () => {
@@ -229,15 +348,16 @@ export function TranscriptRoomProvider({
       socket?.close();
       socket = null;
     };
-  }, [wsUrl, connectionState, room, user?.fullName]);
+  }, [wsUrl, connectionState, room, user?.fullName, user?.id, user?.username, meetingId]);
 
   const value = useMemo<TranscriptRoomContextValue>(
     () => ({
       ...state,
       transcriptWsStatus,
       hasRoomTranscriptData,
+      chatHistory,
     }),
-    [state, transcriptWsStatus, hasRoomTranscriptData],
+    [state, transcriptWsStatus, hasRoomTranscriptData, chatHistory],
   );
 
   return (
