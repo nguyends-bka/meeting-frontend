@@ -37,8 +37,17 @@ type VoteRoomContextValue = VoteRoomState & {
     options: string[],
     selectionMode: SelectionMode,
     duration: CreatePollDuration,
+    publishNow?: boolean,
   ) => void;
+  updateDraftPoll: (
+    pollId: string,
+    title: string,
+    options: string[],
+    selectionMode: SelectionMode,
+    duration: CreatePollDuration,
+  ) => Promise<boolean>;
   castVote: (pollId: string, optionIndices: number[]) => void;
+  publishPoll: (pollId: string) => void;
   closePoll: (pollId: string) => void;
   localIdentity: string;
   localDisplayName: string;
@@ -139,6 +148,7 @@ export function VoteRoomProvider({
           createdAt: p.createdAt,
           selectionMode: p.selectionMode === 'multiple' ? 'multiple' : 'single',
           endAt: p.endAt ?? null,
+          status: p.status === 'open' ? 'open' : 'draft',
         };
         let s = applyVoteMessage(acc, createMsg);
         for (const v of p.votes ?? []) {
@@ -193,6 +203,7 @@ export function VoteRoomProvider({
       options: string[],
       selectionMode: SelectionMode,
       duration: CreatePollDuration,
+      publishNow = false,
     ) => {
       const trimmed = title.trim();
       const opts = options.map((o) => o.trim()).filter(Boolean);
@@ -214,9 +225,12 @@ export function VoteRoomProvider({
         createdAt,
         selectionMode,
         endAt,
+        status: publishNow ? 'open' : 'draft',
       };
       setState((prev) => applyVoteRaw(prev, JSON.stringify(msg)));
-      publish(msg);
+      if (publishNow) {
+        publish(msg);
+      }
 
       const mid = meetingId?.trim();
       if (mid) {
@@ -230,6 +244,7 @@ export function VoteRoomProvider({
             createdAt: msg.createdAt,
             selectionMode: msg.selectionMode,
             endAt: msg.endAt,
+            status: publishNow ? 'open' : 'draft',
           });
           if (res.error) {
             console.warn('[Vote] Không lưu được biểu quyết lên DB:', res.error);
@@ -238,6 +253,102 @@ export function VoteRoomProvider({
       }
     },
     [actorId, localDisplayName, meetingId, publish],
+  );
+
+  const publishPoll = useCallback(
+    (pollId: string) => {
+      const current = state.polls[pollId];
+      if (!current || current.status !== 'draft') return;
+      const mid = meetingId?.trim();
+      if (!mid) return;
+
+      void (async () => {
+        const res = await meetingApi.publishPoll(mid, pollId, {
+          publishedBy: actorId,
+          at: Date.now(),
+        });
+        if (res.error || !res.data) {
+          console.warn('[Vote] Không công bố được biểu quyết:', res.error);
+          return;
+        }
+
+        const p = res.data;
+        const msg: VoteMessage = {
+          type: 'poll_create',
+          pollId: p.pollId,
+          title: p.title,
+          options: p.options,
+          createdBy: p.createdBy,
+          createdByName: p.createdByName,
+          createdAt: p.createdAt,
+          selectionMode: p.selectionMode === 'multiple' ? 'multiple' : 'single',
+          endAt: p.endAt ?? null,
+          status: 'open',
+        };
+        setState((prev) => applyVoteMessage(prev, msg));
+        publish(msg);
+      })();
+    },
+    [actorId, meetingId, publish, state.polls],
+  );
+
+  const updateDraftPoll = useCallback(
+    (
+      pollId: string,
+      title: string,
+      options: string[],
+      selectionMode: SelectionMode,
+      duration: CreatePollDuration,
+    ): Promise<boolean> => {
+      const current = state.polls[pollId];
+      if (!current || current.status !== 'draft') return Promise.resolve(false);
+      const trimmed = title.trim();
+      const opts = options.map((o) => o.trim()).filter(Boolean);
+      if (!trimmed || opts.length < 2) return Promise.resolve(false);
+      const mid = meetingId?.trim();
+      if (!mid) return Promise.resolve(false);
+
+      let endAt: number | null = null;
+      if (duration.kind === 'minutes') {
+        const m = Math.max(1, Math.min(7 * 24 * 60, Math.floor(duration.minutes)));
+        endAt = Date.now() + m * 60 * 1000;
+      }
+
+      return (async () => {
+        const res = await meetingApi.updateDraftPoll(mid, pollId, {
+          pollId,
+          title: trimmed,
+          options: opts.slice(0, 8),
+          createdBy: actorId,
+          createdByName: localDisplayName,
+          createdAt: current.createdAt,
+          selectionMode,
+          endAt,
+          status: 'draft',
+        });
+        if (res.error || !res.data) {
+          console.warn('[Vote] Không cập nhật được biểu quyết nháp:', res.error);
+          return false;
+        }
+        const p = res.data;
+        setState((prev) =>
+          applyVoteMessage(prev, {
+            type: 'poll_create',
+            pollId: p.pollId,
+            title: p.title,
+            options: p.options,
+            createdBy: p.createdBy,
+            createdByName: p.createdByName,
+            createdAt: p.createdAt,
+            selectionMode: p.selectionMode === 'multiple' ? 'multiple' : 'single',
+            endAt: p.endAt ?? null,
+            status: 'draft',
+          }),
+        );
+        return true;
+      })();
+    },
+    [actorId, localDisplayName, meetingId, state.polls],
   );
 
   const castVote = useCallback(
@@ -302,7 +413,9 @@ export function VoteRoomProvider({
     () => ({
       ...state,
       createPoll,
+      updateDraftPoll,
       castVote,
+      publishPoll,
       closePoll,
       localIdentity: actorId,
       localDisplayName,
@@ -310,7 +423,9 @@ export function VoteRoomProvider({
     [
       state,
       createPoll,
+      updateDraftPoll,
       castVote,
+      publishPoll,
       closePoll,
       actorId,
       localDisplayName,

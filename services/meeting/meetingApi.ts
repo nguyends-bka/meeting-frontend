@@ -12,6 +12,9 @@ import type {
   PollCreateRequest,
   PollVoteRequest,
   PollCloseRequest,
+  PollPublishRequest,
+  AddPollManagerRequest,
+  PollManagerItem,
   PollResponse,
   RoomLogResponse,
   RoomChatCreateRequest,
@@ -98,6 +101,27 @@ export const meetingApi = {
     });
   },
 
+  updateDraftPoll: async (meetingId: string, pollId: string, body: PollCreateRequest) => {
+    const pid = encodeURIComponent(pollId);
+    return apiClient.request<PollResponse>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/polls/${pid}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      },
+    );
+  },
+
+  deleteDraftPoll: async (meetingId: string, pollId: string) => {
+    const pid = encodeURIComponent(pollId);
+    return apiClient.request<unknown>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/polls/${pid}`,
+      {
+        method: 'DELETE',
+      },
+    );
+  },
+
   votePoll: async (meetingId: string, pollId: string, body: PollVoteRequest) => {
     const pid = encodeURIComponent(pollId);
     return apiClient.request<unknown>(
@@ -116,6 +140,56 @@ export const meetingApi = {
       {
         method: 'POST',
         body: JSON.stringify(body),
+      },
+    );
+  },
+
+  publishPoll: async (meetingId: string, pollId: string, body: PollPublishRequest) => {
+    const pid = encodeURIComponent(pollId);
+    return apiClient.request<PollResponse>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/polls/${pid}/publish`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    );
+  },
+
+  listPollManagers: async (meetingId: string) => {
+    return apiClient.request<PollManagerItem[]>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/polls/managers`,
+      {
+        method: 'GET',
+      },
+    );
+  },
+
+  addPollManager: async (meetingId: string, body: AddPollManagerRequest) => {
+    const endpoint = `/api/meeting/${encodeURIComponent(meetingId)}/polls/managers`;
+    const first = await apiClient.request<unknown>(
+      endpoint,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    );
+    if (!first.error || !first.error.includes('HTTP 405')) {
+      return first;
+    }
+    return apiClient.request<unknown>(
+      endpoint,
+      {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      },
+    );
+  },
+
+  removePollManager: async (meetingId: string, username: string) => {
+    return apiClient.request<unknown>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/polls/managers/${encodeURIComponent(username)}`,
+      {
+        method: 'DELETE',
       },
     );
   },

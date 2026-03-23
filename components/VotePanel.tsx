@@ -47,7 +47,9 @@ export default function VotePanel({ canCreatePoll = true }: { canCreatePoll?: bo
   const {
     polls,
     createPoll,
+    updateDraftPoll,
     castVote,
+    publishPoll,
     closePoll,
     localIdentity,
   } = useVoteRoom();
@@ -64,10 +66,27 @@ export default function VotePanel({ canCreatePoll = true }: { canCreatePoll?: bo
   const [multiDraft, setMultiDraft] = useState<Record<string, number[]>>({});
 
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showDraftList, setShowDraftList] = useState(false);
+  const [editingPollId, setEditingPollId] = useState<string | null>(null);
+  const activeTab: 'home' | 'waiting' | 'create' = showCreateForm
+    ? editingPollId
+      ? 'waiting'
+      : 'create'
+    : showDraftList
+      ? 'waiting'
+      : 'home';
 
   const list = useMemo(
     () => Object.values(polls).sort((a, b) => b.createdAt - a.createdAt),
     [polls],
+  );
+  const publishedList = useMemo(
+    () => list.filter((p) => p.status !== 'draft'),
+    [list],
+  );
+  const draftList = useMemo(
+    () => list.filter((p) => p.status === 'draft'),
+    [list],
   );
 
   const addOptionField = () => {
@@ -91,20 +110,56 @@ export default function VotePanel({ canCreatePoll = true }: { canCreatePoll?: bo
     setDurationMinutes(5);
   }, []);
 
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitForm = async (publishNow: boolean) => {
     if (!canCreatePoll) return;
     const opts = optionInputs.map((x) => x.trim()).filter(Boolean);
-    createPoll(title, opts, selectionMode, {
+    const duration = {
       kind: durationKind === 'timed' ? 'minutes' : 'none',
       minutes:
         durationKind === 'timed'
           ? Math.max(1, Math.min(10080, durationMinutes))
           : 5,
-    });
+    } as const;
+    if (editingPollId) {
+      const ok = await updateDraftPoll(
+        editingPollId,
+        title,
+        opts,
+        selectionMode,
+        duration,
+      );
+      if (ok && publishNow) {
+        publishPoll(editingPollId);
+      }
+    } else {
+      createPoll(title, opts, selectionMode, duration, publishNow);
+    }
     resetCreateForm();
     setShowCreateForm(false);
+    setEditingPollId(null);
   };
+
+  const handleCreate = (e: React.FormEvent) => {
+    e.preventDefault();
+    void submitForm(false);
+  };
+
+  const handleEditDraft = useCallback((poll: Poll) => {
+    setTitle(poll.title);
+    setOptionInputs(poll.options.length >= 2 ? [...poll.options] : [...poll.options, '']);
+    setSelectionMode(poll.selectionMode ?? 'single');
+    if (poll.endAt != null && poll.endAt > Date.now()) {
+      const minutes = Math.max(1, Math.ceil((poll.endAt - Date.now()) / 60000));
+      setDurationKind('timed');
+      setDurationMinutes(Math.min(10080, minutes));
+    } else {
+      setDurationKind('none');
+      setDurationMinutes(5);
+    }
+    setEditingPollId(poll.id);
+    setShowCreateForm(true);
+    setShowDraftList(false);
+  }, []);
 
   const toggleMultiDraft = useCallback(
     (pollId: string, idx: number, mineIndices: number[] | undefined) => {
@@ -126,14 +181,44 @@ export default function VotePanel({ canCreatePoll = true }: { canCreatePoll?: bo
     >
       <div className="meeting-vote-header">
         <span className="meeting-vote-header-title">Biểu quyết</span>
-        {canCreatePoll && !showCreateForm && (
-          <button
-            type="button"
-            className="meeting-vote-header-create-btn"
-            onClick={() => setShowCreateForm(true)}
-          >
-            Tạo biểu quyết mới
-          </button>
+        {canCreatePoll && (
+          <div className="meeting-vote-header-actions">
+            <button
+              type="button"
+              className={`meeting-vote-header-home-btn${activeTab === 'home' ? ' is-active' : ''}`}
+              aria-label="Về trang chủ biểu quyết"
+              title="Về trang chủ biểu quyết"
+              onClick={() => {
+                setShowCreateForm(false);
+                setShowDraftList(false);
+                setEditingPollId(null);
+              }}
+            >
+              <span aria-hidden="true">⌂</span>
+            </button>
+            <button
+              type="button"
+              className={`meeting-vote-header-list-btn${activeTab === 'waiting' ? ' is-active' : ''}`}
+              onClick={() => {
+                setShowCreateForm(false);
+                setShowDraftList(true);
+                setEditingPollId(null);
+              }}
+            >
+              Danh sách chờ công bố
+            </button>
+            <button
+              type="button"
+              className={`meeting-vote-header-create-btn${activeTab === 'create' ? ' is-active' : ''}`}
+              onClick={() => {
+                setEditingPollId(null);
+                setShowCreateForm(true);
+                setShowDraftList(false);
+              }}
+            >
+              Tạo biểu quyết mới
+            </button>
+          </div>
         )}
       </div>
 
@@ -238,23 +323,31 @@ export default function VotePanel({ canCreatePoll = true }: { canCreatePoll?: bo
             onClick={() => {
               resetCreateForm();
               setShowCreateForm(false);
+              setEditingPollId(null);
             }}
           >
             Hủy
           </button>
           <button type="submit" className="meeting-vote-submit">
-            Tạo phiếu
+            {editingPollId ? 'Lưu chỉnh sửa' : 'Lưu nháp'}
+          </button>
+          <button
+            type="button"
+            className="meeting-vote-submit"
+            onClick={() => void submitForm(true)}
+          >
+            Công bố ngay
           </button>
         </div>
       </form>
       )}
 
-      {(!showCreateForm || !canCreatePoll) && (
+      {!showCreateForm && !showDraftList && (
         <div className="meeting-vote-list">
-          {list.length === 0 ? (
-            <div className="meeting-vote-empty">Chưa có phiếu biểu quyết.</div>
+          {publishedList.length === 0 ? (
+            <div className="meeting-vote-empty">Chưa có biểu quyết đã công bố.</div>
           ) : (
-            list.map((poll) => (
+            publishedList.map((poll) => (
               <PollCard
                 key={poll.id}
                 poll={poll}
@@ -263,9 +356,43 @@ export default function VotePanel({ canCreatePoll = true }: { canCreatePoll?: bo
                 canClose={
                   poll.status === 'open' && poll.createdBy === localIdentity
                 }
+                canPublish={false}
+                canEdit={false}
                 multiDraft={multiDraft[poll.id]}
                 onToggleMultiDraft={toggleMultiDraft}
                 onCastVote={castVote}
+                onPublishPoll={publishPoll}
+                onEditDraft={handleEditDraft}
+                onClosePoll={closePoll}
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {!showCreateForm && showDraftList && (
+        <div className="meeting-vote-list">
+          {draftList.length === 0 ? (
+            <div className="meeting-vote-empty">Chưa có biểu quyết chờ công bố.</div>
+          ) : (
+            draftList.map((poll) => (
+              <PollCard
+                key={poll.id}
+                poll={poll}
+                counts={pollCounts(poll)}
+                mine={poll.votes[localIdentity]}
+                canClose={false}
+                canPublish={
+                  poll.status === 'draft' && poll.createdBy === localIdentity
+                }
+                canEdit={
+                  poll.status === 'draft' && poll.createdBy === localIdentity
+                }
+                multiDraft={multiDraft[poll.id]}
+                onToggleMultiDraft={toggleMultiDraft}
+                onCastVote={castVote}
+                onPublishPoll={publishPoll}
+                onEditDraft={handleEditDraft}
                 onClosePoll={closePoll}
               />
             ))
@@ -281,15 +408,21 @@ function PollCard({
   counts,
   mine,
   canClose,
+  canPublish,
+  canEdit,
   multiDraft,
   onToggleMultiDraft,
   onCastVote,
+  onPublishPoll,
+  onEditDraft,
   onClosePoll,
 }: {
   poll: Poll;
   counts: number[];
   mine: { optionIndices: number[]; voterName: string; at: number } | undefined;
   canClose: boolean;
+  canPublish: boolean;
+  canEdit?: boolean;
   multiDraft: number[] | undefined;
   onToggleMultiDraft: (
     pollId: string,
@@ -297,6 +430,8 @@ function PollCard({
     mineIndices: number[] | undefined,
   ) => void;
   onCastVote: (pollId: string, optionIndices: number[]) => void;
+  onPublishPoll: (pollId: string) => void;
+  onEditDraft: (poll: Poll) => void;
   onClosePoll: (pollId: string) => void;
 }) {
   const mode = poll.selectionMode ?? 'single';
@@ -323,6 +458,8 @@ function PollCard({
           {' · '}
           {poll.status === 'closed'
             ? 'Đã đóng'
+            : poll.status === 'draft'
+              ? 'Bản nháp'
             : expired
               ? 'Hết hạn'
               : 'Đang mở'}
@@ -334,7 +471,21 @@ function PollCard({
         )}
       </div>
 
-      {mode === 'single' ? (
+      {poll.status === 'draft' ? (
+        <>
+          <ul className="meeting-vote-options">
+            {poll.options.map((label, idx) => (
+              <li key={idx}>
+                <div className="meeting-vote-option-btn">
+                  <span className="meeting-vote-option-label">{label}</span>
+                  <span className="meeting-vote-option-count">{counts[idx]}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="meeting-vote-empty">Phiếu đang ở bản nháp, chưa công bố cho người tham gia.</div>
+        </>
+      ) : mode === 'single' ? (
         <ul className="meeting-vote-options">
           {poll.options.map((label, idx) => {
             const isSel = mineSingleIdx === idx;
@@ -387,6 +538,27 @@ function PollCard({
             Gửi phiếu
           </button>
         </>
+      )}
+
+      {canPublish && (
+        <div className="meeting-vote-create-actions">
+          {canEdit && (
+            <button
+              type="button"
+              className="meeting-vote-cancel-form"
+              onClick={() => onEditDraft(poll)}
+            >
+              Chỉnh sửa
+            </button>
+          )}
+        <button
+          type="button"
+          className="meeting-vote-submit"
+          onClick={() => onPublishPoll(poll.id)}
+        >
+          Công bố
+        </button>
+        </div>
       )}
 
       {canClose && !expired && (

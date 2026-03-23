@@ -13,7 +13,7 @@ export type Poll = {
   createdBy: string;
   createdByName: string;
   createdAt: number;
-  status: 'open' | 'closed';
+  status: 'draft' | 'open' | 'closed';
   /** Phiếu cũ có thể thiếu — mặc định single */
   selectionMode?: SelectionMode;
   /** null = không giới hạn thời gian */
@@ -40,6 +40,7 @@ export type VoteMessage =
       createdAt: number;
       selectionMode: SelectionMode;
       endAt: number | null;
+      status?: 'draft' | 'open';
     }
   | {
       type: 'poll_vote';
@@ -103,6 +104,8 @@ export function parseVoteMessage(raw: string): VoteMessage | null {
           : Date.now();
       const selectionMode: SelectionMode =
         o.selectionMode === 'multiple' ? 'multiple' : 'single';
+      const status: 'draft' | 'open' =
+        o.status === 'draft' ? 'draft' : 'open';
       let endAt: number | null = null;
       if (o.endAt !== undefined && o.endAt !== null) {
         if (typeof o.endAt === 'number' && Number.isFinite(o.endAt)) {
@@ -120,6 +123,7 @@ export function parseVoteMessage(raw: string): VoteMessage | null {
         createdAt,
         selectionMode,
         endAt,
+        status,
       };
     }
     if (type === 'poll_vote') {
@@ -179,7 +183,7 @@ export function isPollExpired(p: Poll, now = Date.now()): boolean {
 }
 
 export function canVoteOnPoll(p: Poll, now = Date.now()): boolean {
-  if (p.status === 'closed') return false;
+  if (p.status !== 'open') return false;
   if (isPollExpired(p, now)) return false;
   return true;
 }
@@ -190,7 +194,25 @@ export function applyVoteMessage(
 ): VoteRoomState {
   if (msg.type === 'poll_create') {
     const existing = prev.polls[msg.pollId];
-    if (existing) return prev;
+    const nextStatus = msg.status ?? 'open';
+    if (existing) {
+      return {
+        polls: {
+          ...prev.polls,
+          [msg.pollId]: {
+            ...existing,
+            title: msg.title,
+            options: msg.options,
+            createdBy: msg.createdBy,
+            createdByName: msg.createdByName,
+            createdAt: msg.createdAt,
+            selectionMode: msg.selectionMode,
+            endAt: msg.endAt,
+            status: nextStatus,
+          },
+        },
+      };
+    }
     return {
       polls: {
         ...prev.polls,
@@ -201,7 +223,7 @@ export function applyVoteMessage(
           createdBy: msg.createdBy,
           createdByName: msg.createdByName,
           createdAt: msg.createdAt,
-          status: 'open',
+          status: nextStatus,
           selectionMode: msg.selectionMode,
           endAt: msg.endAt,
           votes: {},

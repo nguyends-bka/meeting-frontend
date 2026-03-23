@@ -11,7 +11,7 @@ import {
 import type { LocalUserChoices } from '@livekit/components-core';
 import { LocalAudioTrack, RoomEvent, Track } from 'livekit-client';
 import { useAuth } from '@/lib/auth';
-import { apiService } from '@/services/api';
+import { apiService, meetingApi } from '@/services/api';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
 import { startPhysicalMicWebSocket } from '@/lib/physicalMicWebSocket';
@@ -238,6 +238,7 @@ export default function MeetingPage() {
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [currentMeetingId, setCurrentMeetingId] = useState<string | null>(null);
   const [meetingHostIdentity, setMeetingHostIdentity] = useState<string | null>(null);
+  const [isPollManager, setIsPollManager] = useState(false);
   const [preJoinDone, setPreJoinDone] = useState(false);
   const [userChoices, setUserChoices] = useState<LocalUserChoices | null>(null);
   const [joining, setJoining] = useState(false);
@@ -390,6 +391,38 @@ export default function MeetingPage() {
 
     router.push('/');
   }, [router, participantId, currentMeetingId]);
+
+  const normalizedHostIdentity = meetingHostIdentity?.trim().toLowerCase() ?? '';
+  const normalizedUserId = user?.id?.trim().toLowerCase() ?? '';
+  const normalizedUsername = user?.username?.trim().toLowerCase() ?? '';
+  useEffect(() => {
+    const mid = currentMeetingId ?? meetingId;
+    const username = user?.username?.trim().toLowerCase();
+    if (!mid || !username) {
+      setIsPollManager(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const res = await meetingApi.listPollManagers(mid);
+      if (cancelled || res.error || !res.data) {
+        setIsPollManager(false);
+        return;
+      }
+      const found = res.data.some((x) => x.username.trim().toLowerCase() === username);
+      setIsPollManager(found);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentMeetingId, meetingId, user?.username]);
+
+  const canCreatePoll = Boolean(
+    (normalizedHostIdentity &&
+      (normalizedHostIdentity === normalizedUserId ||
+        normalizedHostIdentity === normalizedUsername)) ||
+      isPollManager,
+  );
 
   if (authLoading || (!isAuthenticated && !authLoading)) {
     return (
@@ -556,14 +589,6 @@ export default function MeetingPage() {
   }
 
   const useHardwareAudio = audioSource === 'real';
-  const normalizedHostIdentity = meetingHostIdentity?.trim().toLowerCase() ?? '';
-  const normalizedUserId = user?.id?.trim().toLowerCase() ?? '';
-  const normalizedUsername = user?.username?.trim().toLowerCase() ?? '';
-  const canCreatePoll = Boolean(
-    normalizedHostIdentity &&
-      (normalizedHostIdentity === normalizedUserId ||
-        normalizedHostIdentity === normalizedUsername),
-  );
 
   const audioOptions = useHardwareAudio
     ? userChoices

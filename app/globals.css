@@ -1114,7 +1114,10 @@ button:active:not(:disabled) {
 .meeting-transcript-toggle[data-active='true'],
 .meeting-transcript-toggle[aria-pressed='true'],
 .meeting-vote-toggle[data-active='true'],
-.meeting-vote-toggle[aria-pressed='true'] {
+.meeting-vote-toggle[aria-pressed='true'],
+.meeting-room-shell .lk-control-bar .lk-chat-toggle.lk-button-active,
+.meeting-room-shell .lk-control-bar .lk-chat-toggle[aria-pressed='true'] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95) !important;
   outline: none;
 }
@@ -1359,11 +1362,12 @@ button:active:not(:disabled) {
 .meeting-vote-header {
   flex-shrink: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
   padding: 14px 16px;
-  min-height: 48px;
+  min-height: 64px;
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -1372,15 +1376,17 @@ button:active:not(:disabled) {
   font-weight: 700;
   font-size: 16px;
   color: #0f172a;
+  text-align: center;
+  width: 100%;
 }
 
 .meeting-vote-header-create-btn {
   flex-shrink: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
-  background: #2563eb;
-  border: none;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
   border-radius: 8px;
   padding: 8px 12px;
   cursor: pointer;
@@ -1388,7 +1394,73 @@ button:active:not(:disabled) {
 }
 
 .meeting-vote-header-create-btn:hover {
-  background: #1d4ed8;
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.meeting-vote-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+.meeting-vote-header-home-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.meeting-vote-header-home-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.meeting-vote-header-home-btn.is-active {
+  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.meeting-vote-header-list-btn {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.meeting-vote-header-list-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.meeting-vote-header-list-btn.is-active {
+  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.meeting-vote-header-create-btn.is-active {
+  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
 }
 
 .meeting-vote-create-actions {

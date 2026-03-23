@@ -44,6 +44,8 @@ export interface MeetingListItem {
   id: string;
   title: string;
   hostName: string;
+  hostIdentity: string;
+  canManagePoll: boolean;
   meetingCode: string;
   passcode: string;
   createdAt: string;
@@ -80,6 +82,7 @@ export interface PollCreateRequest {
   createdAt: number;
   selectionMode: string;
   endAt: number | null;
+  status?: 'draft' | 'open';
 }
 
 export interface PollVoteRequest {
@@ -92,6 +95,23 @@ export interface PollVoteRequest {
 export interface PollCloseRequest {
   closedBy: string;
   at: number;
+}
+
+export interface PollPublishRequest {
+  publishedBy: string;
+  at: number;
+}
+
+export interface AddPollManagerRequest {
+  username: string;
+}
+
+export interface PollManagerItem {
+  username: string;
+  fullName: string;
+  addedBy: string;
+  addedByFullName: string;
+  addedAt: number;
 }
 
 export interface RoomChatCreateRequest {
@@ -143,7 +163,7 @@ export interface PollResponse {
   createdAt: number;
   selectionMode: 'single' | 'multiple';
   endAt: number | null;
-  status: 'open' | 'closed';
+  status: 'draft' | 'open' | 'closed';
   closedAt: number | null;
   closedBy: string | null;
   votes: PollVoteEntry[];
