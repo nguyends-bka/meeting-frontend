@@ -236,6 +236,7 @@ export default function MeetingPage() {
   const [roomError, setRoomError] = useState<string | null>(null);
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [currentMeetingId, setCurrentMeetingId] = useState<string | null>(null);
+  const [meetingHostIdentity, setMeetingHostIdentity] = useState<string | null>(null);
   const [preJoinDone, setPreJoinDone] = useState(false);
   const [userChoices, setUserChoices] = useState<LocalUserChoices | null>(null);
   const [joining, setJoining] = useState(false);
@@ -350,6 +351,7 @@ export default function MeetingPage() {
         setUrl(result.data.liveKitUrl);
         setParticipantId(result.data.participantId);
         setCurrentMeetingId(result.data.meetingId);
+        setMeetingHostIdentity(result.data.hostIdentity ?? null);
         setPreJoinDone(true);
         setJoining(false);
       }
@@ -553,6 +555,14 @@ export default function MeetingPage() {
   }
 
   const useHardwareAudio = audioSource === 'real';
+  const normalizedHostIdentity = meetingHostIdentity?.trim().toLowerCase() ?? '';
+  const normalizedUserId = user?.id?.trim().toLowerCase() ?? '';
+  const normalizedUsername = user?.username?.trim().toLowerCase() ?? '';
+  const canCreatePoll = Boolean(
+    normalizedHostIdentity &&
+      (normalizedHostIdentity === normalizedUserId ||
+        normalizedHostIdentity === normalizedUsername),
+  );
 
   const audioOptions = useHardwareAudio
     ? userChoices
@@ -640,7 +650,7 @@ export default function MeetingPage() {
                   <VideoConference />
                   <div className="meeting-side-stack">
                     <TranscriptPanel currentUserName={transcriptDisplayName} />
-                    <VotePanel />
+                    <VotePanel canCreatePoll={canCreatePoll} />
                   </div>
                 </div>
               </VoteRoomProvider>

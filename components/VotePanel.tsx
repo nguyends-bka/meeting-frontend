@@ -43,7 +43,7 @@ function PollCountdown({ endAt }: { endAt: number }) {
   );
 }
 
-export default function VotePanel() {
+export default function VotePanel({ canCreatePoll = true }: { canCreatePoll?: boolean }) {
   const {
     polls,
     createPoll,
@@ -93,6 +93,7 @@ export default function VotePanel() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canCreatePoll) return;
     const opts = optionInputs.map((x) => x.trim()).filter(Boolean);
     createPoll(title, opts, selectionMode, {
       kind: durationKind === 'timed' ? 'minutes' : 'none',
@@ -125,7 +126,7 @@ export default function VotePanel() {
     >
       <div className="meeting-vote-header">
         <span className="meeting-vote-header-title">Biểu quyết</span>
-        {!showCreateForm && (
+        {canCreatePoll && !showCreateForm && (
           <button
             type="button"
             className="meeting-vote-header-create-btn"
@@ -136,7 +137,7 @@ export default function VotePanel() {
         )}
       </div>
 
-      {showCreateForm && (
+      {canCreatePoll && showCreateForm && (
       <form className="meeting-vote-create" onSubmit={handleCreate}>
         <label className="meeting-vote-label">
           Nội dung
@@ -248,7 +249,7 @@ export default function VotePanel() {
       </form>
       )}
 
-      {!showCreateForm && (
+      {(!showCreateForm || !canCreatePoll) && (
         <div className="meeting-vote-list">
           {list.length === 0 ? (
             <div className="meeting-vote-empty">Chưa có phiếu biểu quyết.</div>

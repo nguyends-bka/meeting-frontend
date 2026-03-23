@@ -27,6 +27,7 @@ export interface JoinMeetingResponse {
   meetingCode: string;
   participantId: string;
   title?: string;
+  hostIdentity: string;
 }
 
 export interface LeaveMeetingRequest {
