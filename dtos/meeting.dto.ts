@@ -68,3 +68,27 @@ export interface MyHistoryItem {
   meetingCode: string;
   hostName: string;
 }
+
+/** Khớp backend PollCreateRequestDto */
+export interface PollCreateRequest {
+  pollId?: string | null;
+  title: string;
+  options: string[];
+  createdBy: string;
+  createdByName: string;
+  createdAt: number;
+  selectionMode: string;
+  endAt: number | null;
+}
+
+export interface PollVoteRequest {
+  optionIndices: number[];
+  voterIdentity: string;
+  voterName: string;
+  at: number;
+}
+
+export interface PollCloseRequest {
+  closedBy: string;
+  at: number;
+}

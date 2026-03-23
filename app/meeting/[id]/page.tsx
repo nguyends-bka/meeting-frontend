@@ -624,7 +624,7 @@ export default function MeetingPage() {
             )}
 
             <TranscriptRoomProvider wsUrl={transcriptWsUrl}>
-              <VoteRoomProvider>
+              <VoteRoomProvider meetingId={currentMeetingId ?? meetingId}>
                 <div
                   ref={meetingShellRef}
                   className="meeting-room-shell"

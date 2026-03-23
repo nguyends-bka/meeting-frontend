@@ -9,6 +9,9 @@ import type {
   MeetingListItem,
   MeetingHistoryItem,
   MyHistoryItem,
+  PollCreateRequest,
+  PollVoteRequest,
+  PollCloseRequest,
 } from '@/dtos/meeting.dto';
 
 // Meeting domain API - React Query compatible
@@ -74,5 +77,35 @@ export const meetingApi = {
     return apiClient.request<MyHistoryItem[]>('/api/meeting/my-history', {
       method: 'GET',
     });
+  },
+
+  /** Lưu biểu quyết vào DB (host). pollId gửi lên để trùng với LiveKit. */
+  createPoll: async (meetingId: string, body: PollCreateRequest) => {
+    return apiClient.request<unknown>(`/api/meeting/${encodeURIComponent(meetingId)}/polls`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  votePoll: async (meetingId: string, pollId: string, body: PollVoteRequest) => {
+    const pid = encodeURIComponent(pollId);
+    return apiClient.request<unknown>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/polls/${pid}/vote`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    );
+  },
+
+  closePoll: async (meetingId: string, pollId: string, body: PollCloseRequest) => {
+    const pid = encodeURIComponent(pollId);
+    return apiClient.request<unknown>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/polls/${pid}/close`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    );
   },
 };

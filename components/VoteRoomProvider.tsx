@@ -11,6 +11,7 @@ import {
 import { useConnectionState, useRoomContext } from '@livekit/components-react';
 import { ConnectionState, RoomEvent } from 'livekit-client';
 import { useAuth } from '@/lib/auth';
+import { meetingApi } from '@/services/meeting/meetingApi';
 import {
   applyVoteRaw,
   initialVoteState,
@@ -51,13 +52,22 @@ export function useVoteRoom(): VoteRoomContextValue {
   return ctx;
 }
 
-export function VoteRoomProvider({ children }: { children: React.ReactNode }) {
+export function VoteRoomProvider({
+  children,
+  meetingId,
+}: {
+  children: React.ReactNode;
+  /** GUID meeting — dùng để gọi API lưu biểu quyết vào DB */
+  meetingId: string;
+}) {
   const room = useRoomContext();
   const connectionState = useConnectionState(room);
   const { user } = useAuth();
   const [state, setState] = useState<VoteRoomState>(() => initialVoteState());
 
   const localIdentity = room.localParticipant.identity;
+  /** Trùng với JWT (backend yêu cầu createdBy / voterIdentity khớp user đăng nhập) */
+  const actorId = user?.id?.trim() || localIdentity;
   const localDisplayName =
     user?.fullName?.trim() ||
     room.localParticipant.name?.trim() ||
@@ -129,7 +139,7 @@ export function VoteRoomProvider({ children }: { children: React.ReactNode }) {
         pollId,
         title: trimmed,
         options: opts.slice(0, 8),
-        createdBy: localIdentity,
+        createdBy: actorId,
         createdByName: localDisplayName,
         createdAt,
         selectionMode,
@@ -137,8 +147,27 @@ export function VoteRoomProvider({ children }: { children: React.ReactNode }) {
       };
       setState((prev) => applyVoteRaw(prev, JSON.stringify(msg)));
       publish(msg);
+
+      const mid = meetingId?.trim();
+      if (mid) {
+        void (async () => {
+          const res = await meetingApi.createPoll(mid, {
+            pollId: msg.pollId,
+            title: msg.title,
+            options: msg.options,
+            createdBy: msg.createdBy,
+            createdByName: msg.createdByName,
+            createdAt: msg.createdAt,
+            selectionMode: msg.selectionMode,
+            endAt: msg.endAt,
+          });
+          if (res.error) {
+            console.warn('[Vote] Không lưu được biểu quyết lên DB:', res.error);
+          }
+        })();
+      }
     },
-    [localDisplayName, localIdentity, publish],
+    [actorId, localDisplayName, meetingId, publish],
   );
 
   const castVote = useCallback(
@@ -147,14 +176,29 @@ export function VoteRoomProvider({ children }: { children: React.ReactNode }) {
         type: 'poll_vote',
         pollId,
         optionIndices,
-        voterIdentity: localIdentity,
+        voterIdentity: actorId,
         voterName: localDisplayName,
         at: Date.now(),
       };
       setState((prev) => applyVoteRaw(prev, JSON.stringify(msg)));
       publish(msg);
+
+      const mid = meetingId?.trim();
+      if (mid) {
+        void (async () => {
+          const res = await meetingApi.votePoll(mid, pollId, {
+            optionIndices: msg.optionIndices,
+            voterIdentity: msg.voterIdentity,
+            voterName: msg.voterName,
+            at: msg.at,
+          });
+          if (res.error) {
+            console.warn('[Vote] Không lưu được phiếu lên DB:', res.error);
+          }
+        })();
+      }
     },
-    [localDisplayName, localIdentity, publish],
+    [actorId, localDisplayName, meetingId, publish],
   );
 
   const closePoll = useCallback(
@@ -162,13 +206,26 @@ export function VoteRoomProvider({ children }: { children: React.ReactNode }) {
       const msg: VoteMessage = {
         type: 'poll_close',
         pollId,
-        closedBy: localIdentity,
+        closedBy: actorId,
         at: Date.now(),
       };
       setState((prev) => applyVoteRaw(prev, JSON.stringify(msg)));
       publish(msg);
+
+      const mid = meetingId?.trim();
+      if (mid) {
+        void (async () => {
+          const res = await meetingApi.closePoll(mid, pollId, {
+            closedBy: msg.closedBy,
+            at: msg.at,
+          });
+          if (res.error) {
+            console.warn('[Vote] Không đóng biểu quyết trên DB:', res.error);
+          }
+        })();
+      }
     },
-    [localIdentity, publish],
+    [actorId, meetingId, publish],
   );
 
   const value = useMemo<VoteRoomContextValue>(
@@ -177,7 +234,7 @@ export function VoteRoomProvider({ children }: { children: React.ReactNode }) {
       createPoll,
       castVote,
       closePoll,
-      localIdentity,
+      localIdentity: actorId,
       localDisplayName,
     }),
     [
@@ -185,7 +242,7 @@ export function VoteRoomProvider({ children }: { children: React.ReactNode }) {
       createPoll,
       castVote,
       closePoll,
-      localIdentity,
+      actorId,
       localDisplayName,
     ],
   );
