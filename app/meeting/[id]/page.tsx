@@ -396,7 +396,8 @@ export default function MeetingPage() {
   const normalizedUserId = user?.id?.trim().toLowerCase() ?? '';
   const normalizedUsername = user?.username?.trim().toLowerCase() ?? '';
   useEffect(() => {
-    const mid = currentMeetingId ?? meetingId;
+    if (!preJoinDone) return;
+    const mid = currentMeetingId;
     const username = user?.username?.trim().toLowerCase();
     if (!mid || !username) {
       setIsPollManager(false);
@@ -415,7 +416,7 @@ export default function MeetingPage() {
     return () => {
       cancelled = true;
     };
-  }, [currentMeetingId, meetingId, user?.username]);
+  }, [preJoinDone, currentMeetingId, user?.username]);
 
   const canCreatePoll = Boolean(
     (normalizedHostIdentity &&
