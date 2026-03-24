@@ -440,19 +440,33 @@ export default function HomePage() {
           <Text type="secondary">Nhập thông tin phòng họp được chia sẻ với bạn</Text>
         </div>
 
-        <Form form={joinForm} layout="vertical" onFinish={() => void onJoinMeeting()} size="large">
+        <Form
+          form={joinForm}
+          layout="vertical"
+          onFinish={() => void onJoinMeeting()}
+          size="large"
+          autoComplete="off"
+        >
           <Form.Item
             name="meetingIdOrCode"
             rules={[{ required: true, message: 'Vui lòng nhập Meeting ID hoặc Code' }]}
           >
-            <Input placeholder="Nhập Mã phòng (Code) hoặc Link ID" prefix={<VideoCameraOutlined style={{ color: '#bfbfbf' }}/>} />
+            <Input
+              placeholder="Nhập Mã phòng (Code) hoặc Link ID"
+              prefix={<VideoCameraOutlined style={{ color: '#bfbfbf' }}/>}
+              autoComplete="off"
+            />
           </Form.Item>
 
           <Form.Item
             name="passcode"
             rules={[{ required: true, message: 'Vui lòng nhập passcode' }]}
           >
-            <Input.Password placeholder="Nhập Passcode (6 chữ số)" maxLength={6} />
+            <Input
+              placeholder="Nhập Passcode (6 chữ số)"
+              maxLength={6}
+              autoComplete="new-password"
+            />
           </Form.Item>
 
           <Button type="primary" htmlType="submit" block size="large" style={{ marginTop: 8 }}>

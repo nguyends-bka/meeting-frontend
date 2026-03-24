@@ -165,12 +165,12 @@ export default function OrganizationPage() {
       render: (v) => <Text type="secondary">{v}</Text>
     },
     {
-      title: <Text type="secondary" style={{ fontSize: 12 }}>CẤP</Text>,
+      title: <Text type="secondary" style={{ fontSize: 12 }}>LOẠI ĐƠN VỊ</Text>,
       dataIndex: 'level',
       key: 'level',
       width: 100,
       align: 'center',
-      render: (v: number) => <Tag bordered={false} style={{ borderRadius: 4, background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0' }}>{`Cấp ${v}`}</Tag>,
+      render: (v: number) => <Tag bordered={false} style={{ borderRadius: 4, background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0' }}>{`Đơn vị cấp ${v}`}</Tag>,
     },
     {
       title: <Text type="secondary" style={{ fontSize: 12 }}>THÀNH VIÊN</Text>,
@@ -567,13 +567,13 @@ function OrganizationForm({
       selectors.push(
         <div key={i} style={{ marginBottom: i < actualLevel - 1 ? 12 : 0 }}>
           <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-            Chọn Đơn vị Cấp {i}
+            Chọn Đơn vị Quản lý cấp {i}
           </Text>
           <Select
             value={parentPath[i] || undefined}
             onChange={(val) => handlePathSelect(i, val)}
             disabled={!isSelectable}
-            placeholder={`-- Chọn Cấp ${i} --`}
+            placeholder={`-- Chọn Đơn vị cấp ${i} --`}
             style={{ width: '100%', borderRadius: 6 }}
             options={availableOptions.map(u => ({ label: u.name, value: u.id }))}
             allowClear
@@ -652,7 +652,7 @@ function OrganizationForm({
           </Col>
           
           <Col span={12}>
-            <Form.Item label={<Text strong style={{ color: '#475569' }}>Cấp Tổ chức</Text>} name="level">
+            <Form.Item label={<Text strong style={{ color: '#475569' }}>Loại đơn vị</Text>} name="level">
               <Select
                 style={{ borderRadius: 6 }}
                 onChange={(val) => {
@@ -666,11 +666,11 @@ function OrganizationForm({
                   });
                 }}
                 options={[
-                  { label: 'Cấp 1', value: 1 },
-                  { label: 'Cấp 2', value: 2 },
-                  { label: 'Cấp 3', value: 3 },
-                  { label: 'Cấp 4', value: 4 },
-                  { label: 'Cấp 5', value: 5 },
+                  { label: 'Đơn vị cấp 1', value: 1 },
+                  { label: 'Đơn vị cấp 2', value: 2 },
+                  { label: 'Đơn vị cấp 3', value: 3 },
+                  { label: 'Đơn vị cấp 4', value: 4 },
+                  { label: 'Đơn vị cấp 5', value: 5 },
                 ]}
               />
             </Form.Item>
@@ -770,26 +770,28 @@ function OrganizationDetail({
             <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.5 }}>THÔNG TIN CHUNG</Text>
             
             <div style={{ marginTop: 24 }}>
-               <Text type="secondary" style={{ fontSize: 13 }}>Cấp tổ chức</Text>
-               <Title level={4} style={{ margin: '4px 0 20px 0', color: '#1e293b' }}>Cấp {unit.level}</Title>
+               <Text type="secondary" style={{ fontSize: 13 }}>Loại đơn vị</Text>
+               <Title level={4} style={{ margin: '4px 0 20px 0', color: '#1e293b' }}>{`Đơn vị cấp ${unit.level}`}</Title>
             </div>
 
             <div style={{ marginBottom: 20 }}>
-               <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>Đơn vị trực thuộc (Cha)</Text>
+               <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>Đơn vị quản lý</Text>
                {parent ? (
                  <Space style={{ color: '#1890ff', cursor: 'pointer', fontWeight: 500 }}>
                    <ApartmentOutlined />
                    {parent.name}
                  </Space>
                ) : (
-                 <Text strong style={{ color: '#475569' }}>-- Đơn vị gốc --</Text>
+                 <Text strong style={{ color: '#475569' }}>Đơn vị gốc</Text>
                )}
             </div>
 
-            <div>
-               <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>Mô tả</Text>
-               <Text style={{ color: '#475569' }}>{unit.description || 'Chưa có mô tả chức năng'}</Text>
-            </div>
+            {unit.description?.trim() ? (
+              <div>
+                <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>Mô tả</Text>
+                <Text style={{ color: '#475569' }}>{unit.description}</Text>
+              </div>
+            ) : null}
           </Card>
         </Col>
 
@@ -798,7 +800,7 @@ function OrganizationDetail({
           {/* Card Đơn vị con */}
           <Card 
             bordered={false} 
-            title={<Space><ApartmentOutlined style={{ color: '#60a5fa' }}/><Text strong style={{ color: '#334155' }}>Đơn vị trực thuộc ({children.length})</Text></Space>}
+            title={<Space><ApartmentOutlined style={{ color: '#60a5fa' }}/><Text strong style={{ color: '#334155' }}>Danh sách đơn vị trực thuộc ({children.length})</Text></Space>}
             style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', marginBottom: 24 }}
             styles={{ body: { padding: '16px 24px' }, header: { borderBottom: '1px solid #f0f0f0' } }}
           >
@@ -821,7 +823,7 @@ function OrganizationDetail({
                          </div>
                       </Space>
                       <Tag bordered={false} style={{ borderRadius: 4, background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0' }}>
-                        Cấp {c.level}
+                        {`Đơn vị cấp ${c.level}`}
                       </Tag>
                     </div>
                     {index < children.length - 1 && <Divider style={{ margin: 0 }} />}
