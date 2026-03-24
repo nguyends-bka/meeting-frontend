@@ -168,3 +168,37 @@ export interface PollResponse {
   closedBy: string | null;
   votes: PollVoteEntry[];
 }
+
+export interface MeetingMinutesParticipant {
+  displayName: string;
+  userId: string;
+}
+
+export interface MeetingMinutesTranscriptLine {
+  speakerName: string;
+  text: string;
+  at: number;
+}
+
+export interface MeetingMinutesPoll {
+  pollId: string;
+  title: string;
+  status: string;
+  options: string[];
+  optionVoteCounts: Record<string, number>;
+}
+
+export interface MeetingMinutes {
+  meetingId: string;
+  title: string;
+  hostName: string;
+  hostIdentity: string;
+  locationLabel: string;
+  locationDetail: string;
+  startedAt: number;
+  endedAtEstimated: number | null;
+  participantCount: number;
+  participants: MeetingMinutesParticipant[];
+  transcript: MeetingMinutesTranscriptLine[];
+  polls: MeetingMinutesPoll[];
+}

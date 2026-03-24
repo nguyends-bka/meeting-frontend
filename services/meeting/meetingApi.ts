@@ -16,6 +16,7 @@ import type {
   AddPollManagerRequest,
   PollManagerItem,
   PollResponse,
+  MeetingMinutes,
   RoomLogResponse,
   RoomChatCreateRequest,
   RoomTranscriptCreateRequest,
@@ -211,6 +212,12 @@ export const meetingApi = {
     return apiClient.request<unknown>(`/api/meeting/${encodeURIComponent(meetingId)}/room-log/transcript`, {
       method: 'POST',
       body: JSON.stringify(body),
+    });
+  },
+
+  getMinutes: async (meetingId: string) => {
+    return apiClient.request<MeetingMinutes>(`/api/meeting/${encodeURIComponent(meetingId)}/minutes`, {
+      method: 'GET',
     });
   },
 };
