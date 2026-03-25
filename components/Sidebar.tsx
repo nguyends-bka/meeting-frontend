@@ -28,9 +28,10 @@ type MenuItem = Required<MenuProps>['items'][number];
 interface SidebarProps {
   collapsed?: boolean;
   onCollapse?: (collapsed: boolean) => void;
+  isMobile?: boolean;
 }
 
-export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: SidebarProps) {
+export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMobile }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAdmin, logout } = useAuth();
@@ -291,7 +292,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse }: Si
       collapsed={collapsed}
       onCollapse={setCollapsed}
       width={250}
-      collapsedWidth={80}
+      collapsedWidth={isMobile ? 0 : 80}
       style={{
         height: '100vh',
         position: 'fixed',

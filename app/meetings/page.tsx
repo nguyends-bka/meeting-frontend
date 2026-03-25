@@ -11,26 +11,33 @@ import {
   App,
   Button,
   Card,
-  Descriptions,
   Form,
   Input,
   InputNumber,
   List,
   Modal,
-  Divider,
   Radio,
+  Progress,
+  Segmented,
   Space,
   Table,
   Tag,
-  Tooltip,
   Typography,
   Popconfirm,
+  Dropdown,
 } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   CopyOutlined,
   HistoryOutlined,
-  RightCircleOutlined,
   ReloadOutlined,
+  CalendarOutlined,
+  UserOutlined,
+  MoreOutlined,
+  CaretRightOutlined,
+  FormOutlined,
+  SettingOutlined,
+  VideoCameraOutlined
 } from '@ant-design/icons';
 
 type Meeting = {
@@ -51,7 +58,6 @@ export default function MeetingsPage() {
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loadingMeetings, setLoadingMeetings] = useState(false);
-  const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
   const [tablePage, setTablePage] = useState(1);
   const [tablePageSize, setTablePageSize] = useState(10);
   const [pollModalMeeting, setPollModalMeeting] = useState<Meeting | null>(null);
@@ -67,8 +73,6 @@ export default function MeetingsPage() {
   const [managerLoading, setManagerLoading] = useState(false);
   const [addingManager, setAddingManager] = useState(false);
 
-  const normalizedUserId = user?.id?.trim().toLowerCase() ?? '';
-  const normalizedUsername = user?.username?.trim().toLowerCase() ?? '';
   const canManagePollForMeeting = (m: Meeting): boolean => {
     return Boolean(m.canManagePoll);
   };
@@ -259,48 +263,210 @@ export default function MeetingsPage() {
     if (pollsRes.data) setViewPolls(pollsRes.data);
   };
 
+  const getDropdownMenuItems = (record: Meeting): MenuProps['items'] => {
+    const items: MenuProps['items'] = [
+      {
+        key: 'history',
+        icon: <HistoryOutlined />,
+        label: 'Lịch sử cuộc họp',
+        onClick: () => router.push(`/history/${record.id}`),
+      },
+    ];
+
+    items.push({
+      key: 'manage_poll',
+      icon: <SettingOutlined />,
+      label: 'Quản lý biểu quyết',
+      onClick: () => void openPollListModal(record),
+    });
+
+    return items;
+  };
+
   const columns = useMemo(
     () => [
       {
         title: 'STT',
         key: 'stt',
-        width: 80,
+        width: 60,
         align: 'center' as const,
-        render: (_: unknown, __: Meeting, index: number) =>
-          (tablePage - 1) * tablePageSize + index + 1,
+        render: (_: unknown, __: Meeting, index: number) => (
+          <Typography.Text type="secondary">
+            {(tablePage - 1) * tablePageSize + index + 1}
+          </Typography.Text>
+        ),
       },
       {
-        title: 'Tên cuộc họp',
-        dataIndex: 'title',
-        key: 'title',
-        render: (t: string) => <Typography.Text strong>{t}</Typography.Text>,
-      },
-      {
-        title: 'Ngày tạo',
-        dataIndex: 'createdAt',
-        key: 'createdAt',
-        width: 180,
-        render: (v: string) => dayjs(v).format('DD/MM/YYYY HH:mm'),
-      },
-      {
-        title: 'Thao tác',
-        key: 'actions',
-        width: 150,
+        title: 'THÔNG TIN CUỘC HỌP',
+        key: 'info',
+        width: 480,
         render: (_: unknown, record: Meeting) => (
-          <Button
-            type="primary"
-            icon={<RightCircleOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(`/meeting/${record.id}`);
+          <Space align="start" size="middle">
+            <div style={{
+              fontSize: '20px',
+              color: '#1677ff',
+              padding: '8px 12px',
+              border: '1px solid #e6f4ff',
+              borderRadius: '8px'
+            }}>
+              <CalendarOutlined />
+            </div>
+            <Space direction="vertical" size={0}>
+              <Typography.Text strong style={{ fontSize: '15px' }}>{record.title}</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: '13px' }}>
+                {dayjs(record.createdAt).format('DD/MM/YYYY HH:mm')}
+              </Typography.Text>
+              <Space style={{ marginTop: 4 }}>
+                <UserOutlined style={{ color: '#8c8c8c' }} />
+                <Typography.Text type="secondary" style={{ fontSize: '13px' }}>
+                  Host: {record.hostName}
+                </Typography.Text>
+              </Space>
+            </Space>
+          </Space>
+        ),
+      },
+      {
+        title: 'TRUY CẬP',
+        key: 'access',
+        width: 450,
+        align: 'left' as const,
+        render: (_: unknown, record: Meeting) => (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '44px 1fr',
+              rowGap: 8,
+              columnGap: 8,
+              width: 'fit-content',
+              maxWidth: '100%',
+              minWidth: 0,
+              alignItems: 'center',
             }}
           >
-            Tham gia
-          </Button>
+            <Typography.Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
+              Mã:
+            </Typography.Text>
+            <div
+              style={{
+                display: 'inline-grid',
+                gridTemplateColumns: '110px 12px 44px 8px 110px',
+                alignItems: 'center',
+                minWidth: 0,
+              }}
+            >
+              <div
+                style={{
+                  gridColumn: 1,
+                  background: '#f5f5f5',
+                  padding: '4px 12px',
+                  borderRadius: 4,
+                  width: 110,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  minWidth: 0,
+                }}
+              >
+                <Typography.Text strong style={{ flex: 1, minWidth: 0 }} ellipsis>
+                  {record.meetingCode}
+                </Typography.Text>
+                <CopyOutlined
+                  style={{ color: '#8c8c8c', cursor: 'pointer', flex: '0 0 auto' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void copyText(record.meetingCode);
+                  }}
+                />
+              </div>
+
+              <Typography.Text type="secondary" style={{ gridColumn: 3, whiteSpace: 'nowrap', width: 44 }}>
+                Pass:
+              </Typography.Text>
+
+              <div
+                style={{
+                  gridColumn: 5,
+                  background: '#f5f5f5',
+                  padding: '4px 12px',
+                  borderRadius: 4,
+                  width: 110,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  minWidth: 0,
+                }}
+              >
+                <Typography.Text strong style={{ flex: 1, minWidth: 0 }}>
+                  {record.passcode}
+                </Typography.Text>
+                <CopyOutlined
+                  style={{ color: '#8c8c8c', cursor: 'pointer', flex: '0 0 auto' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void copyText(record.passcode);
+                  }}
+                />
+              </div>
+            </div>
+
+            <Typography.Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
+              Link:
+            </Typography.Text>
+            <div
+              style={{
+                background: '#f5f5f5',
+                padding: '4px 12px',
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                minWidth: 0,
+                width: 110 + 12 + 44 + 8 + 110,
+              }}
+            >
+              <Typography.Text
+                style={{ color: '#1677ff', flex: 1, minWidth: 0 }}
+                ellipsis={{ tooltip: buildMeetingLink(record.id) }}
+              >
+                {buildMeetingLink(record.id)}
+              </Typography.Text>
+              <CopyOutlined
+                style={{ color: '#8c8c8c', cursor: 'pointer', flex: '0 0 auto' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void copyText(buildMeetingLink(record.id));
+                }}
+              />
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'THAO TÁC',
+        key: 'actions',
+        width: 160,
+        render: (_: unknown, record: Meeting) => (
+          <Space>
+            <Button
+              type="primary"
+              icon={<CaretRightOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/meeting/${record.id}`);
+              }}
+              style={{ fontWeight: 500 }}
+            >
+              Tham gia
+            </Button>
+            <Dropdown menu={{ items: getDropdownMenuItems(record) }} trigger={['click']}>
+              <Button icon={<MoreOutlined />} onClick={(e) => e.stopPropagation()} />
+            </Dropdown>
+          </Space>
         ),
       },
     ],
-    [normalizedUserId, normalizedUsername, pollForm, router, tablePage, tablePageSize, user?.role]
+    [router, tablePage, tablePageSize, pollForm]
   );
 
   if (loading) return <div style={{ padding: 24 }}>Đang tải...</div>;
@@ -308,25 +474,43 @@ export default function MeetingsPage() {
 
   return (
     <MainLayout>
-      <div style={{ padding: 24 }}>
-        <Card
-          title={
-            <Space>
-              <Typography.Text strong>
-                {isAdmin ? 'Tất cả cuộc họp' : 'Cuộc họp của tôi'}
+      <div style={{ padding: 24, width: '100%', margin: 0 }}>
+        
+        {/* Header Section */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <Space align="start" size="middle">
+            <div style={{
+              background: '#1677ff',
+              color: 'white',
+              padding: '10px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px'
+            }}>
+              <VideoCameraOutlined />
+            </div>
+            <div>
+              <Typography.Title level={4} style={{ margin: 0 }}>
+                {isAdmin ? 'Quản lý tất cả cuộc họp' : 'Quản lý cuộc họp'}
+              </Typography.Title>
+              <Typography.Text type="secondary">
+                Tổng cộng <Typography.Text strong style={{ color: '#1677ff' }}>{meetings.length}</Typography.Text> cuộc họp đã tạo
               </Typography.Text>
-              <Tag color="geekblue">{meetings.length}</Tag>
-            </Space>
-          }
-          extra={
-            <Button icon={<ReloadOutlined />} onClick={() => void loadMeetings()} loading={loadingMeetings}>
-              Tải lại
-            </Button>
-          }
-        >
+            </div>
+          </Space>
+          <Button icon={<ReloadOutlined />} onClick={() => void loadMeetings()} loading={loadingMeetings}>
+            Làm mới dữ liệu
+          </Button>
+        </div>
+
+        {/* Table Section */}
+        <Card bodyStyle={{ padding: 0 }} bordered={false} style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)' }}>
           <Table<Meeting>
             rowKey="id"
             loading={loadingMeetings}
+            tableLayout="fixed"
             columns={columns as any}
             dataSource={meetings}
             pagination={{
@@ -339,146 +523,14 @@ export default function MeetingsPage() {
                 setTablePage(p);
                 setTablePageSize(ps);
               },
-            }}
-            onRow={(record) => ({
-              onClick: () => {
-                const isExpanded = expandedRowKeys.includes(record.id);
-                if (isExpanded) {
-                  setExpandedRowKeys(expandedRowKeys.filter((key) => key !== record.id));
-                } else {
-                  setExpandedRowKeys([...expandedRowKeys, record.id]);
-                }
-              },
-              style: { cursor: 'pointer' },
-            })}
-            expandable={{
-              expandedRowKeys,
-              onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]),
-              showExpandColumn: false, // Ẩn icon expand mặc định
-              expandedRowRender: (record) => {
-                const link = buildMeetingLink(record.id);
-                return (
-                  <Card size="small">
-                    <Space style={{ marginBottom: 12 }} wrap>
-                      <Button
-                        icon={<HistoryOutlined />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/history/${record.id}`);
-                        }}
-                      >
-                        Xem lịch sử
-                      </Button>
-                      <Button
-                        type="primary"
-                        icon={<RightCircleOutlined />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/meeting/${record.id}`);
-                        }}
-                      >
-                        Tham gia
-                      </Button>
-                      {canManagePollForMeeting(record) && (
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPollModalMeeting(record);
-                            pollForm.setFieldsValue({
-                              title: '',
-                              selectionMode: 'single',
-                              durationKind: 'none',
-                              durationMinutes: 5,
-                              options: ['', ''],
-                            });
-                          }}
-                        >
-                          Tạo biểu quyết trước
-                        </Button>
-                      )}
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void openPollListModal(record);
-                        }}
-                      >
-                        Quản lý biểu quyết
-                      </Button>
-                    </Space>
-
-                    <Descriptions size="small" column={1} bordered>
-                      <Descriptions.Item label="Mã cuộc họp / Passcode">
-                        <Space wrap>
-                          <Space size={6}>
-                            <Typography.Text>Mã:</Typography.Text>
-                            <Typography.Text code>{record.meetingCode}</Typography.Text>
-                            <Tooltip title="Copy mã">
-                              <Button
-                                size="small"
-                                icon={<CopyOutlined />}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void copyText(record.meetingCode, 'Đã copy mã cuộc họp');
-                                }}
-                              />
-                            </Tooltip>
-                          </Space>
-
-                          <Space size={6}>
-                            <Typography.Text>Passcode:</Typography.Text>
-                            <Typography.Text code>{record.passcode}</Typography.Text>
-                            <Tooltip title="Copy passcode">
-                              <Button
-                                size="small"
-                                icon={<CopyOutlined />}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void copyText(record.passcode, 'Đã copy passcode');
-                                }}
-                              />
-                            </Tooltip>
-                          </Space>
-                        </Space>
-                      </Descriptions.Item>
-
-                      <Descriptions.Item label="Host">
-                        <Typography.Text>{record.hostName}</Typography.Text>
-                      </Descriptions.Item>
-
-                      <Descriptions.Item label="Link chia sẻ">
-                        <Space style={{ width: '100%' }} wrap>
-                          <input
-                            value={link}
-                            readOnly
-                            style={{
-                              flex: 1,
-                              padding: '8px',
-                              border: '1px solid #d9d9d9',
-                              borderRadius: '4px',
-                              maxWidth: 520,
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <Button
-                            icon={<CopyOutlined />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void copyText(link, 'Đã copy link');
-                            }}
-                          >
-                            Copy link
-                          </Button>
-                        </Space>
-                      </Descriptions.Item>
-                    </Descriptions>
-                  </Card>
-                );
-              },
+              showTotal: (total, range) => `Hiển thị ${range[0]}-${range[1]} trong số ${total} cuộc họp`,
+              style: { padding: '16px 24px', margin: 0, borderTop: '1px solid #f0f0f0' }
             }}
           />
         </Card>
       </div>
 
+      {/* --- CÁC MODALS GIỮ NGUYÊN HOÀN TOÀN NHƯ CŨ --- */}
       <Modal
         title={
           pollModalMeeting
@@ -606,7 +658,45 @@ export default function MeetingsPage() {
       </Modal>
 
       <Modal
-        title={viewPollMeeting ? `Quản lý biểu quyết - ${viewPollMeeting.title}` : 'Quản lý biểu quyết'}
+        title={
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <Typography.Title level={5} style={{ margin: 0 }}>
+                Quản lý biểu quyết
+              </Typography.Title>
+              <Typography.Text type="secondary" style={{ display: 'block' }}>
+                Xem và quản lý các cuộc khảo sát ý kiến
+              </Typography.Text>
+            </div>
+            <Space>
+              {viewPollMeeting && canManagePollForMeeting(viewPollMeeting) && (
+                <Button
+                  type="primary"
+                  icon={<FormOutlined />}
+                  onClick={() => {
+                    setPollModalMeeting(viewPollMeeting);
+                    setEditingDraftPollId(null);
+                    pollForm.setFieldsValue({
+                      title: '',
+                      selectionMode: 'single',
+                      durationKind: 'none',
+                      durationMinutes: 5,
+                      options: ['', ''],
+                    });
+                  }}
+                >
+                  Tạo biểu quyết
+                </Button>
+              )}
+              <Button
+                type="text"
+                icon={<SettingOutlined />}
+                onClick={() => setManageTab('managers')}
+                disabled={!viewPollMeeting || !canManagePollForMeeting(viewPollMeeting)}
+              />
+            </Space>
+          </div>
+        }
         open={Boolean(viewPollMeeting)}
         onCancel={() => {
           setViewPollMeeting(null);
@@ -615,118 +705,202 @@ export default function MeetingsPage() {
           setManagerUsername('');
           setManagers([]);
         }}
-        footer={null}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button onClick={() => setViewPollMeeting(null)}>Đóng</Button>
+          </div>
+        }
         destroyOnHidden
         width={720}
+        styles={{ body: { background: '#f5f7fb' } }}
       >
-        <div style={{ marginBottom: 12 }}>
-          <Space wrap>
-            <Button
-              type={manageTab === 'waiting' ? 'primary' : 'default'}
-              onClick={() => setManageTab('waiting')}
-            >
-              Biểu quyết đang chờ
-            </Button>
-            <Button
-              type={manageTab === 'published' ? 'primary' : 'default'}
-              onClick={() => setManageTab('published')}
-            >
-              Biểu quyết đã công bố
-            </Button>
-            {viewPollMeeting && canManagePollForMeeting(viewPollMeeting) && (
-              <Button
-                type={manageTab === 'managers' ? 'primary' : 'default'}
-                onClick={() => setManageTab('managers')}
-              >
-                Người quản lý
-              </Button>
-            )}
-          </Space>
+        <div style={{ marginBottom: 14 }}>
+          <Segmented
+            block
+            value={manageTab}
+            onChange={(v) => setManageTab(v as any)}
+            options={[
+              { label: 'Đang chờ', value: 'waiting' },
+              { label: 'Đã công bố', value: 'published' },
+              {
+                label: 'Người quản lý',
+                value: 'managers',
+                disabled: !viewPollMeeting || !canManagePollForMeeting(viewPollMeeting),
+              },
+            ]}
+          />
         </div>
 
         {manageTab === 'waiting' && (
-          <List
-            loading={viewPollsLoading}
-            dataSource={viewPolls.filter((p) => p.status === 'draft')}
-            locale={{ emptyText: 'Chưa có biểu quyết chờ công bố' }}
-            renderItem={(p) => {
-              const counts = pollOptionCounts(p);
-              return <List.Item>
-                <List.Item.Meta
-                  title={p.title}
-                  description={
-                    <div>
-                      <div>{`${p.createdByName} · ${p.selectionMode === 'multiple' ? 'Nhiều lựa chọn' : 'Một lựa chọn'} · Chờ công bố`}</div>
-                      <div style={{ marginTop: 6 }}>
-                        {p.options.map((opt, idx) => {
-                          return (
-                            <Tag key={idx} style={{ marginBottom: 4 }}>
-                              {opt} ({counts[idx]})
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '65vh', overflow: 'auto', paddingRight: 6 }}>
+            {viewPollsLoading ? (
+              <Card loading bordered={false} style={{ borderRadius: 14 }} />
+            ) : viewPolls.filter((p) => p.status === 'draft').length === 0 ? (
+              <Card bordered={false} style={{ borderRadius: 14 }}>
+                <Typography.Text type="secondary">Chưa có biểu quyết chờ công bố</Typography.Text>
+              </Card>
+            ) : (
+              viewPolls
+                .filter((p) => p.status === 'draft')
+                .map((p) => {
+                  const counts = pollOptionCounts(p);
+                  const totalSelections = counts.reduce((a, b) => a + b, 0);
+                  const canManage = Boolean(viewPollMeeting && canManagePollForMeeting(viewPollMeeting));
+
+                  return (
+                    <Card
+                      key={p.pollId}
+                      bordered={false}
+                      style={{ borderRadius: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+                      styles={{ body: { padding: 16 } }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <Space size={8} wrap>
+                            <Tag color="default" style={{ borderRadius: 999 }}>
+                              ĐANG CHỜ
                             </Tag>
+                            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                              · {p.selectionMode === 'multiple' ? 'Nhiều lựa chọn' : 'Một lựa chọn'}
+                            </Typography.Text>
+                          </Space>
+                          <Typography.Text strong style={{ display: 'block', marginTop: 6, fontSize: 14 }}>
+                            {p.title}
+                          </Typography.Text>
+                        </div>
+                        {canManage && (
+                          <Space>
+                            <Button size="small" onClick={() => editDraftPoll(p)}>
+                              Sửa
+                            </Button>
+                            <Popconfirm
+                              title="Xóa biểu quyết chờ này?"
+                              okText="Xóa"
+                              cancelText="Hủy"
+                              onConfirm={() => void deleteDraftPoll(p.pollId)}
+                            >
+                              <Button danger size="small">
+                                Xóa
+                              </Button>
+                            </Popconfirm>
+                          </Space>
+                        )}
+                      </div>
+
+                      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {p.options.map((opt, idx) => {
+                          const pct = totalSelections > 0 ? Math.round((counts[idx] / totalSelections) * 100) : 0;
+                          return (
+                            <div key={idx}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                                <Typography.Text style={{ fontSize: 13 }}>{opt}</Typography.Text>
+                                <Typography.Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                                  {pct}% ({counts[idx]})
+                                </Typography.Text>
+                              </div>
+                              <Progress percent={pct} showInfo={false} strokeColor="#3b82f6" trailColor="#eaf0ff" />
+                            </div>
                           );
                         })}
                       </div>
-                    </div>
-                  }
-                />
-                {viewPollMeeting && canManagePollForMeeting(viewPollMeeting) && (
-                  <Space>
-                    <Button size="small" onClick={() => editDraftPoll(p)}>
-                      Sửa
-                    </Button>
-                    <Popconfirm
-                      title="Xóa biểu quyết chờ này?"
-                      okText="Xóa"
-                      cancelText="Hủy"
-                      onConfirm={() => void deleteDraftPoll(p.pollId)}
-                    >
-                      <Button danger size="small">Xóa</Button>
-                    </Popconfirm>
-                  </Space>
-                )}
-              </List.Item>;
-            }}
-          />
+
+                      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                          Tạo bởi {p.createdByName}
+                        </Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                          {p.endAt ? `Hết hạn: ${dayjs(p.endAt).format('DD/MM/YYYY HH:mm')}` : 'Hết hạn: Không giới hạn'}
+                        </Typography.Text>
+                      </div>
+                    </Card>
+                  );
+                })
+            )}
+          </div>
         )}
 
         {manageTab === 'published' && (
-          <List
-            loading={viewPollsLoading}
-            dataSource={viewPolls.filter((p) => p.status !== 'draft')}
-            locale={{ emptyText: 'Chưa có biểu quyết đã công bố' }}
-            renderItem={(p) => {
-              const counts = pollOptionCounts(p);
-              return <List.Item>
-                <List.Item.Meta
-                  title={p.title}
-                  description={
-                    <div>
-                      <div>{`${p.createdByName} · ${p.selectionMode === 'multiple' ? 'Nhiều lựa chọn' : 'Một lựa chọn'} · ${p.status === 'open' ? 'Đang mở' : 'Đã đóng'}`}</div>
-                      <div style={{ marginTop: 6 }}>
-                        {p.options.map((opt, idx) => {
-                          return (
-                            <Tag key={idx} style={{ marginBottom: 4 }}>
-                              {opt} ({counts[idx]})
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '65vh', overflow: 'auto', paddingRight: 6 }}>
+            {viewPollsLoading ? (
+              <Card loading bordered={false} style={{ borderRadius: 14 }} />
+            ) : viewPolls.filter((p) => p.status !== 'draft').length === 0 ? (
+              <Card bordered={false} style={{ borderRadius: 14 }}>
+                <Typography.Text type="secondary">Chưa có biểu quyết đã công bố</Typography.Text>
+              </Card>
+            ) : (
+              viewPolls
+                .filter((p) => p.status !== 'draft')
+                .map((p) => {
+                  const counts = pollOptionCounts(p);
+                  const totalSelections = counts.reduce((a, b) => a + b, 0);
+                  const canManage = Boolean(viewPollMeeting && canManagePollForMeeting(viewPollMeeting));
+                  const isOpen = p.status === 'open';
+
+                  return (
+                    <Card
+                      key={p.pollId}
+                      bordered={false}
+                      style={{ borderRadius: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+                      styles={{ body: { padding: 16 } }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <Space size={8} wrap>
+                            <Tag color={isOpen ? 'success' : 'default'} style={{ borderRadius: 999 }}>
+                              {isOpen ? 'ĐANG MỞ' : 'ĐÃ ĐÓNG'}
                             </Tag>
+                            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                              · {p.selectionMode === 'multiple' ? 'Nhiều lựa chọn' : 'Một lựa chọn'}
+                            </Typography.Text>
+                          </Space>
+                          <Typography.Text strong style={{ display: 'block', marginTop: 6, fontSize: 14 }}>
+                            {p.title}
+                          </Typography.Text>
+                        </div>
+                        {canManage && isOpen && (
+                          <Popconfirm
+                            title="Kết thúc biểu quyết này?"
+                            okText="Kết thúc"
+                            cancelText="Hủy"
+                            onConfirm={() => void closePublishedPoll(p.pollId)}
+                          >
+                            <Button danger size="small">
+                              Kết thúc
+                            </Button>
+                          </Popconfirm>
+                        )}
+                      </div>
+
+                      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {p.options.map((opt, idx) => {
+                          const pct = totalSelections > 0 ? Math.round((counts[idx] / totalSelections) * 100) : 0;
+                          return (
+                            <div key={idx}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                                <Typography.Text style={{ fontSize: 13 }}>{opt}</Typography.Text>
+                                <Typography.Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                                  {pct}% ({counts[idx]})
+                                </Typography.Text>
+                              </div>
+                              <Progress percent={pct} showInfo={false} strokeColor="#3b82f6" trailColor="#eaf0ff" />
+                            </div>
                           );
                         })}
                       </div>
-                    </div>
-                  }
-                />
-                {viewPollMeeting && canManagePollForMeeting(viewPollMeeting) && p.status === 'open' && (
-                  <Popconfirm
-                    title="Kết thúc biểu quyết này?"
-                    okText="Kết thúc"
-                    cancelText="Hủy"
-                    onConfirm={() => void closePublishedPoll(p.pollId)}
-                  >
-                    <Button danger size="small">Kết thúc biểu quyết</Button>
-                  </Popconfirm>
-                )}
-              </List.Item>;
-            }}
-          />
+
+                      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                          Tạo bởi {p.createdByName}
+                        </Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                          {p.endAt ? `Hết hạn: ${dayjs(p.endAt).format('DD/MM/YYYY HH:mm')}` : 'Hết hạn: Không giới hạn'}
+                        </Typography.Text>
+                      </div>
+                    </Card>
+                  );
+                })
+            )}
+          </div>
         )}
 
         {manageTab === 'managers' && viewPollMeeting && canManagePollForMeeting(viewPollMeeting) && (
