@@ -262,7 +262,7 @@ export default function ReportsPage() {
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
           new TableRow({
-            height: { value: 2600 },
+            height: { value: 2600, rule: 'exact' },
             children: [
               new TableCell({
                 width: { size: 50, type: WidthType.PERCENTAGE },
