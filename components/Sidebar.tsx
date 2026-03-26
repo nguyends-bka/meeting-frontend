@@ -119,16 +119,6 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
       ),
     },
     {
-      key: '/reports',
-      icon: <FileTextOutlined />,
-      label: (
-        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <span>Báo cáo</span>
-          {!collapsed && <ComingSoonTag />}
-        </Space>
-      ),
-    },
-    {
       type: 'divider',
     },
     {
@@ -224,16 +214,6 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
       ),
     },
     {
-      key: '/reports',
-      icon: <FileTextOutlined />,
-      label: (
-        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <span>Báo cáo</span>
-          {!collapsed && <ComingSoonTag />}
-        </Space>
-      ),
-    },
-    {
       type: 'divider',
     },
     {
@@ -281,7 +261,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
     if (pathname === '/profile') return ['/profile'];
     if (pathname === '/join') return ['/join'];
     if (pathname === '/calendar') return ['/calendar'];
-    if (pathname === '/reports') return ['/reports'];
+    if (pathname === '/reports') return ['/meetings'];
     return [pathname];
   };
 

@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { apiService, meetingApi } from '@/services/api';
-import type { PollResponse, PollManagerItem } from '@/dtos/meeting.dto';
+import type { MeetingMinutes, PollResponse, PollManagerItem } from '@/dtos/meeting.dto';
+import { MeetingMinutesPreview } from '@/components/meeting/MeetingMinutesPreview';
+import { buildMinutesText } from '@/lib/meetingMinutesFormat';
+import { exportMeetingMinutesWord } from '@/lib/exportMeetingMinutesWord';
 import MainLayout from '@/components/MainLayout';
 import dayjs from 'dayjs';
 import {
@@ -22,6 +25,7 @@ import {
   Progress,
   Segmented,
   Space,
+  Spin,
   Table,
   Tag,
   Typography,
@@ -41,6 +45,8 @@ import {
   SettingOutlined,
   VideoCameraOutlined,
   FileExcelOutlined,
+  FileTextOutlined,
+  FileWordOutlined,
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 
@@ -131,6 +137,12 @@ export default function MeetingsPage() {
   const [historyTablePage, setHistoryTablePage] = useState(1);
   const [historyTablePageSize, setHistoryTablePageSize] = useState(10);
   const [exportingHistoryExcel, setExportingHistoryExcel] = useState(false);
+
+  const [reportMeeting, setReportMeeting] = useState<Meeting | null>(null);
+  const [reportMinutes, setReportMinutes] = useState<MeetingMinutes | null>(null);
+  const [reportMinutesLoading, setReportMinutesLoading] = useState(false);
+  const [exportingReportWord, setExportingReportWord] = useState(false);
+  const reportRef = useRef<HTMLDivElement | null>(null);
 
   const canManagePollForMeeting = (m: Meeting): boolean => {
     return Boolean(m.canManagePoll);
@@ -354,6 +366,41 @@ export default function MeetingsPage() {
     setHistoryLoading(false);
   };
 
+  const openReportModal = async (meeting: Meeting) => {
+    setReportMeeting(meeting);
+    setReportMinutes(null);
+    setReportMinutesLoading(true);
+    const res = await meetingApi.getMinutes(meeting.id);
+    if (res.error || !res.data) {
+      message.error(res.error || 'Không tải được biên bản');
+      setReportMinutesLoading(false);
+      setReportMeeting(null);
+      return;
+    }
+    setReportMinutes(res.data);
+    setReportMinutesLoading(false);
+  };
+
+  const copyReportMinutesText = async () => {
+    if (!reportMinutes) return;
+    try {
+      await navigator.clipboard.writeText(buildMinutesText(reportMinutes));
+      message.success('Đã sao chép biên bản');
+    } catch {
+      message.error('Không sao chép được');
+    }
+  };
+
+  const exportReportWord = async () => {
+    if (!reportMinutes) return;
+    setExportingReportWord(true);
+    try {
+      await exportMeetingMinutesWord(reportMinutes);
+    } finally {
+      setExportingReportWord(false);
+    }
+  };
+
   const exportHistoryToExcel = () => {
     if (!historyMeeting) return;
     if (historyItems.length === 0) {
@@ -390,6 +437,12 @@ export default function MeetingsPage() {
         icon: <HistoryOutlined />,
         label: 'Lịch sử cuộc họp',
         onClick: () => void openHistoryModal(record),
+      },
+      {
+        key: 'minutes_report',
+        icon: <FileTextOutlined />,
+        label: 'Biên bản & báo cáo',
+        onClick: () => void openReportModal(record),
       },
     ];
 
@@ -1214,6 +1267,68 @@ export default function MeetingsPage() {
             ]}
           />
         </Card>
+      </Modal>
+
+      <Modal
+        title={
+          <div style={{ minWidth: 0 }}>
+            <Typography.Title level={5} style={{ margin: 0 }}>
+              Biên bản / báo cáo cuộc họp
+            </Typography.Title>
+            <Typography.Text type="secondary" style={{ display: 'block' }}>
+              {reportMeeting?.title ?? ''}
+            </Typography.Text>
+          </div>
+        }
+        open={Boolean(reportMeeting)}
+        onCancel={() => {
+          setReportMeeting(null);
+          setReportMinutes(null);
+        }}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              onClick={() => {
+                setReportMeeting(null);
+                setReportMinutes(null);
+              }}
+            >
+              Đóng
+            </Button>
+          </div>
+        }
+        destroyOnHidden
+        width={900}
+        style={{ maxWidth: 'calc(100vw - 24px)' }}
+        styles={{ body: { maxHeight: '75vh', overflowY: 'auto' } }}
+      >
+        {reportMinutesLoading && (
+          <div style={{ textAlign: 'center', padding: 24 }}>
+            <Spin size="large" />
+          </div>
+        )}
+        {!reportMinutesLoading && reportMeeting && !reportMinutes && (
+          <Empty description="Không có dữ liệu biên bản" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        )}
+        {!reportMinutesLoading && reportMinutes && (
+          <>
+            <Space style={{ marginBottom: 16 }}>
+              <Button type="primary" icon={<CopyOutlined />} onClick={() => void copyReportMinutesText()}>
+                Sao chép văn bản
+              </Button>
+              <Button
+                icon={<FileWordOutlined />}
+                loading={exportingReportWord}
+                onClick={() => void exportReportWord()}
+              >
+                Xuất Word
+              </Button>
+            </Space>
+            <div style={{ overflowX: 'auto' }}>
+              <MeetingMinutesPreview minutes={reportMinutes} reportRef={reportRef} />
+            </div>
+          </>
+        )}
       </Modal>
     </MainLayout>
   );
