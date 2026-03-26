@@ -22,8 +22,120 @@ import { VoteRoomProvider } from '@/components/VoteRoomProvider';
 import VotePanel from '@/components/VotePanel';
 import MeetingShellEnhancements from '@/components/MeetingShellEnhancements';
 import '@livekit/components-styles';
+import { Button, Modal, Typography } from 'antd';
 
 type AudioSourceMode = 'real' | 'virtual';
+const { Text } = Typography;
+
+function DisconnectButtonInterceptor({
+  shellRef,
+  enabled,
+  onRequestDisconnect,
+}: {
+  shellRef: React.RefObject<HTMLDivElement | null>;
+  enabled: boolean;
+  onRequestDisconnect: () => void;
+}) {
+  const room = useRoomContext();
+
+  useEffect(() => {
+    if (!enabled) return;
+    const shell = shellRef.current;
+    if (!shell) return;
+
+    const attach = () => {
+      const btn = shell.querySelector('.lk-disconnect-button') as HTMLButtonElement | null;
+      if (!btn) return null;
+
+      const handler = (e: Event) => {
+        // Nếu đã disconnected thì để mặc định.
+        if (!room || room.state !== 'connected') return;
+        e.preventDefault();
+        e.stopPropagation();
+        onRequestDisconnect();
+      };
+
+      btn.addEventListener('click', handler, true);
+      return () => btn.removeEventListener('click', handler, true);
+    };
+
+    const detach = attach();
+    if (detach) return detach;
+
+    const obs = new MutationObserver(() => {
+      const d = attach();
+      if (d) {
+        obs.disconnect();
+      }
+    });
+    obs.observe(shell, { subtree: true, childList: true, attributes: true });
+    return () => obs.disconnect();
+  }, [enabled, onRequestDisconnect, room, shellRef]);
+
+  return null;
+}
+
+function HostLeaveModal({
+  open,
+  loading,
+  onCancel,
+  onLeaveOnly,
+  onEndForAll,
+  onFinally,
+  meetingId,
+}: {
+  open: boolean;
+  loading: boolean;
+  onCancel: () => void;
+  onLeaveOnly: () => void;
+  onEndForAll: () => void;
+  onFinally: () => void;
+  meetingId: string;
+}) {
+  const room = useRoomContext();
+
+  const leaveOnly = async () => {
+    if (!room) return;
+    onLeaveOnly();
+    try {
+      room.disconnect();
+    } finally {
+      onFinally();
+    }
+  };
+
+  const endForAll = async () => {
+    if (!room) return;
+    onEndForAll();
+    try {
+      await meetingApi.endMeeting(meetingId);
+      room.disconnect();
+    } finally {
+      onFinally();
+    }
+  };
+
+  return (
+    <Modal open={open} onCancel={onCancel} footer={null} centered width={640} destroyOnHidden>
+      <div style={{ padding: '8px 8px 0 8px' }}>
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
+          Kết thúc cuộc gọi hay chỉ rời khỏi cuộc gọi?
+        </div>
+        <Text type="secondary">
+          Bạn có thể rời khỏi cuộc gọi này nếu không muốn kết thúc cuộc gọi này đối với tất cả mọi người
+        </Text>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 18, flexWrap: 'wrap' }}>
+          <Button type="link" disabled={loading} onClick={() => void leaveOnly()}>
+            Chỉ rời khỏi cuộc gọi
+          </Button>
+          <Button type="link" disabled={loading} onClick={() => void endForAll()}>
+            Kết thúc cuộc gọi này đối với tất cả mọi người
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function VirtualMicPublisher({
   enabled,
@@ -253,6 +365,8 @@ export default function MeetingPage() {
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [voteOpen, setVoteOpen] = useState(false);
   const meetingShellRef = useRef<HTMLDivElement>(null);
+  const [hostLeaveModalOpen, setHostLeaveModalOpen] = useState(false);
+  const [hostLeaveLoading, setHostLeaveLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -423,6 +537,11 @@ export default function MeetingPage() {
       (normalizedHostIdentity === normalizedUserId ||
         normalizedHostIdentity === normalizedUsername)) ||
       isPollManager,
+  );
+
+  const isHost = Boolean(
+    normalizedHostIdentity &&
+      (normalizedHostIdentity === normalizedUserId || normalizedHostIdentity === normalizedUsername),
   );
 
   if (authLoading || (!isAuthenticated && !authLoading)) {
@@ -643,6 +762,31 @@ export default function MeetingPage() {
             onError={handleError}
             onDisconnected={handleDisconnected}
           >
+            {isHost && (
+              <>
+                <DisconnectButtonInterceptor
+                  shellRef={meetingShellRef}
+                  enabled={true}
+                  onRequestDisconnect={() => setHostLeaveModalOpen(true)}
+                />
+                <HostLeaveModal
+                  open={hostLeaveModalOpen}
+                  loading={hostLeaveLoading}
+                  meetingId={currentMeetingId ?? meetingId}
+                  onCancel={() => setHostLeaveModalOpen(false)}
+                  onLeaveOnly={() => {
+                    setHostLeaveLoading(true);
+                    setHostLeaveModalOpen(false);
+                  }}
+                  onEndForAll={() => {
+                    setHostLeaveLoading(true);
+                    setHostLeaveModalOpen(false);
+                  }}
+                  onFinally={() => setHostLeaveLoading(false)}
+                />
+              </>
+            )}
+
             {audioSource === 'virtual' && (
               <VirtualMicPublisher
                 enabled={true}

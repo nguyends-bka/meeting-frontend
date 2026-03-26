@@ -49,6 +49,13 @@ export interface MeetingListItem {
   meetingCode: string;
   passcode: string;
   createdAt: string;
+  startedAt?: string | null;
+  endedAt?: string | null;
+}
+
+export interface EndMeetingResponse {
+  message: string;
+  endedAt?: string | null;
 }
 
 export interface MeetingHistoryItem {

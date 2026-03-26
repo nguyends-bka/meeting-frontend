@@ -20,6 +20,7 @@ import type {
   RoomLogResponse,
   RoomChatCreateRequest,
   RoomTranscriptCreateRequest,
+  EndMeetingResponse,
 } from '@/dtos/meeting.dto';
 
 // Meeting domain API - React Query compatible
@@ -218,6 +219,12 @@ export const meetingApi = {
   getMinutes: async (meetingId: string) => {
     return apiClient.request<MeetingMinutes>(`/api/meeting/${encodeURIComponent(meetingId)}/minutes`, {
       method: 'GET',
+    });
+  },
+
+  endMeeting: async (meetingId: string) => {
+    return apiClient.request<EndMeetingResponse>(`/api/meeting/${encodeURIComponent(meetingId)}/end`, {
+      method: 'POST',
     });
   },
 };
