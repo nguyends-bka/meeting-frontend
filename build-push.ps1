@@ -16,6 +16,8 @@ Write-Host "Building: $FullImage" -ForegroundColor Cyan
 Write-Host "  NEXT_PUBLIC_API_URL=$ApiUrl" -ForegroundColor Gray
 $buildArgs = @(
     "build",
+    "--pull", 
+    "--no-cache"
     "-t", $FullImage,
     "--build-arg", "NEXT_PUBLIC_API_URL=$ApiUrl"
 )

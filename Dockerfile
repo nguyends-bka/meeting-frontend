@@ -8,7 +8,8 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 COPY patches ./patches
-RUN npm install
+# RUN npm install
+RUN npm ci
 
 FROM node:20-alpine AS build
 WORKDIR /app
@@ -23,6 +24,9 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app ./
+# COPY --from=build /app ./ 
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+COPY --from=build /app/public ./public
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]
