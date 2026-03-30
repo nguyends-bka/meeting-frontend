@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo, useRef, useEffect } from 'react';
+import { Button } from 'antd';
+import { CloseOutlined } from '@ant-design/icons';
 import { useTranscriptRoom } from '@/components/TranscriptRoomProvider';
 
 function formatReceivedTime(ts: number): string {
@@ -18,9 +20,11 @@ function formatReceivedTime(ts: number): string {
 export default function TranscriptPanel({
   title = 'Transcript',
   currentUserName,
+  onClose,
 }: {
   title?: string;
   currentUserName?: string;
+  onClose?: () => void;
 }) {
   const {
     finalized,
@@ -80,7 +84,18 @@ export default function TranscriptPanel({
     <aside className="meeting-transcript-panel">
       <div className="meeting-transcript-header">
         <span>{title}</span>
-        <span className={`meeting-transcript-status ${statusClass}`}>{statusLabel}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span className={`meeting-transcript-status ${statusClass}`}>{statusLabel}</span>
+          {onClose && (
+            <Button
+              aria-label="Đóng transcript"
+              icon={<CloseOutlined />}
+              onClick={onClose}
+              type="text"
+              style={{ color: '#6b7280' }}
+            />
+          )}
+        </div>
       </div>
 
       <div ref={listRef} className="meeting-transcript-messages">

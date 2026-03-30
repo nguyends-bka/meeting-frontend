@@ -71,6 +71,17 @@ function placeTranscriptButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
   parent.insertBefore(btn, anchor);
 }
 
+function placeDocumentsButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
+  const transcriptBtn = bar.querySelector('.meeting-transcript-toggle') as HTMLElement | null;
+  const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)') as HTMLElement | null;
+  const disconnectBtn = bar.querySelector('.lk-disconnect-button') as HTMLElement | null;
+  const anchor = (transcriptBtn ?? chatToggle ?? disconnectBtn) as HTMLElement | null;
+  if (!anchor?.parentNode) return;
+  const parent = anchor.parentNode;
+  if (btn.nextSibling === anchor && btn.parentNode === parent) return;
+  parent.insertBefore(btn, anchor);
+}
+
 const VOTE_BUTTON_INNER =
   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>' +
   '<span class="lk-button-text">Biểu quyết</span>';
@@ -79,8 +90,16 @@ const TRANSCRIPT_BUTTON_INNER =
   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>' +
   '<span class="lk-button-text">Transcript</span>';
 
+const DOCUMENTS_BUTTON_INNER =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M7 13h10"/><path d="M7 17h6"/></svg>' +
+  '<span class="lk-button-text">Tài liệu</span>';
+
 export type MeetingLayoutDataset =
   | 'neither'
+  | 'documents-only'
+  | 'documents-chat'
+  | 'documents-transcript'
+  | 'documents-transcript-chat'
   | 'transcript-only'
   | 'vote-only'
   | 'chat-only'
@@ -95,12 +114,16 @@ export default function MeetingShellEnhancements({
   setTranscriptOpen,
   voteOpen,
   setVoteOpen,
+  documentsOpen,
+  setDocumentsOpen,
 }: {
   shellRef: React.RefObject<HTMLDivElement | null>;
   transcriptOpen: boolean;
   setTranscriptOpen: React.Dispatch<React.SetStateAction<boolean>>;
   voteOpen: boolean;
   setVoteOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  documentsOpen: boolean;
+  setDocumentsOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const [chatOpen, setChatOpen] = useState(false);
   const chatOpenRef = useRef(chatOpen);
@@ -110,14 +133,99 @@ export default function MeetingShellEnhancements({
   const voteOpenRef = useRef(voteOpen);
   voteOpenRef.current = voteOpen;
 
+  const documentsOpenRef = useRef(documentsOpen);
+  documentsOpenRef.current = documentsOpen;
+
+  // Add an explicit "X" close button for Chat panel header.
+  // LiveKit's chat toggle can be closed via control-bar button; we just provide UI in the panel header.
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+
+    const bar = findControlBar(shell);
+    const header = shell.querySelector('.lk-chat-header') as HTMLElement | null;
+    if (!bar || !header) return;
+
+    const CHAT_CLOSE_CLASS = 'meeting-chat-close';
+
+    const ensureButton = () => {
+      if (!chatOpenRef.current) return;
+      if (header.querySelector(`.${CHAT_CLOSE_CLASS}`)) return;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = CHAT_CLOSE_CLASS;
+      btn.setAttribute('aria-label', 'Đóng messages');
+      btn.innerHTML = '×';
+
+      // Use absolute positioning to guarantee it's on top-right.
+      btn.style.position = 'absolute';
+      btn.style.right = '8px';
+      btn.style.top = '10px';
+      btn.style.zIndex = '20';
+      btn.style.border = 'none';
+      btn.style.background = 'transparent';
+      btn.style.cursor = 'pointer';
+      btn.style.fontSize = '20px';
+      btn.style.lineHeight = '20px';
+      btn.style.color = '#6b7280';
+      btn.onmouseenter = () => {
+        btn.style.background = '#f3f4f6';
+        btn.style.borderRadius = '8px';
+        btn.style.padding = '4px';
+        btn.style.margin = '-4px';
+      };
+      btn.onmouseleave = () => {
+        btn.style.background = 'transparent';
+        btn.style.borderRadius = '0';
+        btn.style.padding = '0';
+        btn.style.margin = '0';
+      };
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Close chat by clicking the chat toggle in control bar.
+        const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)') as HTMLElement | null;
+        chatToggle?.click();
+      });
+
+      // Ensure containing block for absolute positioning.
+      if (getComputedStyle(header).position === 'static') {
+        header.style.position = 'sticky';
+      }
+      header.appendChild(btn);
+    };
+
+    const removeButton = () => {
+      const el = header.querySelector(`.${CHAT_CLOSE_CLASS}`) as HTMLElement | null;
+      if (el) el.remove();
+    };
+
+    if (chatOpen) ensureButton();
+    else removeButton();
+
+    return () => removeButton();
+  }, [shellRef, chatOpen]);
+
   const updateShellLayout = useCallback(() => {
     const shell = shellRef.current;
     if (!shell) return;
     const t = transcriptOpen;
     const v = voteOpen;
     const c = chatOpen;
+    const d = documentsOpen;
     let layout: MeetingLayoutDataset = 'neither';
-    if (t && v && c) layout = 'transcript-vote-chat';
+
+    // Documents panel as a first-class side panel
+    // - d && t: documents + transcript should be side-by-side (no overlap)
+    // - d && t && c: documents + transcript + chat should push left like transcript+chat
+    if (d && t && c && !v) layout = 'documents-transcript-chat';
+    else if (d && t && !c && !v) layout = 'documents-transcript';
+    else if (d && c && !t && !v) layout = 'documents-chat';
+    else if (d && !c && !t && !v) layout = 'documents-only';
+    else if (t && v && c) layout = 'transcript-vote-chat';
     else if (t && v) layout = 'transcript-vote';
     else if (v && c) layout = 'vote-chat';
     else if (t && c) layout = 'both';
@@ -126,7 +234,7 @@ export default function MeetingShellEnhancements({
     else if (c) layout = 'chat-only';
     else layout = 'neither';
     shell.dataset.meetingLayout = layout;
-  }, [shellRef, transcriptOpen, voteOpen, chatOpen]);
+  }, [shellRef, transcriptOpen, voteOpen, chatOpen, documentsOpen]);
 
   useEffect(() => {
     updateShellLayout();
@@ -167,6 +275,7 @@ export default function MeetingShellEnhancements({
     let cancelled = false;
     let voteBtnEl: HTMLButtonElement | null = null;
     let transcriptBtnEl: HTMLButtonElement | null = null;
+    let documentsBtnEl: HTMLButtonElement | null = null;
     let resizeObserver: ResizeObserver | null = null;
 
     const syncTranscriptActive = (btn: HTMLButtonElement) => {
@@ -181,6 +290,16 @@ export default function MeetingShellEnhancements({
 
     const syncVoteActive = (btn: HTMLButtonElement) => {
       if (voteOpenRef.current) {
+        btn.setAttribute('data-active', 'true');
+        btn.classList.add('lk-button-active');
+      } else {
+        btn.removeAttribute('data-active');
+        btn.classList.remove('lk-button-active');
+      }
+    };
+
+    const syncDocumentsActive = (btn: HTMLButtonElement) => {
+      if (documentsOpenRef.current) {
         btn.setAttribute('data-active', 'true');
         btn.classList.add('lk-button-active');
       } else {
@@ -229,8 +348,23 @@ export default function MeetingShellEnhancements({
         transcriptBtnEl = tBtn;
       }
 
+      let dBtn = bar.querySelector('.meeting-documents-toggle') as HTMLButtonElement | null;
+      if (!dBtn) {
+        dBtn = document.createElement('button');
+        dBtn.type = 'button';
+        dBtn.className = 'lk-button meeting-documents-toggle';
+        dBtn.innerHTML = DOCUMENTS_BUTTON_INNER;
+        dBtn.addEventListener('click', () => setDocumentsOpen((x) => !x));
+        placeDocumentsButtonInBar(bar, dBtn);
+        documentsBtnEl = dBtn;
+      } else {
+        placeDocumentsButtonInBar(bar, dBtn);
+        documentsBtnEl = dBtn;
+      }
+
       syncVoteActive(vBtn);
       syncTranscriptActive(tBtn);
+      if (dBtn) syncDocumentsActive(dBtn);
       syncButtonUI();
 
       if (!resizeObserver) {
@@ -252,8 +386,9 @@ export default function MeetingShellEnhancements({
       if (bar) delete bar.dataset.meetingBarCompact;
       voteBtnEl?.remove();
       transcriptBtnEl?.remove();
+      documentsBtnEl?.remove();
     };
-  }, [shellRef, setTranscriptOpen, setVoteOpen]);
+  }, [shellRef, setTranscriptOpen, setVoteOpen, setDocumentsOpen]);
 
   useEffect(() => {
     const shell = shellRef.current;
@@ -278,7 +413,18 @@ export default function MeetingShellEnhancements({
         tBtn.classList.remove('lk-button-active');
       }
     }
-  }, [shellRef, voteOpen, transcriptOpen]);
+
+    const dBtn = shell.querySelector('.meeting-documents-toggle') as HTMLButtonElement | null;
+    if (dBtn) {
+      if (documentsOpen) {
+        dBtn.setAttribute('data-active', 'true');
+        dBtn.classList.add('lk-button-active');
+      } else {
+        dBtn.removeAttribute('data-active');
+        dBtn.classList.remove('lk-button-active');
+      }
+    }
+  }, [shellRef, voteOpen, transcriptOpen, documentsOpen]);
 
   return null;
 }

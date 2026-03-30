@@ -21,6 +21,7 @@ import MeetingChatHistoryHydrator from '@/components/MeetingChatHistoryHydrator'
 import { VoteRoomProvider } from '@/components/VoteRoomProvider';
 import VotePanel from '@/components/VotePanel';
 import MeetingShellEnhancements from '@/components/MeetingShellEnhancements';
+import MeetingDocumentsPanel from '@/components/MeetingDocumentsPanel';
 import '@livekit/components-styles';
 import { Button, Modal, Typography } from 'antd';
 
@@ -364,6 +365,7 @@ export default function MeetingPage() {
   const [transcriptWsUrl] = useState('ws://127.0.0.1:9001/transcript');
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [voteOpen, setVoteOpen] = useState(false);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
   const meetingShellRef = useRef<HTMLDivElement>(null);
   const [hostLeaveModalOpen, setHostLeaveModalOpen] = useState(false);
   const [hostLeaveLoading, setHostLeaveLoading] = useState(false);
@@ -818,11 +820,22 @@ export default function MeetingPage() {
                     setTranscriptOpen={setTranscriptOpen}
                     voteOpen={voteOpen}
                     setVoteOpen={setVoteOpen}
+                    documentsOpen={documentsOpen}
+                    setDocumentsOpen={setDocumentsOpen}
                   />
+
+                  {/** Documents side panel is rendered inside meeting-side-stack (no overlay) */}
+
                   <VideoConference />
                   <div className="meeting-side-stack">
-                    <TranscriptPanel currentUserName={transcriptDisplayName} />
+                    <TranscriptPanel currentUserName={transcriptDisplayName} onClose={() => setTranscriptOpen(false)} />
                     <VotePanel canCreatePoll={canCreatePoll} />
+                    <MeetingDocumentsPanel
+                      documentsOpen={documentsOpen}
+                      meetingId={currentMeetingId ?? meetingId}
+                      canUpload={isHost}
+                      onClose={() => setDocumentsOpen(false)}
+                    />
                   </div>
                 </div>
               </VoteRoomProvider>

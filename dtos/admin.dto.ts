@@ -49,6 +49,8 @@ export interface AdminMeeting {
   passcode: string;
   roomName: string;
   createdAt: string;
+  startedAt?: string | null;
+  endedAt?: string | null;
   participantCount: number;
   activeParticipantCount: number;
 }

@@ -9,6 +9,7 @@ import type {
   MeetingListItem,
   MeetingHistoryItem,
   MyHistoryItem,
+  MeetingDocumentDto,
   PollCreateRequest,
   PollVoteRequest,
   PollCloseRequest,
@@ -226,5 +227,81 @@ export const meetingApi = {
     return apiClient.request<EndMeetingResponse>(`/api/meeting/${encodeURIComponent(meetingId)}/end`, {
       method: 'POST',
     });
+  },
+
+  listMeetingDocuments: async (meetingId: string) => {
+    return apiClient.request<MeetingDocumentDto[]>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/documents`,
+      { method: 'GET' },
+    );
+  },
+
+  uploadMeetingDocument: async (meetingId: string, file: File) => {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://meeting.soict.io:8080';
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    const form = new FormData();
+    form.append('file', file);
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/meeting/${encodeURIComponent(meetingId)}/documents/upload`,
+      {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: form,
+      },
+    );
+
+    if (!res.ok) {
+      const text = await res.text();
+      let msg = `HTTP ${res.status}`;
+      try {
+        const j = JSON.parse(text);
+        msg = j?.message || j?.title || msg;
+      } catch {
+        if (text) msg = text;
+      }
+      return { error: msg } as { error: string };
+    }
+
+    const data = (await res.json()) as MeetingDocumentDto;
+    return { data };
+  },
+
+  getMeetingDocumentFileBlob: async (meetingId: string, documentId: string) => {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://meeting.soict.io:8080';
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/meeting/${encodeURIComponent(meetingId)}/documents/${encodeURIComponent(documentId)}/file`,
+      {
+        method: 'GET',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      },
+    );
+
+    if (!res.ok) {
+      const text = await res.text();
+      let msg = `HTTP ${res.status}`;
+      try {
+        const j = JSON.parse(text);
+        msg = j?.message || j?.title || msg;
+      } catch {
+        if (text) msg = text;
+      }
+      throw new Error(msg);
+    }
+
+    const blob = await res.blob();
+    return blob;
+  },
+
+  deleteMeetingDocument: async (meetingId: string, documentId: string) => {
+    return apiClient.request<unknown>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/documents/${encodeURIComponent(documentId)}`,
+      {
+        method: 'DELETE',
+      },
+    );
   },
 };

@@ -12,6 +12,7 @@ import MainLayout from '@/components/MainLayout';
 import dayjs from 'dayjs';
 import {
   App,
+  Avatar,
   Button,
   Card,
   Grid,
@@ -39,6 +40,7 @@ import {
   ReloadOutlined,
   CalendarOutlined,
   UserOutlined,
+  CloseOutlined,
   MoreOutlined,
   CaretRightOutlined,
   FormOutlined,
@@ -59,6 +61,9 @@ type Meeting = {
   meetingCode: string;
   passcode: string;
   createdAt: string;
+  startedAt?: string | null;
+  endedAt?: string | null;
+  activeParticipantCount?: number;
 };
 
 type HistoryEntry = {
@@ -137,6 +142,7 @@ export default function MeetingsPage() {
   const [historyTablePage, setHistoryTablePage] = useState(1);
   const [historyTablePageSize, setHistoryTablePageSize] = useState(10);
   const [exportingHistoryExcel, setExportingHistoryExcel] = useState(false);
+  const [detailMeeting, setDetailMeeting] = useState<Meeting | null>(null);
 
   const [reportMeeting, setReportMeeting] = useState<Meeting | null>(null);
   const [reportMinutes, setReportMinutes] = useState<MeetingMinutes | null>(null);
@@ -433,12 +439,6 @@ export default function MeetingsPage() {
   const getDropdownMenuItems = (record: Meeting): MenuProps['items'] => {
     const items: MenuProps['items'] = [
       {
-        key: 'history',
-        icon: <HistoryOutlined />,
-        label: 'Lịch sử cuộc họp',
-        onClick: () => void openHistoryModal(record),
-      },
-      {
         key: 'minutes_report',
         icon: <FileTextOutlined />,
         label: 'Biên bản & báo cáo',
@@ -454,6 +454,10 @@ export default function MeetingsPage() {
     });
 
     return items;
+  };
+
+  const openDetailModal = (meeting: Meeting) => {
+    setDetailMeeting(meeting);
   };
 
   const columns = useMemo(
@@ -621,27 +625,42 @@ export default function MeetingsPage() {
         key: 'actions',
         width: 160,
         fixed: 'right' as const,
-        render: (_: unknown, record: Meeting) => (
-          <Space>
-            <Button
-              type="primary"
-              icon={<CaretRightOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/meeting/${record.id}`);
-              }}
-              style={{ fontWeight: 500 }}
-            >
-              Tham gia
-            </Button>
-            <Dropdown menu={{ items: getDropdownMenuItems(record) }} trigger={['click']}>
-              <Button icon={<MoreOutlined />} onClick={(e) => e.stopPropagation()} />
-            </Dropdown>
-          </Space>
-        ),
+        render: (_: unknown, record: Meeting) => {
+          const isEnded = Boolean(record.endedAt);
+          const isLive = !isEnded && (record.activeParticipantCount ?? 0) > 0;
+          const actionLabel = isLive ? 'Tham gia' : isEnded ? 'Xem lịch sử' : 'Chi tiết';
+
+          return (
+            <Space>
+              <Button
+                type={isLive ? 'primary' : 'default'}
+                icon={isLive ? <CaretRightOutlined /> : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isLive) {
+                    router.push(`/meeting/${record.id}`);
+                    return;
+                  }
+                  if (isEnded) {
+                    void openHistoryModal(record);
+                    return;
+                  }
+                  openDetailModal(record);
+                }}
+                style={{ fontWeight: 500, width: 112, justifyContent: 'center' }}
+                className="meeting-action-main-btn"
+              >
+                {actionLabel}
+              </Button>
+              <Dropdown menu={{ items: getDropdownMenuItems(record) }} trigger={['click']}>
+                <Button icon={<MoreOutlined />} onClick={(e) => e.stopPropagation()} />
+              </Dropdown>
+            </Space>
+          );
+        },
       },
     ],
-    [router, tablePage, tablePageSize, pollForm]
+    [router, tablePage, tablePageSize, pollForm, openHistoryModal]
   );
 
   if (loading) return <div style={{ padding: 24 }}>Đang tải...</div>;
@@ -832,6 +851,104 @@ export default function MeetingsPage() {
           </Space>
         </Form>
       </Modal>
+
+      <Modal
+        open={Boolean(detailMeeting)}
+        onCancel={() => setDetailMeeting(null)}
+        footer={null}
+        centered
+        destroyOnHidden
+        width={560}
+        closeIcon={<CloseOutlined />}
+      >
+        {detailMeeting && (
+          <div style={{ padding: '4px 4px 0 4px' }}>
+            <Typography.Title level={4} style={{ margin: 0 }}>
+              {detailMeeting.title}
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              Sắp diễn ra • {dayjs(detailMeeting.createdAt).format('DD/MM/YYYY, HH:mm')}
+            </Typography.Text>
+
+            <Card
+              style={{ marginTop: 14, borderRadius: 10, background: '#fafcff' }}
+              bodyStyle={{ padding: 14 }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '120px 1fr',
+                  rowGap: 14,
+                  alignItems: 'center',
+                  marginBottom: 12,
+                }}
+              >
+                <Typography.Text type="secondary">Mã tham gia:</Typography.Text>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    justifySelf: 'start',
+                    background: '#fff',
+                    border: '1px solid #d9e2f0',
+                    borderRadius: 6,
+                    padding: '4px 8px',
+                  }}
+                >
+                  <Typography.Text strong>{detailMeeting.meetingCode}</Typography.Text>
+                  <CopyOutlined
+                    style={{ color: '#8c8c8c', cursor: 'pointer' }}
+                    onClick={() => void copyText(detailMeeting.meetingCode)}
+                  />
+                </div>
+
+                <Typography.Text type="secondary">Host</Typography.Text>
+                <Space>
+                  <Avatar size={24} icon={<UserOutlined />} />
+                  <Typography.Text strong>{detailMeeting.hostName}</Typography.Text>
+                </Space>
+              </div>
+
+              <div style={{ borderTop: '1px solid #edf1f7', paddingTop: 12 }}>
+                <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                  Link tham gia trực tiếp:
+                </Typography.Text>
+                <Space.Compact style={{ width: '100%' }}>
+                  <Input readOnly value={buildMeetingLink(detailMeeting.id)} />
+                  <Button onClick={() => void copyText(buildMeetingLink(detailMeeting.id))}>
+                    Copy Link
+                  </Button>
+                </Space.Compact>
+              </div>
+            </Card>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+              <Button onClick={() => setDetailMeeting(null)}>Đóng</Button>
+              <Button
+                type="primary"
+                onClick={() => {
+                  router.push(`/meeting/${detailMeeting.id}`);
+                }}
+              >
+                Tham gia ngay
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            .meeting-action-main-btn {
+              width: 112px;
+              display: inline-flex;
+              justify-content: center;
+            }
+          `,
+        }}
+      />
 
       <Modal
         title={

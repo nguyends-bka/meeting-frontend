@@ -51,11 +51,24 @@ export interface MeetingListItem {
   createdAt: string;
   startedAt?: string | null;
   endedAt?: string | null;
+  activeParticipantCount?: number;
 }
 
 export interface EndMeetingResponse {
   message: string;
   endedAt?: string | null;
+}
+
+export interface MeetingDocumentDto {
+  id: string;
+  meetingId: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+  uploaderUserId: string;
+  uploaderName: string;
+  createdAt: string; // ISO string
+  fileEndpoint: string;
 }
 
 export interface MeetingHistoryItem {

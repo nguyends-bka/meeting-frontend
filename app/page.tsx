@@ -8,6 +8,7 @@ import MainLayout from '@/components/MainLayout';
 import dayjs from 'dayjs';
 import {
   App,
+  Avatar,
   Button,
   Card,
   Checkbox,
@@ -42,6 +43,8 @@ type HomeMeetingRow = {
   meetingCode: string;
   createdAt: string;
   activeParticipantCount?: number;
+  startedAt?: string | null;
+  endedAt?: string | null;
 };
 
 /** Thời lượng = kết thúc − bắt đầu (chỉ hiển thị, không có nút gợi ý). */
@@ -82,6 +85,7 @@ export default function HomePage() {
     todayMeetings: number;
   } | null>(null);
   const [recentMeetings, setRecentMeetings] = useState<HomeMeetingRow[]>([]);
+  const [detailMeeting, setDetailMeeting] = useState<HomeMeetingRow | null>(null);
 
   const [createForm] = Form.useForm();
   const scheduleRangeWatch = Form.useWatch('scheduleRange', createForm);
@@ -121,8 +125,18 @@ export default function HomePage() {
           meetingCode: m.meetingCode,
           createdAt: m.createdAt,
           activeParticipantCount: m.activeParticipantCount,
+          startedAt: m.startedAt,
+          endedAt: m.endedAt,
         }));
-        rows.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+        rows.sort((a, b) => {
+          const aEnded = Boolean(a.endedAt);
+          const bEnded = Boolean(b.endedAt);
+          const aLive = !aEnded && (a.activeParticipantCount ?? 0) > 0;
+          const bLive = !bEnded && (b.activeParticipantCount ?? 0) > 0;
+          if (aLive !== bLive) return aLive ? -1 : 1;
+          if (aEnded !== bEnded) return aEnded ? 1 : -1;
+          return +new Date(b.createdAt) - +new Date(a.createdAt);
+        });
         setRecentMeetings(rows.slice(0, 5));
 
         const active = rows.filter((r) => (r.activeParticipantCount ?? 0) > 0).length;
@@ -146,8 +160,19 @@ export default function HomePage() {
         hostName: m.hostName,
         meetingCode: m.meetingCode,
         createdAt: m.createdAt,
+        startedAt: m.startedAt,
+        endedAt: m.endedAt,
+        activeParticipantCount: m.activeParticipantCount,
       }));
-      rows.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+      rows.sort((a, b) => {
+        const aEnded = Boolean(a.endedAt);
+        const bEnded = Boolean(b.endedAt);
+        const aLive = !aEnded && (a.activeParticipantCount ?? 0) > 0;
+        const bLive = !bEnded && (b.activeParticipantCount ?? 0) > 0;
+        if (aLive !== bLive) return aLive ? -1 : 1;
+        if (aEnded !== bEnded) return aEnded ? 1 : -1;
+        return +new Date(b.createdAt) - +new Date(a.createdAt);
+      });
       setRecentMeetings(rows.slice(0, 5));
 
       const todayCount = rows.filter((r) => {
@@ -386,7 +411,8 @@ export default function HomePage() {
                 key: 'status',
                 width: 210,
                 render: (_v, r) => {
-                  const isLive = (r.activeParticipantCount ?? 0) > 0;
+                  const isEnded = Boolean(r.endedAt);
+                  const isLive = !isEnded && (r.activeParticipantCount ?? 0) > 0;
                   const when = new Date(r.createdAt);
                   const time = when.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
                   const date = when.toLocaleDateString('vi-VN');
@@ -425,16 +451,20 @@ export default function HomePage() {
                 key: 'actions',
                 width: 130,
                 render: (_v, r) => {
-                  const isLive = (r.activeParticipantCount ?? 0) > 0;
+                  const isEnded = Boolean(r.endedAt);
+                  const isLive = !isEnded && (r.activeParticipantCount ?? 0) > 0;
+                  const actionLabel = isLive ? 'Tham gia' : isEnded ? 'Xem lịch sử' : 'Chi tiết';
                   return (
                     <Button
                       type={isLive ? 'primary' : 'default'}
+                      style={{ width: 112, justifyContent: 'center' }}
                       onClick={() => {
                         if (isLive) router.push(`/meeting/${r.id}`);
-                        else router.push(`/history/${r.id}`);
+                        else if (isEnded) router.push(`/history/${r.id}`);
+                        else setDetailMeeting(r);
                       }}
                     >
-                      {isLive ? 'Tham gia' : 'Chi tiết'}
+                      {actionLabel}
                     </Button>
                   );
                 },
@@ -446,6 +476,89 @@ export default function HomePage() {
           />
         </Card>
       </div>
+
+      <Modal
+        open={Boolean(detailMeeting)}
+        onCancel={() => setDetailMeeting(null)}
+        footer={null}
+        centered
+        destroyOnHidden
+        width={560}
+      >
+        {detailMeeting && (
+          <div style={{ padding: '4px 4px 0 4px' }}>
+            <Typography.Title level={4} style={{ margin: 0 }}>
+              {detailMeeting.title}
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              Sắp diễn ra • {dayjs(detailMeeting.createdAt).format('DD/MM/YYYY, HH:mm')}
+            </Typography.Text>
+
+            <Card
+              style={{ marginTop: 14, borderRadius: 10, background: '#fafcff' }}
+              bodyStyle={{ padding: 14 }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '120px 1fr',
+                  rowGap: 14,
+                  alignItems: 'center',
+                  marginBottom: 12,
+                }}
+              >
+                <Typography.Text type="secondary">Mã tham gia:</Typography.Text>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    justifySelf: 'start',
+                    background: '#fff',
+                    border: '1px solid #d9e2f0',
+                    borderRadius: 6,
+                    padding: '4px 8px',
+                  }}
+                >
+                  <Typography.Text strong>{detailMeeting.meetingCode}</Typography.Text>
+                  <CopyOutlined
+                    style={{ color: '#8c8c8c', cursor: 'pointer' }}
+                    onClick={() => void copyText(detailMeeting.meetingCode)}
+                  />
+                </div>
+
+                <Typography.Text type="secondary">Host</Typography.Text>
+                <Space>
+                  <Avatar size={24} icon={<UserOutlined />} />
+                  <Typography.Text strong>{detailMeeting.hostName}</Typography.Text>
+                </Space>
+              </div>
+
+              <div style={{ borderTop: '1px solid #edf1f7', paddingTop: 12 }}>
+                <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                  Link tham gia trực tiếp:
+                </Typography.Text>
+                <Space.Compact style={{ width: '100%' }}>
+                  <Input readOnly value={buildMeetingLink(detailMeeting.id)} />
+                  <Button onClick={() => void copyText(buildMeetingLink(detailMeeting.id))}>Copy Link</Button>
+                </Space.Compact>
+              </div>
+            </Card>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+              <Button onClick={() => setDetailMeeting(null)}>Đóng</Button>
+              <Button
+                type="primary"
+                onClick={() => {
+                  router.push(`/meeting/${detailMeeting.id}`);
+                }}
+              >
+                Tham gia ngay
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Create Meeting Modal - Nâng cấp Success State */}
       <Modal

@@ -1115,6 +1115,8 @@ button:active:not(:disabled) {
 .meeting-transcript-toggle[aria-pressed='true'],
 .meeting-vote-toggle[data-active='true'],
 .meeting-vote-toggle[aria-pressed='true'],
+.meeting-documents-toggle[data-active='true'],
+.meeting-documents-toggle[aria-pressed='true'],
 .meeting-room-shell .lk-control-bar .lk-chat-toggle.lk-button-active,
 .meeting-room-shell .lk-control-bar .lk-chat-toggle[aria-pressed='true'] {
   background-color: rgba(255, 255, 255, 0.08) !important;
@@ -1170,6 +1172,152 @@ button:active:not(:disabled) {
 }
 
 .meeting-room-shell[data-meeting-layout='transcript-only'] .meeting-vote-panel {
+  display: none !important;
+}
+
+/* Chỉ tài liệu */
+.meeting-room-shell[data-meeting-layout='documents-only'] .lk-video-conference-inner {
+  margin-right: clamp(280px, 35vw, 420px) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-only'] .meeting-side-stack {
+  display: flex !important;
+  width: clamp(280px, 35vw, 420px);
+}
+
+.meeting-room-shell[data-meeting-layout='documents-only'] .meeting-documents-panel {
+  display: flex !important;
+  flex: 1;
+  min-height: 0;
+  position: relative !important;
+  width: 100% !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-only'] .meeting-transcript-panel {
+  display: none !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-only'] .meeting-vote-panel {
+  display: none !important;
+}
+
+/* Tài liệu + chat (đẩy sang trái như transcript + chat) */
+.meeting-room-shell[data-meeting-layout='documents-chat'] .lk-video-conference-inner {
+  margin-right: min(720px, 44vw) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-chat'] .lk-chat {
+  position: absolute !important;
+  right: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: calc(min(720px, 44vw) / 2) !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  flex-shrink: 0 !important;
+  z-index: 6 !important;
+  border-left: 1px solid #e8eaed !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-chat'] .meeting-side-stack {
+  display: flex !important;
+  flex-direction: column;
+  right: calc(min(720px, 44vw) / 2);
+  width: calc(min(720px, 44vw) / 2);
+}
+
+.meeting-room-shell[data-meeting-layout='documents-chat'] .meeting-documents-panel {
+  display: flex !important;
+  flex: 1;
+  min-height: 0;
+  position: relative !important;
+  width: 100% !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-chat'] .meeting-transcript-panel {
+  display: none !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-chat'] .meeting-vote-panel {
+  display: none !important;
+}
+
+/* Tài liệu + Transcript (2 cột, đẩy sang trái) */
+.meeting-room-shell[data-meeting-layout='documents-transcript'] .lk-video-conference-inner {
+  margin-right: clamp(560px, 70vw, 840px) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript'] .meeting-side-stack {
+  display: flex !important;
+  flex-direction: row !important;
+  width: clamp(560px, 70vw, 840px) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript'] .meeting-documents-panel {
+  display: flex !important;
+  flex: 1;
+  min-height: 0;
+  position: relative !important;
+  width: 100% !important;
+  border-left: none;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript'] .meeting-transcript-panel {
+  display: flex !important;
+  flex: 1;
+  min-height: 0;
+  position: relative !important;
+  width: 100% !important;
+  border-right: 1px solid #e5e7eb;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript'] .meeting-vote-panel {
+  display: none !important;
+}
+
+/* Tài liệu + Transcript + Chat (đẩy sang trái như demo transcript+chat) */
+.meeting-room-shell[data-meeting-layout='documents-transcript-chat'] .lk-video-conference-inner {
+  margin-right: calc(clamp(280px, 25vw, 420px) + clamp(560px, 55vw, 900px)) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-chat'] .lk-chat {
+  position: absolute !important;
+  right: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: clamp(280px, 25vw, 420px) !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  flex-shrink: 0 !important;
+  z-index: 6 !important;
+  border-left: 1px solid #e8eaed !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-chat'] .meeting-side-stack {
+  display: flex !important;
+  flex-direction: row !important;
+  right: clamp(280px, 25vw, 420px) !important;
+  width: clamp(560px, 55vw, 900px) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-chat'] .meeting-documents-panel {
+  display: flex !important;
+  flex: 1;
+  min-height: 0;
+  position: relative !important;
+  width: 100% !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-chat'] .meeting-transcript-panel {
+  display: flex !important;
+  flex: 1;
+  min-height: 0;
+  position: relative !important;
+  width: 100% !important;
+  border-right: 1px solid #e5e7eb;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-chat'] .meeting-vote-panel {
   display: none !important;
 }
 
@@ -1357,6 +1505,61 @@ button:active:not(:disabled) {
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.04);
   overflow: hidden;
+}
+
+/* Documents panel (side panel) */
+.meeting-documents-panel {
+  display: none;
+  flex-direction: column;
+  border-left: 1px solid #e8eaed;
+  background: linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.meeting-documents-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  min-height: 64px;
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.meeting-documents-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.meeting-documents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.meeting-documents-item {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.meeting-documents-item.is-active {
+  border-color: rgba(59, 130, 246, 0.9);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.meeting-documents-view-header {
+  padding: 12px;
+}
+
+.meeting-documents-view {
+  height: calc(100% - 64px);
+  min-height: 0;
+  background: #ffffff;
 }
 
 .meeting-vote-header {
