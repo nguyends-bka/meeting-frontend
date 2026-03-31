@@ -20,21 +20,14 @@ function findControlBar(root: HTMLElement | Document): HTMLElement | null {
 const CONTROL_BAR_BREAKPOINT_CHAT_OPEN = 1000;
 const CONTROL_BAR_BREAKPOINT_CHAT_CLOSED = 760;
 
-/**
- * When chat/side panels squeeze the bar, viewport can still be wide so LiveKit stays "verbose".
- * Collapse labels when the bar itself is narrower than this (px).
- */
-const MEETING_BAR_COMPACT_WIDTH_PX = 1200;
-
 function isControlBarIconOnlyMode(chatOpen: boolean): boolean {
   const max = chatOpen ? CONTROL_BAR_BREAKPOINT_CHAT_OPEN : CONTROL_BAR_BREAKPOINT_CHAT_CLOSED;
   return window.matchMedia(`(max-width: ${max}px)`).matches;
 }
 
 function shouldCompactControlBar(bar: HTMLElement, chatOpen: boolean): boolean {
-  if (isControlBarIconOnlyMode(chatOpen)) return true;
-  const w = bar.clientWidth;
-  return w > 0 && w < MEETING_BAR_COMPACT_WIDTH_PX;
+  void bar;
+  return isControlBarIconOnlyMode(chatOpen);
 }
 
 /**
