@@ -1187,7 +1187,7 @@ button:active:not(:disabled) {
 
 /* Chỉ chat */
 .meeting-room-shell[data-meeting-layout='chat-only'] .lk-video-conference-inner {
-  margin-right: var(--meeting-chat-width) !important;
+  margin-right: 0 !important;
 }
 
 .meeting-room-shell[data-meeting-layout='chat-only'] .lk-chat {
