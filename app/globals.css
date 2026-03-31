@@ -1089,6 +1089,7 @@ button:active:not(:disabled) {
 /* ===== Transcript + Chat layout (data-meeting-layout từ MeetingShellEnhancements) ===== */
 
 .meeting-room-shell {
+  --meeting-chat-width: clamp(320px, 36vw, 520px);
   position: relative;
   flex: 1;
   min-width: 0;
@@ -1186,7 +1187,13 @@ button:active:not(:disabled) {
 
 /* Chỉ chat */
 .meeting-room-shell[data-meeting-layout='chat-only'] .lk-video-conference-inner {
-  margin-right: 0 !important;
+  margin-right: var(--meeting-chat-width) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='chat-only'] .lk-chat {
+  width: var(--meeting-chat-width) !important;
+  max-width: none !important;
+  min-width: 0 !important;
 }
 
 .meeting-room-shell[data-meeting-layout='chat-only'] .meeting-side-stack {
@@ -1271,7 +1278,7 @@ button:active:not(:disabled) {
 
 /* Tài liệu + biểu quyết + chat */
 .meeting-room-shell[data-meeting-layout='documents-vote-chat'] .lk-video-conference-inner {
-  margin-right: min(720px, 44vw) !important;
+  margin-right: calc(var(--meeting-chat-width) * 3) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='documents-vote-chat'] .lk-chat {
@@ -1279,7 +1286,7 @@ button:active:not(:disabled) {
   right: 0 !important;
   top: 0 !important;
   bottom: 86px !important;
-  width: calc(min(720px, 44vw) / 2) !important;
+  width: var(--meeting-chat-width) !important;
   max-width: none !important;
   min-width: 0 !important;
   flex-shrink: 0 !important;
@@ -1290,8 +1297,8 @@ button:active:not(:disabled) {
 .meeting-room-shell[data-meeting-layout='documents-vote-chat'] .meeting-side-stack {
   display: flex !important;
   flex-direction: row !important;
-  right: calc(min(720px, 44vw) / 2);
-  width: calc(min(720px, 44vw) / 2);
+  right: var(--meeting-chat-width) !important;
+  width: calc(var(--meeting-chat-width) * 2) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='documents-vote-chat'] .meeting-documents-panel,
@@ -1309,7 +1316,7 @@ button:active:not(:disabled) {
 
 /* Tài liệu + chat (đẩy sang trái như transcript + chat) */
 .meeting-room-shell[data-meeting-layout='documents-chat'] .lk-video-conference-inner {
-  margin-right: min(720px, 44vw) !important;
+  margin-right: calc(var(--meeting-chat-width) * 2) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='documents-chat'] .lk-chat {
@@ -1317,7 +1324,7 @@ button:active:not(:disabled) {
   right: 0 !important;
   top: 0 !important;
   bottom: 86px !important;
-  width: calc(min(720px, 44vw) / 2) !important;
+  width: var(--meeting-chat-width) !important;
   max-width: none !important;
   min-width: 0 !important;
   flex-shrink: 0 !important;
@@ -1328,8 +1335,8 @@ button:active:not(:disabled) {
 .meeting-room-shell[data-meeting-layout='documents-chat'] .meeting-side-stack {
   display: flex !important;
   flex-direction: column;
-  right: calc(min(720px, 44vw) / 2);
-  width: calc(min(720px, 44vw) / 2);
+  right: var(--meeting-chat-width);
+  width: var(--meeting-chat-width);
 }
 
 .meeting-room-shell[data-meeting-layout='documents-chat'] .meeting-documents-panel {
@@ -1383,7 +1390,7 @@ button:active:not(:disabled) {
 
 /* Tài liệu + Transcript + Chat (đẩy sang trái như demo transcript+chat) */
 .meeting-room-shell[data-meeting-layout='documents-transcript-chat'] .lk-video-conference-inner {
-  margin-right: calc(clamp(280px, 25vw, 420px) + clamp(560px, 55vw, 900px)) !important;
+  margin-right: calc(var(--meeting-chat-width) * 3) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='documents-transcript-chat'] .lk-chat {
@@ -1391,7 +1398,7 @@ button:active:not(:disabled) {
   right: 0 !important;
   top: 0 !important;
   bottom: 86px !important;
-  width: clamp(280px, 25vw, 420px) !important;
+  width: var(--meeting-chat-width) !important;
   max-width: none !important;
   min-width: 0 !important;
   flex-shrink: 0 !important;
@@ -1402,8 +1409,8 @@ button:active:not(:disabled) {
 .meeting-room-shell[data-meeting-layout='documents-transcript-chat'] .meeting-side-stack {
   display: flex !important;
   flex-direction: row !important;
-  right: clamp(280px, 25vw, 420px) !important;
-  width: clamp(560px, 55vw, 900px) !important;
+  right: var(--meeting-chat-width) !important;
+  width: calc(var(--meeting-chat-width) * 2) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='documents-transcript-chat'] .meeting-documents-panel {
@@ -1473,7 +1480,7 @@ button:active:not(:disabled) {
 
 /* Tài liệu + Transcript + biểu quyết + Chat */
 .meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .lk-video-conference-inner {
-  margin-right: calc(clamp(280px, 25vw, 420px) + clamp(560px, 55vw, 900px)) !important;
+  margin-right: calc(var(--meeting-chat-width) * 3) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .lk-chat {
@@ -1481,7 +1488,7 @@ button:active:not(:disabled) {
   right: 0 !important;
   top: 0 !important;
   bottom: 86px !important;
-  width: clamp(280px, 25vw, 420px) !important;
+  width: var(--meeting-chat-width) !important;
   max-width: none !important;
   min-width: 0 !important;
   flex-shrink: 0 !important;
@@ -1493,8 +1500,8 @@ button:active:not(:disabled) {
   display: grid !important;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
-  right: clamp(280px, 25vw, 420px) !important;
-  width: clamp(560px, 55vw, 900px) !important;
+  right: var(--meeting-chat-width) !important;
+  width: calc(var(--meeting-chat-width) * 2) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .meeting-transcript-panel,
@@ -1550,14 +1557,15 @@ button:active:not(:disabled) {
   width: 100% !important;
 }
 
-/* Transcript + biểu quyết (xếp dọc) */
+/* Transcript + biểu quyết (xếp dọc, chung 1 cột) */
 .meeting-room-shell[data-meeting-layout='transcript-vote'] .lk-video-conference-inner {
   margin-right: clamp(280px, 35vw, 420px) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='transcript-vote'] .meeting-side-stack {
   display: flex !important;
-  width: clamp(280px, 35vw, 420px);
+  flex-direction: column !important;
+  width: clamp(280px, 35vw, 420px) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='transcript-vote'] .meeting-transcript-panel,
@@ -1575,7 +1583,7 @@ button:active:not(:disabled) {
 }
 
 .meeting-room-shell[data-meeting-layout='both'] .lk-video-conference-inner {
-  margin-right: min(720px, 44vw) !important;
+  margin-right: calc(var(--meeting-chat-width) * 2) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='both'] .lk-chat {
@@ -1583,7 +1591,7 @@ button:active:not(:disabled) {
   right: 0 !important;
   top: 0 !important;
   bottom: 86px !important;
-  width: calc(min(720px, 44vw) / 2) !important;
+  width: var(--meeting-chat-width) !important;
   max-width: none !important;
   min-width: 0 !important;
   flex-shrink: 0 !important;
@@ -1594,8 +1602,8 @@ button:active:not(:disabled) {
 .meeting-room-shell[data-meeting-layout='both'] .meeting-side-stack {
   display: flex !important;
   flex-direction: column;
-  right: calc(min(720px, 44vw) / 2);
-  width: calc(min(720px, 44vw) / 2);
+  right: var(--meeting-chat-width);
+  width: var(--meeting-chat-width);
 }
 
 .meeting-room-shell[data-meeting-layout='both'] .meeting-transcript-panel {
@@ -1617,7 +1625,7 @@ button:active:not(:disabled) {
 }
 
 .meeting-room-shell[data-meeting-layout='vote-chat'] .lk-video-conference-inner {
-  margin-right: min(720px, 44vw) !important;
+  margin-right: calc(var(--meeting-chat-width) * 2) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='vote-chat'] .lk-chat {
@@ -1625,7 +1633,7 @@ button:active:not(:disabled) {
   right: 0 !important;
   top: 0 !important;
   bottom: 86px !important;
-  width: calc(min(720px, 44vw) / 2) !important;
+  width: var(--meeting-chat-width) !important;
   max-width: none !important;
   min-width: 0 !important;
   flex-shrink: 0 !important;
@@ -1636,8 +1644,8 @@ button:active:not(:disabled) {
 .meeting-room-shell[data-meeting-layout='vote-chat'] .meeting-side-stack {
   display: flex !important;
   flex-direction: column;
-  right: calc(min(720px, 44vw) / 2);
-  width: calc(min(720px, 44vw) / 2);
+  right: var(--meeting-chat-width);
+  width: var(--meeting-chat-width);
 }
 
 .meeting-room-shell[data-meeting-layout='vote-chat'] .meeting-transcript-panel {
@@ -1653,13 +1661,13 @@ button:active:not(:disabled) {
   border-right: 1px solid #e5e7eb;
 }
 
-/* Transcript + biểu quyết + chat */
+/* Transcript + biểu quyết + chat (Transcript+Vote chung 1 cột) */
 .meeting-room-shell[data-meeting-layout='transcript-vote-chat'] .lk-video-conference {
   position: relative !important;
 }
 
 .meeting-room-shell[data-meeting-layout='transcript-vote-chat'] .lk-video-conference-inner {
-  margin-right: min(720px, 44vw) !important;
+  margin-right: calc(var(--meeting-chat-width) * 2) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='transcript-vote-chat'] .lk-chat {
@@ -1667,7 +1675,7 @@ button:active:not(:disabled) {
   right: 0 !important;
   top: 0 !important;
   bottom: 86px !important;
-  width: calc(min(720px, 44vw) / 2) !important;
+  width: var(--meeting-chat-width) !important;
   max-width: none !important;
   min-width: 0 !important;
   flex-shrink: 0 !important;
@@ -1677,9 +1685,9 @@ button:active:not(:disabled) {
 
 .meeting-room-shell[data-meeting-layout='transcript-vote-chat'] .meeting-side-stack {
   display: flex !important;
-  flex-direction: column;
-  right: calc(min(720px, 44vw) / 2);
-  width: calc(min(720px, 44vw) / 2);
+  flex-direction: column !important;
+  right: var(--meeting-chat-width) !important;
+  width: var(--meeting-chat-width) !important;
 }
 
 .meeting-room-shell[data-meeting-layout='transcript-vote-chat'] .meeting-transcript-panel,
