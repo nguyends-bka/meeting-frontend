@@ -92,7 +92,9 @@ export type MeetingLayoutDataset =
   | 'documents-only'
   | 'documents-chat'
   | 'documents-transcript'
+  | 'documents-transcript-vote'
   | 'documents-transcript-chat'
+  | 'documents-transcript-vote-chat'
   | 'transcript-only'
   | 'vote-only'
   | 'chat-only'
@@ -214,7 +216,9 @@ export default function MeetingShellEnhancements({
     // Documents panel as a first-class side panel
     // - d && t: documents + transcript should be side-by-side (no overlap)
     // - d && t && c: documents + transcript + chat should push left like transcript+chat
-    if (d && t && c && !v) layout = 'documents-transcript-chat';
+    if (d && t && v && c) layout = 'documents-transcript-vote-chat';
+    else if (d && t && v && !c) layout = 'documents-transcript-vote';
+    else if (d && t && c && !v) layout = 'documents-transcript-chat';
     else if (d && t && !c && !v) layout = 'documents-transcript';
     else if (d && c && !t && !v) layout = 'documents-chat';
     else if (d && !c && !t && !v) layout = 'documents-only';

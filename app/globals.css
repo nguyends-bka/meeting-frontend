@@ -763,8 +763,10 @@ button:active:not(:disabled) {
   position: sticky !important;
   top: 0 !important;
   z-index: 10 !important;
-  padding: 14px 44px 14px 16px !important;
+  padding: 0 44px 0 16px !important;
+  height: 48px !important;
   min-height: 48px !important;
+  box-sizing: border-box !important;
   font-weight: 700 !important;
   font-size: 16px !important;
   letter-spacing: 0.02em !important;
@@ -774,7 +776,7 @@ button:active:not(:disabled) {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
   display: flex !important;
   align-items: center !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
 }
 
 .lk-chat-header .lk-close-button {
@@ -785,6 +787,7 @@ button:active:not(:disabled) {
   color: #6b7280 !important;
   position: absolute !important;
   right: 8px !important;
+  top: 8px !important;
 }
 .lk-chat-header .lk-close-button:hover {
   background: #f3f4f6 !important;
@@ -1358,6 +1361,107 @@ button:active:not(:disabled) {
   display: none !important;
 }
 
+/* Tài liệu + Transcript + biểu quyết (Transcript+Vote chung 1 cột) */
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote'] .lk-video-conference-inner {
+  margin-right: clamp(560px, 70vw, 840px) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote'] .meeting-side-stack {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  width: clamp(560px, 70vw, 840px) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote'] .meeting-transcript-panel,
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote'] .meeting-vote-panel {
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0;
+  position: relative !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote'] .meeting-transcript-panel {
+  grid-column: 1;
+  grid-row: 1;
+  border-right: 1px solid #e5e7eb;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote'] .meeting-vote-panel {
+  grid-column: 1;
+  grid-row: 2;
+  border-right: 1px solid #e5e7eb;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote'] .meeting-documents-panel {
+  display: flex !important;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0;
+  position: relative !important;
+  border-left: none;
+}
+
+/* Tài liệu + Transcript + biểu quyết + Chat */
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .lk-video-conference-inner {
+  margin-right: calc(clamp(280px, 25vw, 420px) + clamp(560px, 55vw, 900px)) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .lk-chat {
+  position: absolute !important;
+  right: 0 !important;
+  top: 0 !important;
+  bottom: 86px !important;
+  width: clamp(280px, 25vw, 420px) !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  flex-shrink: 0 !important;
+  z-index: 6 !important;
+  border-left: 1px solid #e8eaed !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .meeting-side-stack {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  right: clamp(280px, 25vw, 420px) !important;
+  width: clamp(560px, 55vw, 900px) !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .meeting-transcript-panel,
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .meeting-vote-panel {
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0;
+  position: relative !important;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .meeting-transcript-panel {
+  grid-column: 1;
+  grid-row: 1;
+  border-right: 1px solid #e5e7eb;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .meeting-vote-panel {
+  grid-column: 1;
+  grid-row: 2;
+  border-right: 1px solid #e5e7eb;
+}
+
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .meeting-documents-panel {
+  display: flex !important;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0;
+  position: relative !important;
+}
+
 /* Chỉ biểu quyết */
 .meeting-room-shell[data-meeting-layout='vote-only'] .lk-video-conference-inner {
   margin-right: clamp(280px, 35vw, 420px) !important;
@@ -1528,6 +1632,7 @@ button:active:not(:disabled) {
 /* In combined layouts, override base .lk-chat height:100% so chat follows meeting area height */
 .meeting-room-shell[data-meeting-layout='documents-chat'] .lk-chat,
 .meeting-room-shell[data-meeting-layout='documents-transcript-chat'] .lk-chat,
+.meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .lk-chat,
 .meeting-room-shell[data-meeting-layout='both'] .lk-chat,
 .meeting-room-shell[data-meeting-layout='vote-chat'] .lk-chat,
 .meeting-room-shell[data-meeting-layout='transcript-vote-chat'] .lk-chat {
@@ -1537,6 +1642,7 @@ button:active:not(:disabled) {
 @media (max-width: 768px) {
   .meeting-room-shell[data-meeting-layout='documents-chat'] .lk-chat,
   .meeting-room-shell[data-meeting-layout='documents-transcript-chat'] .lk-chat,
+  .meeting-room-shell[data-meeting-layout='documents-transcript-vote-chat'] .lk-chat,
   .meeting-room-shell[data-meeting-layout='both'] .lk-chat,
   .meeting-room-shell[data-meeting-layout='vote-chat'] .lk-chat,
   .meeting-room-shell[data-meeting-layout='transcript-vote-chat'] .lk-chat {
@@ -1576,14 +1682,40 @@ button:active:not(:disabled) {
 
 .meeting-documents-header {
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
+  justify-content: flex-start;
+  padding: 0 44px 0 16px;
+  height: 48px;
   min-height: 48px;
+  box-sizing: border-box;
   background: #ffffff;
   border-bottom: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.meeting-documents-header .ant-space {
+  min-width: 0;
+}
+
+.meeting-documents-header .ant-space-item:nth-child(2) {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  color: #111827;
+}
+
+.meeting-documents-header > .ant-btn {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
 }
 
 .meeting-documents-content {
@@ -2070,14 +2202,16 @@ button:active:not(:disabled) {
   position: sticky;
   top: 0;
   z-index: 2;
-  padding: 10px 44px 10px 16px;
+  padding: 0 44px 0 16px;
+  height: 48px;
   min-height: 48px;
+  box-sizing: border-box;
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .meeting-transcript-header-main {
@@ -2114,7 +2248,7 @@ button:active:not(:disabled) {
   color: #6b7280;
   position: absolute;
   right: 8px;
-  top: 10px;
+  top: 8px;
   border: none;
   background: transparent;
   font-size: 20px;

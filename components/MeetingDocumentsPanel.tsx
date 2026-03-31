@@ -57,11 +57,6 @@ export default function MeetingDocumentsPanel({
 
   useEffect(() => {
     if (!documentsOpen) {
-      setActiveDoc(null);
-      setActiveObjectUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
       return;
     }
 
@@ -70,7 +65,7 @@ export default function MeetingDocumentsPanel({
   }, [documentsOpen, meetingId]);
 
   useEffect(() => {
-    if (!documentsOpen || !activeDoc) return;
+    if (!activeDoc) return;
 
     const measure = () => {
       const shell = document.querySelector('.meeting-room-shell') as HTMLElement | null;
@@ -128,7 +123,7 @@ export default function MeetingDocumentsPanel({
       window.removeEventListener('resize', measure);
       observer?.disconnect();
     };
-  }, [documentsOpen, activeDoc]);
+  }, [activeDoc]);
 
   useEffect(() => {
     if (!activeDoc) {
