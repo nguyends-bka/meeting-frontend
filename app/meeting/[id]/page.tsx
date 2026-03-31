@@ -829,7 +829,7 @@ export default function MeetingPage() {
                   <VideoConference />
                   <div className="meeting-side-stack">
                     <TranscriptPanel currentUserName={transcriptDisplayName} onClose={() => setTranscriptOpen(false)} />
-                    <VotePanel canCreatePoll={canCreatePoll} />
+                    <VotePanel canCreatePoll={canCreatePoll} onClose={() => setVoteOpen(false)} />
                     <MeetingDocumentsPanel
                       documentsOpen={documentsOpen}
                       meetingId={currentMeetingId ?? meetingId}

@@ -90,6 +90,8 @@ const DOCUMENTS_BUTTON_INNER =
 export type MeetingLayoutDataset =
   | 'neither'
   | 'documents-only'
+  | 'documents-vote'
+  | 'documents-vote-chat'
   | 'documents-chat'
   | 'documents-transcript'
   | 'documents-transcript-vote'
@@ -218,6 +220,8 @@ export default function MeetingShellEnhancements({
     // - d && t && c: documents + transcript + chat should push left like transcript+chat
     if (d && t && v && c) layout = 'documents-transcript-vote-chat';
     else if (d && t && v && !c) layout = 'documents-transcript-vote';
+    else if (d && v && c && !t) layout = 'documents-vote-chat';
+    else if (d && v && !c && !t) layout = 'documents-vote';
     else if (d && t && c && !v) layout = 'documents-transcript-chat';
     else if (d && t && !c && !v) layout = 'documents-transcript';
     else if (d && c && !t && !v) layout = 'documents-chat';

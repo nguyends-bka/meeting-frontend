@@ -43,7 +43,13 @@ function PollCountdown({ endAt }: { endAt: number }) {
   );
 }
 
-export default function VotePanel({ canCreatePoll = true }: { canCreatePoll?: boolean }) {
+export default function VotePanel({
+  canCreatePoll = true,
+  onClose,
+}: {
+  canCreatePoll?: boolean;
+  onClose?: () => void;
+}) {
   const {
     polls,
     createPoll,
@@ -181,6 +187,16 @@ export default function VotePanel({ canCreatePoll = true }: { canCreatePoll?: bo
     >
       <div className="meeting-vote-header">
         <span className="meeting-vote-header-title">Biểu quyết</span>
+        {onClose && (
+          <button
+            type="button"
+            className="meeting-vote-header-close"
+            aria-label="Đóng biểu quyết"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        )}
         {canCreatePoll && (
           <div className="meeting-vote-header-actions">
             <button
