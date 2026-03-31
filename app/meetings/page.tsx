@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { apiService, meetingApi } from '@/services/api';
-import type { MeetingMinutes, PollResponse, PollManagerItem } from '@/dtos/meeting.dto';
+import type { MeetingMinutes, PollResponse, PollManagerItem, MeetingDocumentDto } from '@/dtos/meeting.dto';
 import { MeetingMinutesPreview } from '@/components/meeting/MeetingMinutesPreview';
 import { buildMinutesText } from '@/lib/meetingMinutesFormat';
 import { exportMeetingMinutesWord } from '@/lib/exportMeetingMinutesWord';
@@ -48,6 +48,9 @@ import {
   VideoCameraOutlined,
   FileExcelOutlined,
   FileTextOutlined,
+  UploadOutlined,
+  DeleteOutlined,
+  EyeOutlined,
   FileWordOutlined,
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
@@ -149,9 +152,23 @@ export default function MeetingsPage() {
   const [reportMinutesLoading, setReportMinutesLoading] = useState(false);
   const [exportingReportWord, setExportingReportWord] = useState(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
+  const [documentsMeeting, setDocumentsMeeting] = useState<Meeting | null>(null);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentsUploading, setDocumentsUploading] = useState(false);
+  const [documentsDeletingId, setDocumentsDeletingId] = useState<string | null>(null);
+  const [meetingDocuments, setMeetingDocuments] = useState<MeetingDocumentDto[]>([]);
+  const docFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const canManagePollForMeeting = (m: Meeting): boolean => {
     return Boolean(m.canManagePoll);
+  };
+
+  const isHostForMeeting = (m: Meeting): boolean => {
+    const hostIdentity = String(m.hostIdentity || '').trim().toLowerCase();
+    if (!hostIdentity) return false;
+    const userId = String(user?.id || '').trim().toLowerCase();
+    const username = String(user?.username || '').trim().toLowerCase();
+    return hostIdentity === userId || hostIdentity === username;
   };
 
   useEffect(() => {
@@ -387,6 +404,72 @@ export default function MeetingsPage() {
     setReportMinutesLoading(false);
   };
 
+  const loadDocumentsForMeeting = async (meetingId: string) => {
+    setDocumentsLoading(true);
+    const res = await meetingApi.listMeetingDocuments(meetingId);
+    setDocumentsLoading(false);
+    if (res.error || !res.data) {
+      message.error(res.error || 'Không tải được danh sách tài liệu');
+      setMeetingDocuments([]);
+      return;
+    }
+    setMeetingDocuments(res.data);
+  };
+
+  const openDocumentsModal = async (meeting: Meeting) => {
+    setDocumentsMeeting(meeting);
+    setMeetingDocuments([]);
+    await loadDocumentsForMeeting(meeting.id);
+  };
+
+  const onPickDocumentFile = () => docFileInputRef.current?.click();
+
+  const onUploadMeetingDocument: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !documentsMeeting) return;
+    e.target.value = '';
+    setDocumentsUploading(true);
+    try {
+      const res = await meetingApi.uploadMeetingDocument(documentsMeeting.id, file);
+      if ('error' in res && res.error) {
+        message.error(res.error);
+        return;
+      }
+      message.success('Đã tải tài liệu lên');
+      await loadDocumentsForMeeting(documentsMeeting.id);
+    } finally {
+      setDocumentsUploading(false);
+    }
+  };
+
+  const onDeleteMeetingDocument = async (doc: MeetingDocumentDto) => {
+    if (!documentsMeeting) return;
+    setDocumentsDeletingId(doc.id);
+    try {
+      const res = await meetingApi.deleteMeetingDocument(documentsMeeting.id, doc.id);
+      if (res.error) {
+        message.error(res.error);
+        return;
+      }
+      message.success('Đã xóa tài liệu');
+      await loadDocumentsForMeeting(documentsMeeting.id);
+    } finally {
+      setDocumentsDeletingId(null);
+    }
+  };
+
+  const onViewMeetingDocument = async (doc: MeetingDocumentDto) => {
+    if (!documentsMeeting) return;
+    try {
+      const blob = await meetingApi.getMeetingDocumentFileBlob(documentsMeeting.id, doc.id);
+      const objectUrl = URL.createObjectURL(blob);
+      window.open(objectUrl, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+    } catch (err) {
+      message.error((err as Error)?.message || 'Không mở được tài liệu');
+    }
+  };
+
   const copyReportMinutesText = async () => {
     if (!reportMinutes) return;
     try {
@@ -437,6 +520,8 @@ export default function MeetingsPage() {
   };
 
   const getDropdownMenuItems = (record: Meeting): MenuProps['items'] => {
+    if (!isHostForMeeting(record)) return [];
+
     const items: MenuProps['items'] = [
       {
         key: 'minutes_report',
@@ -445,6 +530,13 @@ export default function MeetingsPage() {
         onClick: () => void openReportModal(record),
       },
     ];
+
+    items.push({
+      key: 'manage_documents',
+      icon: <FileTextOutlined />,
+      label: 'Quản lý tài liệu',
+      onClick: () => void openDocumentsModal(record),
+    });
 
     items.push({
       key: 'manage_poll',
@@ -502,6 +594,52 @@ export default function MeetingsPage() {
             </Space>
           </Space>
         ),
+      },
+      {
+        title: 'TRẠNG THÁI',
+        key: 'status',
+        width: 200,
+        responsive: ['md'],
+        render: (_: unknown, record: Meeting) => {
+          const isEnded = Boolean(record.endedAt);
+          const isLive = !isEnded && (record.activeParticipantCount ?? 0) > 0;
+          const when = dayjs(record.createdAt);
+          const timeDateLine = (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+              <Typography.Text strong>{when.format('HH:mm')}</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {when.format('DD/MM/YYYY')}
+              </Typography.Text>
+            </div>
+          );
+          if (isLive) {
+            return (
+              <div>
+                <Tag color="success">Đang diễn ra</Tag>
+                {timeDateLine}
+              </div>
+            );
+          }
+          if (isEnded) {
+            const endWhen = record.endedAt ? dayjs(record.endedAt) : when;
+            return (
+              <div>
+                <Tag>Đã kết thúc</Tag>
+                <div style={{ marginTop: 6 }}>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    Kết thúc: {endWhen.format('HH:mm DD/MM/YYYY')}
+                  </Typography.Text>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div>
+              <Tag color="processing">Chưa diễn ra</Tag>
+              {timeDateLine}
+            </div>
+          );
+        },
       },
       {
         title: 'TRUY CẬP',
@@ -629,6 +767,7 @@ export default function MeetingsPage() {
           const isEnded = Boolean(record.endedAt);
           const isLive = !isEnded && (record.activeParticipantCount ?? 0) > 0;
           const actionLabel = isLive ? 'Tham gia' : isEnded ? 'Xem lịch sử' : 'Chi tiết';
+          const showHostMenu = isHostForMeeting(record);
 
           return (
             <Space>
@@ -652,9 +791,11 @@ export default function MeetingsPage() {
               >
                 {actionLabel}
               </Button>
-              <Dropdown menu={{ items: getDropdownMenuItems(record) }} trigger={['click']}>
-                <Button icon={<MoreOutlined />} onClick={(e) => e.stopPropagation()} />
-              </Dropdown>
+              {showHostMenu && (
+                <Dropdown menu={{ items: getDropdownMenuItems(record) }} trigger={['click']}>
+                  <Button icon={<MoreOutlined />} onClick={(e) => e.stopPropagation()} />
+                </Dropdown>
+              )}
             </Space>
           );
         },
@@ -936,6 +1077,120 @@ export default function MeetingsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        title={
+          <div style={{ minWidth: 0 }}>
+            <Typography.Title level={5} style={{ margin: 0 }}>
+              Quản lý tài liệu cuộc họp
+            </Typography.Title>
+            <Typography.Text type="secondary" style={{ display: 'block' }}>
+              {documentsMeeting?.title ?? ''}
+            </Typography.Text>
+          </div>
+        }
+        open={Boolean(documentsMeeting)}
+        onCancel={() => {
+          setDocumentsMeeting(null);
+          setMeetingDocuments([]);
+        }}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+            <Space>
+              <input
+                ref={docFileInputRef}
+                type="file"
+                style={{ display: 'none' }}
+                accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
+                onChange={onUploadMeetingDocument}
+              />
+              <Button
+                type="primary"
+                icon={<UploadOutlined />}
+                loading={documentsUploading}
+                onClick={onPickDocumentFile}
+                disabled={!documentsMeeting || Boolean(documentsMeeting.endedAt)}
+              >
+                Tải tài liệu lên
+              </Button>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => documentsMeeting && void loadDocumentsForMeeting(documentsMeeting.id)}
+                loading={documentsLoading}
+                disabled={!documentsMeeting}
+              >
+                Làm mới
+              </Button>
+            </Space>
+            <Button
+              onClick={() => {
+                setDocumentsMeeting(null);
+                setMeetingDocuments([]);
+              }}
+            >
+              Đóng
+            </Button>
+          </div>
+        }
+        destroyOnHidden
+        width={760}
+      >
+        <Table<MeetingDocumentDto>
+          rowKey="id"
+          loading={documentsLoading}
+          dataSource={meetingDocuments}
+          pagination={{ pageSize: 8, showSizeChanger: false }}
+          locale={{
+            emptyText: documentsLoading ? 'Đang tải...' : <Empty description="Chưa có tài liệu" />,
+          }}
+          columns={[
+            {
+              title: 'Tài liệu',
+              key: 'file',
+              render: (_v, r) => (
+                <Space direction="vertical" size={0}>
+                  <Typography.Text strong>{r.fileName}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {r.uploaderName} • {dayjs(r.createdAt).format('HH:mm, DD/MM/YYYY')}
+                  </Typography.Text>
+                </Space>
+              ),
+            },
+            {
+              title: 'Kích thước',
+              dataIndex: 'size',
+              width: 120,
+              render: (v: number) => `${Math.max(1, Math.round(v / 1024))} KB`,
+            },
+            {
+              title: 'Thao tác',
+              key: 'actions',
+              width: 190,
+              render: (_v, r) => (
+                <Space>
+                  <Button size="small" icon={<EyeOutlined />} onClick={() => void onViewMeetingDocument(r)}>
+                    Xem
+                  </Button>
+                  <Popconfirm
+                    title="Xóa tài liệu này?"
+                    okText="Xóa"
+                    cancelText="Hủy"
+                    onConfirm={() => void onDeleteMeetingDocument(r)}
+                  >
+                    <Button
+                      size="small"
+                      danger
+                      icon={<DeleteOutlined />}
+                      loading={documentsDeletingId === r.id}
+                      disabled={Boolean(documentsMeeting?.endedAt)}
+                    />
+                  </Popconfirm>
+                </Space>
+              ),
+            },
+          ]}
+        />
       </Modal>
 
       <style

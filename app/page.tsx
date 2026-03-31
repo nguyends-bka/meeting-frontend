@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { adminApi, apiService } from '@/services/api';
@@ -32,6 +32,7 @@ import {
   VideoCameraOutlined,
   CalendarOutlined,
   UserOutlined,
+  CaretRightOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -40,7 +41,9 @@ type HomeMeetingRow = {
   id: string;
   title: string;
   hostName: string;
+  hostIdentity: string;
   meetingCode: string;
+  passcode: string;
   createdAt: string;
   activeParticipantCount?: number;
   startedAt?: string | null;
@@ -122,7 +125,9 @@ export default function HomePage() {
           id: m.id,
           title: m.title,
           hostName: m.hostName,
+          hostIdentity: m.hostIdentity ?? '',
           meetingCode: m.meetingCode,
+          passcode: m.passcode ?? '',
           createdAt: m.createdAt,
           activeParticipantCount: m.activeParticipantCount,
           startedAt: m.startedAt,
@@ -158,7 +163,9 @@ export default function HomePage() {
         id: m.id,
         title: m.title,
         hostName: m.hostName,
+        hostIdentity: m.hostIdentity ?? '',
         meetingCode: m.meetingCode,
+        passcode: m.passcode ?? '',
         createdAt: m.createdAt,
         startedAt: m.startedAt,
         endedAt: m.endedAt,
@@ -218,19 +225,267 @@ export default function HomePage() {
     }
   };
 
-  const buildMeetingLink = (meetingId: string) => {
+  const buildMeetingLink = useCallback((meetingId: string) => {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
     return `${baseUrl}/meeting/${meetingId}`;
-  };
+  }, []);
 
-  const copyText = async (text: string, successMsg = 'Đã copy') => {
-    try {
-      await navigator.clipboard.writeText(text);
-      message.success(successMsg);
-    } catch {
-      message.error('Không thể copy. Vui lòng thử lại.');
-    }
-  };
+  const copyText = useCallback(
+    async (text: string, successMsg = 'Đã copy') => {
+      try {
+        await navigator.clipboard.writeText(text);
+        message.success(successMsg);
+      } catch {
+        message.error('Không thể copy. Vui lòng thử lại.');
+      }
+    },
+    [message],
+  );
+
+  const homeScheduleColumns = useMemo(
+    () => [
+      {
+        title: 'STT',
+        key: 'stt',
+        width: 60,
+        align: 'center' as const,
+        render: (_: unknown, __: HomeMeetingRow, index: number) => (
+          <Text type="secondary">{index + 1}</Text>
+        ),
+      },
+      {
+        title: 'THÔNG TIN CUỘC HỌP',
+        key: 'info',
+        width: 480,
+        render: (_: unknown, record: HomeMeetingRow) => (
+          <Space align="start" size="middle">
+            <div
+              style={{
+                fontSize: '20px',
+                color: '#1677ff',
+                padding: '8px 12px',
+                border: '1px solid #e6f4ff',
+                borderRadius: '8px',
+              }}
+            >
+              <CalendarOutlined />
+            </div>
+            <Space direction="vertical" size={0}>
+              <Text strong style={{ fontSize: '15px' }}>
+                {record.title}
+              </Text>
+              <Text type="secondary" style={{ fontSize: '13px' }}>
+                {dayjs(record.createdAt).format('DD/MM/YYYY HH:mm')}
+              </Text>
+              <Space style={{ marginTop: 4 }}>
+                <UserOutlined style={{ color: '#8c8c8c' }} />
+                <Text type="secondary" style={{ fontSize: '13px' }}>
+                  Host: {record.hostName}
+                </Text>
+              </Space>
+            </Space>
+          </Space>
+        ),
+      },
+      {
+        title: 'TRẠNG THÁI',
+        key: 'status',
+        width: 200,
+        responsive: ['md'] as const,
+        render: (_: unknown, record: HomeMeetingRow) => {
+          const isEnded = Boolean(record.endedAt);
+          const isLive = !isEnded && (record.activeParticipantCount ?? 0) > 0;
+          const when = dayjs(record.createdAt);
+          const timeDateLine = (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+              <Text strong>{when.format('HH:mm')}</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {when.format('DD/MM/YYYY')}
+              </Text>
+            </div>
+          );
+          if (isLive) {
+            return (
+              <div>
+                <Tag color="success">Đang diễn ra</Tag>
+                {timeDateLine}
+              </div>
+            );
+          }
+          if (isEnded) {
+            const endWhen = record.endedAt ? dayjs(record.endedAt) : when;
+            return (
+              <div>
+                <Tag>Đã kết thúc</Tag>
+                <div style={{ marginTop: 6 }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Kết thúc: {endWhen.format('HH:mm DD/MM/YYYY')}
+                  </Text>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div>
+              <Tag color="processing">Chưa diễn ra</Tag>
+              {timeDateLine}
+            </div>
+          );
+        },
+      },
+      {
+        title: 'TRUY CẬP',
+        key: 'access',
+        width: 450,
+        align: 'left' as const,
+        responsive: ['lg'] as const,
+        render: (_: unknown, record: HomeMeetingRow) => (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '44px 1fr',
+              rowGap: 8,
+              columnGap: 8,
+              width: 'fit-content',
+              maxWidth: '100%',
+              minWidth: 0,
+              alignItems: 'center',
+            }}
+          >
+            <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
+              Mã:
+            </Text>
+            <div
+              style={{
+                display: 'inline-grid',
+                gridTemplateColumns: '110px 12px 44px 8px 110px',
+                alignItems: 'center',
+                minWidth: 0,
+              }}
+            >
+              <div
+                style={{
+                  gridColumn: 1,
+                  background: '#f5f5f5',
+                  padding: '4px 12px',
+                  borderRadius: 4,
+                  width: 110,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  minWidth: 0,
+                }}
+              >
+                <Typography.Text strong style={{ flex: 1, minWidth: 0 }} ellipsis>
+                  {record.meetingCode}
+                </Typography.Text>
+                <CopyOutlined
+                  style={{ color: '#8c8c8c', cursor: 'pointer', flex: '0 0 auto' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void copyText(record.meetingCode);
+                  }}
+                />
+              </div>
+
+              <Text type="secondary" style={{ gridColumn: 3, whiteSpace: 'nowrap', width: 44 }}>
+                Pass:
+              </Text>
+
+              <div
+                style={{
+                  gridColumn: 5,
+                  background: '#f5f5f5',
+                  padding: '4px 12px',
+                  borderRadius: 4,
+                  width: 110,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  minWidth: 0,
+                }}
+              >
+                <Typography.Text strong style={{ flex: 1, minWidth: 0 }}>
+                  {record.passcode}
+                </Typography.Text>
+                <CopyOutlined
+                  style={{ color: '#8c8c8c', cursor: 'pointer', flex: '0 0 auto' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void copyText(record.passcode);
+                  }}
+                />
+              </div>
+            </div>
+
+            <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
+              Link:
+            </Text>
+            <div
+              style={{
+                background: '#f5f5f5',
+                padding: '4px 12px',
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                minWidth: 0,
+                width: 110 + 12 + 44 + 8 + 110,
+              }}
+            >
+              <Typography.Text
+                style={{ color: '#1677ff', flex: 1, minWidth: 0 }}
+                ellipsis={{ tooltip: buildMeetingLink(record.id) }}
+              >
+                {buildMeetingLink(record.id)}
+              </Typography.Text>
+              <CopyOutlined
+                style={{ color: '#8c8c8c', cursor: 'pointer', flex: '0 0 auto' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void copyText(buildMeetingLink(record.id));
+                }}
+              />
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'THAO TÁC',
+        key: 'actions',
+        width: 160,
+        fixed: 'right' as const,
+        render: (_: unknown, record: HomeMeetingRow) => {
+          const isEnded = Boolean(record.endedAt);
+          const isLive = !isEnded && (record.activeParticipantCount ?? 0) > 0;
+          const actionLabel = isLive ? 'Tham gia' : isEnded ? 'Xem lịch sử' : 'Chi tiết';
+          return (
+            <Button
+              type={isLive ? 'primary' : 'default'}
+              icon={isLive ? <CaretRightOutlined /> : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isLive) {
+                  router.push(`/meeting/${record.id}`);
+                  return;
+                }
+                if (isEnded) {
+                  router.push(`/history/${record.id}`);
+                  return;
+                }
+                setDetailMeeting(record);
+              }}
+              style={{ fontWeight: 500, width: 112, justifyContent: 'center' }}
+              className="meeting-action-main-btn"
+            >
+              {actionLabel}
+            </Button>
+          );
+        },
+      },
+    ],
+    [router, copyText, buildMeetingLink]
+  );
 
   const onJoinMeeting = async () => {
     const values = await joinForm.validateFields();
@@ -262,7 +517,7 @@ export default function HomePage() {
 
   return (
     <MainLayout>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: isNarrow ? 16 : 24 }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: isNarrow ? 16 : 24 }}>
         <div
           style={{
             display: 'flex',
@@ -392,84 +647,8 @@ export default function HomePage() {
             dataSource={recentMeetings}
             pagination={false}
             tableLayout="fixed"
-            scroll={{ x: isNarrow ? 780 : undefined }}
-            columns={[
-              {
-                title: 'Thông tin cuộc họp',
-                key: 'info',
-                render: (_v, r) => (
-                  <div style={{ minWidth: 260 }}>
-                    <div style={{ fontWeight: 700 }}>{r.title}</div>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      Host: {r.hostName}
-                    </Text>
-                  </div>
-                ),
-              },
-              {
-                title: 'Trạng thái / Thời gian',
-                key: 'status',
-                width: 210,
-                render: (_v, r) => {
-                  const isEnded = Boolean(r.endedAt);
-                  const isLive = !isEnded && (r.activeParticipantCount ?? 0) > 0;
-                  const when = new Date(r.createdAt);
-                  const time = when.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                  const date = when.toLocaleDateString('vi-VN');
-                  const timeDateLine = (
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                      <Text strong>{time}</Text>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {date}
-                      </Text>
-                    </div>
-                  );
-                  if (!isLive) {
-                    return timeDateLine;
-                  }
-                  return (
-                    <div>
-                      <Tag color="green">Đang diễn ra</Tag>
-                      <div style={{ marginTop: 6 }}>{timeDateLine}</div>
-                    </div>
-                  );
-                },
-              },
-              {
-                title: 'Mã tham gia',
-                dataIndex: 'meetingCode',
-                key: 'meetingCode',
-                width: 140,
-                render: (v: string) => (
-                  <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>
-                    {v}
-                  </span>
-                ),
-              },
-              {
-                title: 'Thao tác',
-                key: 'actions',
-                width: 130,
-                render: (_v, r) => {
-                  const isEnded = Boolean(r.endedAt);
-                  const isLive = !isEnded && (r.activeParticipantCount ?? 0) > 0;
-                  const actionLabel = isLive ? 'Tham gia' : isEnded ? 'Xem lịch sử' : 'Chi tiết';
-                  return (
-                    <Button
-                      type={isLive ? 'primary' : 'default'}
-                      style={{ width: 112, justifyContent: 'center' }}
-                      onClick={() => {
-                        if (isLive) router.push(`/meeting/${r.id}`);
-                        else if (isEnded) router.push(`/history/${r.id}`);
-                        else setDetailMeeting(r);
-                      }}
-                    >
-                      {actionLabel}
-                    </Button>
-                  );
-                },
-              },
-            ]}
+            scroll={{ x: isNarrow ? 1100 : undefined }}
+            columns={homeScheduleColumns as any}
             locale={{
               emptyText: <div style={{ padding: 16 }}><Text type="secondary">Chưa có dữ liệu.</Text></div>,
             }}
