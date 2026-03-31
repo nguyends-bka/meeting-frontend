@@ -662,7 +662,7 @@ export default function MeetingPage() {
               camLabel="Camera"
               persistUserChoices={false}
               defaults={{
-                username: user?.username || 'user',
+                username: user?.fullName?.trim() || user?.username || 'user',
                 videoEnabled: false,
                 audioEnabled: false,
               }}

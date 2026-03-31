@@ -796,7 +796,7 @@ button:active:not(:disabled) {
   flex: 1 !important;
   min-height: 0 !important;
   overflow-y: auto !important;
-  padding: 16px !important;
+  padding: 20px 16px 16px !important;
   gap: 8px !important;
   display: flex !important;
   flex-direction: column !important;
@@ -815,6 +815,10 @@ button:active:not(:disabled) {
   margin-bottom: 2px !important;
   list-style: none !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.lk-chat-messages .lk-chat-entry:first-child {
+  margin-top: 2px !important;
 }
 
 /* Tin nhắn người khác - xám mềm */
@@ -1512,7 +1516,7 @@ button:active:not(:disabled) {
   display: none;
   flex-direction: column;
   border-left: 1px solid #e8eaed;
-  background: linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
+  background: linear-gradient(180deg, #fafbfc 0%, #f4f6f8 100%);
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
@@ -1524,8 +1528,8 @@ button:active:not(:disabled) {
   justify-content: space-between;
   padding: 14px 16px;
   min-height: 64px;
-  background: rgba(255, 255, 255, 0.06);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .meeting-documents-content {
@@ -1542,14 +1546,15 @@ button:active:not(:disabled) {
 }
 
 .meeting-documents-item {
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 10px;
+  background: #ffffff;
 }
 
 .meeting-documents-item.is-active {
-  border-color: rgba(59, 130, 246, 0.9);
-  background: rgba(59, 130, 246, 0.1);
+  border-color: #60a5fa;
+  background: #eff6ff;
 }
 
 .meeting-documents-view-header {

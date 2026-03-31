@@ -35,8 +35,8 @@ export default function MeetingDocumentsPanel({
 
   // Overlay viewer (hiển thị PDF/ảnh "chiếm" phần nội dung chính giống demo)
   const [controlBarHeight, setControlBarHeight] = useState<number>(80);
-  const [mainAreaRightPx, setMainAreaRightPx] = useState<number>(0);
   const [overlayLeftPx, setOverlayLeftPx] = useState<number>(0);
+  const [overlayWidthPx, setOverlayWidthPx] = useState<number>(0);
   const [overlayTopPx, setOverlayTopPx] = useState<number>(0);
   const [overlayBottomPx, setOverlayBottomPx] = useState<number>(80);
 
@@ -90,47 +90,24 @@ export default function MeetingDocumentsPanel({
 
       // Default overlay bounds
       let overlayLeft = shellRect.left;
+      let overlayRight = shellRect.right;
       let overlayTop = shellRect.top;
       let overlayBottomEdgeY = barTopY; // cap at control bar top to keep buttons clickable
 
       if (target) {
         const t = target.getBoundingClientRect();
+        overlayLeft = t.left;
+        overlayRight = t.right;
         overlayTop = t.top;
         overlayBottomEdgeY = Math.min(t.bottom, barTopY);
-
-        // If focus layout has a left participant rail, keep it visible:
-        // compute the right-most boundary of participant tiles on the left half.
-        const tiles = Array.from(target.querySelectorAll<HTMLElement>('.lk-participant-tile'));
-        if (tiles.length > 0) {
-          const midX = t.left + t.width / 2;
-          let maxRight = t.left;
-          for (const tile of tiles) {
-            const r = tile.getBoundingClientRect();
-            const centerX = (r.left + r.right) / 2;
-            if (centerX < midX) maxRight = Math.max(maxRight, r.right);
-          }
-
-          // Clamp so we don't shrink too aggressively if selector catches tiles on stage.
-          const clampMax = t.left + t.width * 0.45;
-          overlayLeft = Math.min(maxRight, clampMax);
-          overlayLeft = Math.max(overlayLeft, t.left); // ensure within target
-        } else {
-          overlayLeft = t.left;
-        }
       }
 
-      setOverlayLeftPx(overlayLeft);
+      const width = Math.max(0, Math.round(overlayRight - overlayLeft));
+      setOverlayLeftPx(Math.round(overlayLeft));
+      setOverlayWidthPx(width);
       setOverlayTopPx(overlayTop);
       setOverlayBottomPx(Math.max(0, Math.round(window.innerHeight - overlayBottomEdgeY)));
 
-      // meeting-side-stack nằm bên phải, overlay sẽ chỉ chiếm phần bên trái của nó.
-      const sideStack = shell.querySelector('.meeting-side-stack') as HTMLElement | null;
-      if (!sideStack) {
-        setMainAreaRightPx(window.innerWidth);
-        return;
-      }
-      const r = sideStack.getBoundingClientRect();
-      setMainAreaRightPx(Math.max(0, window.innerWidth - r.left));
     };
 
     measure();
@@ -255,20 +232,43 @@ export default function MeetingDocumentsPanel({
             position: 'fixed',
             top: overlayTopPx,
             left: overlayLeftPx,
-            right: mainAreaRightPx,
+            width: overlayWidthPx,
             bottom: overlayBottomPx,
-            zIndex: 4, // meeting-side-stack z-index: 5, nên panel vẫn nằm trên viewer
-            background: '#ffffff',
-            overflow: 'auto',
+            zIndex: 4,
+            background: '#0b1220',
+            overflow: 'hidden',
           }}
         >
-          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-            <Button
-              icon={<CloseOutlined />}
-              onClick={() => setActiveDoc(null)}
-              style={{ position: 'absolute', top: 12, right: 12, zIndex: 2 }}
-            />
-            <div style={{ width: '100%', height: '100%' }}>{viewer}</div>
+          <div
+            style={{
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+              display: 'grid',
+              gridTemplateRows: '48px 1fr',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 12px 0 16px',
+                background: 'rgba(15, 23, 42, 0.95)',
+                borderBottom: '1px solid rgba(148, 163, 184, 0.2)',
+              }}
+            >
+              <Text style={{ color: '#e2e8f0', fontWeight: 600 }} ellipsis>
+                {activeDoc.fileName}
+              </Text>
+              <Button
+                icon={<CloseOutlined />}
+                onClick={() => setActiveDoc(null)}
+                type="text"
+                style={{ color: '#e2e8f0' }}
+              />
+            </div>
+            <div style={{ width: '100%', height: '100%', padding: 10 }}>{viewer}</div>
           </div>
         </div>
       )}

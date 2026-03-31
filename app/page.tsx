@@ -24,6 +24,7 @@ import {
   Descriptions,
   Result,
   Grid,
+  Empty,
 } from 'antd';
 import {
   PlusOutlined,
@@ -33,7 +34,10 @@ import {
   CalendarOutlined,
   UserOutlined,
   CaretRightOutlined,
+  ReloadOutlined,
+  FileExcelOutlined,
 } from '@ant-design/icons';
+import * as XLSX from 'xlsx';
 
 const { Title, Text } = Typography;
 
@@ -50,6 +54,16 @@ type HomeMeetingRow = {
   endedAt?: string | null;
 };
 
+type HistoryEntry = {
+  id: string;
+  username: string;
+  fullName?: string | null;
+  userId: string;
+  joinedAt: string;
+  leftAt: string | null;
+  duration: number | null;
+};
+
 /** Thời lượng = kết thúc − bắt đầu (chỉ hiển thị, không có nút gợi ý). */
 function formatDurationFromScheduleRange(
   range: [dayjs.Dayjs, dayjs.Dayjs] | undefined | null,
@@ -62,6 +76,31 @@ function formatDurationFromScheduleRange(
   if (h > 0 && m > 0) return `${h} giờ ${m} phút`;
   if (h > 0) return `${h} giờ`;
   return `${m} phút`;
+}
+
+function formatHistoryParticipationDuration(r: HistoryEntry): string {
+  if (!r.leftAt) return 'Đang tham gia';
+  const start = dayjs(r.joinedAt);
+  const end = dayjs(r.leftAt);
+  if (start.isValid() && end.isValid()) {
+    const totalSec = Math.max(0, end.diff(start, 'second'));
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    if (h > 0) return m > 0 ? `${h} giờ ${m} phút ${s} giây` : `${h} giờ ${s} giây`;
+    if (m > 0) return s > 0 ? `${m} phút ${s} giây` : `${m} phút`;
+    return `${s} giây`;
+  }
+  if (r.duration != null && r.duration !== undefined) {
+    const totalSec = Math.max(0, Math.round(Number(r.duration) * 60));
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    if (h > 0) return m > 0 ? `${h} giờ ${m} phút ${s} giây` : `${h} giờ ${s} giây`;
+    if (m > 0) return s > 0 ? `${m} phút ${s} giây` : `${m} phút`;
+    return `${s} giây`;
+  }
+  return '—';
 }
 
 export default function HomePage() {
@@ -89,6 +128,12 @@ export default function HomePage() {
   } | null>(null);
   const [recentMeetings, setRecentMeetings] = useState<HomeMeetingRow[]>([]);
   const [detailMeeting, setDetailMeeting] = useState<HomeMeetingRow | null>(null);
+  const [historyMeeting, setHistoryMeeting] = useState<HomeMeetingRow | null>(null);
+  const [historyItems, setHistoryItems] = useState<HistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyTablePage, setHistoryTablePage] = useState(1);
+  const [historyTablePageSize, setHistoryTablePageSize] = useState(10);
+  const [exportingHistoryExcel, setExportingHistoryExcel] = useState(false);
 
   const [createForm] = Form.useForm();
   const scheduleRangeWatch = Form.useWatch('scheduleRange', createForm);
@@ -231,16 +276,77 @@ export default function HomePage() {
   }, []);
 
   const copyText = useCallback(
-    async (text: string, successMsg = 'Đã copy') => {
+    async (text: string, _successMsg = 'Đã copy') => {
       try {
         await navigator.clipboard.writeText(text);
-        message.success(successMsg);
       } catch {
         message.error('Không thể copy. Vui lòng thử lại.');
       }
     },
     [message],
   );
+
+  const openHistoryModal = useCallback(
+    async (meeting: HomeMeetingRow) => {
+      setHistoryTablePage(1);
+      setHistoryMeeting(meeting);
+      setHistoryLoading(true);
+      const res = await apiService.getMeetingHistory(meeting.id);
+      if (res.error || !res.data) {
+        message.error(res.error || 'Không tải được lịch sử cuộc họp');
+        setHistoryItems([]);
+        setHistoryLoading(false);
+        return;
+      }
+      const items = (res.data as HistoryEntry[]) ?? [];
+      if (isAdmin && items.length > 0) {
+        const usersRes = await apiService.getAllUsers();
+        if (usersRes.data && Array.isArray(usersRes.data)) {
+          const byId = new Map<string, string>();
+          for (const u of usersRes.data as any[]) {
+            const id = String(u?.id ?? '');
+            const fullName = String(u?.fullName ?? '').trim();
+            if (id && fullName) byId.set(id, fullName);
+          }
+          setHistoryItems(items.map((h) => ({ ...h, fullName: byId.get(h.userId) ?? null })));
+          setHistoryLoading(false);
+          return;
+        }
+      }
+      setHistoryItems(items);
+      setHistoryLoading(false);
+    },
+    [isAdmin, message],
+  );
+
+  const exportHistoryToExcel = useCallback(() => {
+    if (!historyMeeting) return;
+    if (historyItems.length === 0) {
+      message.warning('Không có dữ liệu để xuất');
+      return;
+    }
+    setExportingHistoryExcel(true);
+    try {
+      const rows = historyItems.map((r, i) => ({
+        STT: i + 1,
+        'Người dùng': r.fullName?.trim() || r.username,
+        Username: r.username,
+        'Vào lúc': r.joinedAt ? dayjs(r.joinedAt).format('DD/MM/YYYY HH:mm:ss') : '',
+        'Rời lúc': r.leftAt ? dayjs(r.leftAt).format('DD/MM/YYYY HH:mm:ss') : 'Đang tham gia',
+        'Thời lượng tham gia': formatHistoryParticipationDuration(r),
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Lịch sử');
+      const safeTitle = historyMeeting.title.replace(/[\\/:*?"<>|]/g, '_').slice(0, 80);
+      const stamp = dayjs().format('YYYYMMDD-HHmm');
+      XLSX.writeFile(wb, `lich-su-cuoc-hop-${safeTitle}-${stamp}.xlsx`);
+    } catch {
+      message.error('Xuất Excel thất bại');
+    } finally {
+      setExportingHistoryExcel(false);
+    }
+  }, [historyItems, historyMeeting, message]);
 
   const homeScheduleColumns = useMemo(
     () => [
@@ -470,7 +576,7 @@ export default function HomePage() {
                   return;
                 }
                 if (isEnded) {
-                  router.push(`/history/${record.id}`);
+                  void openHistoryModal(record);
                   return;
                 }
                 setDetailMeeting(record);
@@ -484,7 +590,7 @@ export default function HomePage() {
         },
       },
     ],
-    [router, copyText, buildMeetingLink]
+    [router, copyText, buildMeetingLink, openHistoryModal]
   );
 
   const onJoinMeeting = async () => {
@@ -632,8 +738,9 @@ export default function HomePage() {
         )}
 
         <Card
+          bodyStyle={{ padding: 0 }}
           bordered={false}
-          style={{ borderRadius: 12 }}
+          style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)' }}
           title={<span style={{ fontWeight: 700 }}>Lịch trình &amp; Gần đây</span>}
           extra={
             <Button type="link" onClick={() => router.push('/meetings')} style={{ padding: 0 }}>
@@ -647,7 +754,7 @@ export default function HomePage() {
             dataSource={recentMeetings}
             pagination={false}
             tableLayout="fixed"
-            scroll={{ x: isNarrow ? 1100 : undefined }}
+            scroll={{ x: isNarrow ? 860 : undefined }}
             columns={homeScheduleColumns as any}
             locale={{
               emptyText: <div style={{ padding: 16 }}><Text type="secondary">Chưa có dữ liệu.</Text></div>,
@@ -655,6 +762,125 @@ export default function HomePage() {
           />
         </Card>
       </div>
+
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <Typography.Title level={5} style={{ margin: 0 }}>
+                Lịch sử cuộc họp
+              </Typography.Title>
+              <Typography.Text type="secondary" style={{ display: 'block' }}>
+                {historyMeeting ? historyMeeting.title : 'Xem lịch sử tham gia'}
+              </Typography.Text>
+            </div>
+            <Space>
+              <Button
+                icon={<FileExcelOutlined />}
+                onClick={() => exportHistoryToExcel()}
+                loading={exportingHistoryExcel}
+                disabled={historyLoading || historyItems.length === 0}
+              >
+                Xuất Excel
+              </Button>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => historyMeeting && void openHistoryModal(historyMeeting)}
+                loading={historyLoading}
+              >
+                Làm mới
+              </Button>
+            </Space>
+          </div>
+        }
+        open={Boolean(historyMeeting)}
+        onCancel={() => {
+          setHistoryMeeting(null);
+          setHistoryItems([]);
+          setHistoryTablePage(1);
+        }}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              onClick={() => {
+                setHistoryMeeting(null);
+                setHistoryItems([]);
+                setHistoryTablePage(1);
+              }}
+            >
+              Đóng
+            </Button>
+          </div>
+        }
+        destroyOnHidden
+        width={1200}
+        style={{ maxWidth: 'calc(100vw - 32px)' }}
+        styles={{ body: { background: '#f5f7fb' } }}
+      >
+        <Card bordered={false} style={{ borderRadius: 14 }}>
+          <Table<HistoryEntry>
+            rowKey="id"
+            loading={historyLoading}
+            dataSource={historyItems}
+            tableLayout="fixed"
+            pagination={{
+              current: historyTablePage,
+              pageSize: historyTablePageSize,
+              total: historyItems.length,
+              showSizeChanger: true,
+              pageSizeOptions: [10, 20, 50],
+              onChange: (page, pageSize) => {
+                setHistoryTablePage(page);
+                setHistoryTablePageSize(pageSize);
+              },
+            }}
+            locale={{
+              emptyText: historyLoading ? 'Đang tải...' : <Empty description="Chưa có lịch sử cuộc họp" />,
+            }}
+            columns={[
+              {
+                title: 'STT',
+                key: 'stt',
+                width: 70,
+                align: 'center',
+                render: (_v, _r, index) =>
+                  (historyTablePage - 1) * historyTablePageSize + index + 1,
+              },
+              {
+                title: 'Người dùng',
+                dataIndex: 'username',
+                key: 'username',
+                render: (_v: string, r: HistoryEntry) => r.fullName?.trim() || r.username,
+              },
+              {
+                title: 'Vào lúc',
+                dataIndex: 'joinedAt',
+                key: 'joinedAt',
+                width: 170,
+                render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '-'),
+              },
+              {
+                title: 'Rời lúc',
+                dataIndex: 'leftAt',
+                key: 'leftAt',
+                width: 170,
+                render: (v: string | null) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : 'Đang tham gia'),
+              },
+              {
+                title: 'Thời lượng',
+                dataIndex: 'duration',
+                key: 'duration',
+                width: 240,
+                align: 'right',
+                ellipsis: false,
+                render: (_v: number | null, r: HistoryEntry) => (
+                  <span style={{ whiteSpace: 'nowrap' }}>{formatHistoryParticipationDuration(r)}</span>
+                ),
+              },
+            ]}
+          />
+        </Card>
+      </Modal>
 
       <Modal
         open={Boolean(detailMeeting)}

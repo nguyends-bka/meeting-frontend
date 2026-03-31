@@ -188,16 +188,6 @@ export function TranscriptRoomProvider({
       ? last.timestamp
       : Date.now();
 
-    setChatHistory((prev) => {
-      const exists = clientMessageId
-        ? prev.some((x) => x.clientMessageId === clientMessageId)
-        : prev.some((x) =>
-            x.senderIdentity === senderIdentity && x.at === at && x.message === msgText,
-          );
-      if (exists) return prev;
-      return [...prev, { clientMessageId, senderIdentity, senderName, message: msgText, at }];
-    });
-
     if (senderIdentity !== room.localParticipant.identity) return;
     if (clientMessageId && persistedChatIdsRef.current.has(clientMessageId)) return;
     if (clientMessageId) persistedChatIdsRef.current.add(clientMessageId);
