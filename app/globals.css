@@ -1308,6 +1308,32 @@ button:active:not(:disabled) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #fff;
+}
+
+.meeting-unified-panel--chat {
+  background: #fff;
+}
+
+.meeting-unified-chat-slot .lk-chat {
+  display: flex !important;
+  flex-direction: column !important;
+  align-self: stretch !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  background: #fff !important;
+}
+
+.meeting-unified-chat-slot .lk-chat-messages {
+  flex: 1 !important;
+  min-height: 0 !important;
+}
+
+.meeting-unified-chat-slot .lk-chat-form {
+  margin-top: auto !important;
+  align-self: stretch !important;
 }
 
 /* Panel tab thống nhất (Biểu quyết | Tài liệu | Chat) */
