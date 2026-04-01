@@ -1089,7 +1089,7 @@ button:active:not(:disabled) {
 /* ===== Transcript + Chat layout (data-meeting-layout từ MeetingShellEnhancements) ===== */
 
 .meeting-room-shell {
-  --meeting-side-width: clamp(320px, 36vw, 520px);
+  --meeting-side-width: clamp(320px, 25.2vw, 360px);
   --meeting-side-width-2: calc(var(--meeting-side-width) * 2);
   position: relative;
   flex: 1;
