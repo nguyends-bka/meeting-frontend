@@ -19,11 +19,14 @@ export default function MeetingDocumentsPanel({
   meetingId,
   canUpload,
   onClose,
+  embedded = false,
 }: {
   documentsOpen: boolean;
   meetingId: string;
   canUpload: boolean;
   onClose: () => void;
+  /** Ẩn header riêng — dùng trong panel tab thống nhất */
+  embedded?: boolean;
 }) {
   const [docs, setDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -268,16 +271,20 @@ export default function MeetingDocumentsPanel({
         </div>
       )}
 
-      <aside className="meeting-documents-panel">
-        <div className="meeting-documents-header">
-          <Space>
-            <FileTextOutlined />
-            <Text style={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>Tài liệu</Text>
-            {activeDoc ? <Tag color="blue">{activeDoc.fileName}</Tag> : null}
-          </Space>
+      <aside
+        className={`meeting-documents-panel${embedded ? ' meeting-documents-panel--embedded' : ''}`}
+      >
+        {!embedded && (
+          <div className="meeting-documents-header">
+            <Space>
+              <FileTextOutlined />
+              <Text style={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>Tài liệu</Text>
+              {activeDoc ? <Tag color="blue">{activeDoc.fileName}</Tag> : null}
+            </Space>
 
-          <Button icon={<CloseOutlined />} onClick={onClose} />
-        </div>
+            <Button icon={<CloseOutlined />} onClick={onClose} />
+          </div>
+        )}
 
         <div className="meeting-documents-content">
           {canUpload && (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { MeetingToolsTab } from '@/components/MeetingUnifiedSidePanel';
 
 function isElementVisible(el: HTMLElement | null): boolean {
   if (!el) return false;
@@ -89,21 +90,11 @@ const DOCUMENTS_BUTTON_INNER =
 
 export type MeetingLayoutDataset =
   | 'neither'
-  | 'documents-only'
-  | 'documents-vote'
-  | 'documents-vote-chat'
-  | 'documents-chat'
-  | 'documents-transcript'
-  | 'documents-transcript-vote'
-  | 'documents-transcript-chat'
-  | 'documents-transcript-vote-chat'
   | 'transcript-only'
-  | 'vote-only'
-  | 'chat-only'
-  | 'transcript-vote'
-  | 'both'
-  | 'vote-chat'
-  | 'transcript-vote-chat';
+  | 'tools-only'
+  | 'transcript-tools';
+
+export type { MeetingToolsTab };
 
 export default function MeetingShellEnhancements({
   shellRef,
@@ -113,6 +104,9 @@ export default function MeetingShellEnhancements({
   setVoteOpen,
   documentsOpen,
   setDocumentsOpen,
+  activeToolsTab,
+  setActiveToolsTab,
+  onChatVisibilityChange,
 }: {
   shellRef: React.RefObject<HTMLDivElement | null>;
   transcriptOpen: boolean;
@@ -121,10 +115,16 @@ export default function MeetingShellEnhancements({
   setVoteOpen: React.Dispatch<React.SetStateAction<boolean>>;
   documentsOpen: boolean;
   setDocumentsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  activeToolsTab: MeetingToolsTab;
+  setActiveToolsTab?: (tab: MeetingToolsTab) => void;
+  onChatVisibilityChange?: (open: boolean) => void;
 }) {
   const [chatOpen, setChatOpen] = useState(false);
   const chatOpenRef = useRef(chatOpen);
   chatOpenRef.current = chatOpen;
+  const prevChatOpenRef = useRef(false);
+  const setActiveToolsTabRef = useRef(setActiveToolsTab);
+  setActiveToolsTabRef.current = setActiveToolsTab;
   const transcriptOpenRef = useRef(transcriptOpen);
   transcriptOpenRef.current = transcriptOpen;
   const voteOpenRef = useRef(voteOpen);
@@ -132,6 +132,19 @@ export default function MeetingShellEnhancements({
 
   const documentsOpenRef = useRef(documentsOpen);
   documentsOpenRef.current = documentsOpen;
+  const activeToolsTabRef = useRef(activeToolsTab);
+  activeToolsTabRef.current = activeToolsTab;
+
+  useEffect(() => {
+    if (chatOpen && !prevChatOpenRef.current) {
+      setActiveToolsTabRef.current?.('chat');
+    }
+    prevChatOpenRef.current = chatOpen;
+  }, [chatOpen]);
+
+  useEffect(() => {
+    onChatVisibilityChange?.(chatOpen);
+  }, [chatOpen, onChatVisibilityChange]);
 
   // Add an explicit "X" close button for Chat panel header.
   // LiveKit's chat toggle can be closed via control-bar button; we just provide UI in the panel header.
@@ -213,29 +226,20 @@ export default function MeetingShellEnhancements({
     const v = voteOpen;
     const c = chatOpen;
     const d = documentsOpen;
+    const toolsOpen = v || d || c;
     let layout: MeetingLayoutDataset = 'neither';
 
-    // Documents panel as a first-class side panel
-    // - d && t: documents + transcript should be side-by-side (no overlap)
-    // - d && t && c: documents + transcript + chat should push left like transcript+chat
-    if (d && t && v && c) layout = 'documents-transcript-vote-chat';
-    else if (d && t && v && !c) layout = 'documents-transcript-vote';
-    else if (d && v && c && !t) layout = 'documents-vote-chat';
-    else if (d && v && !c && !t) layout = 'documents-vote';
-    else if (d && t && c && !v) layout = 'documents-transcript-chat';
-    else if (d && t && !c && !v) layout = 'documents-transcript';
-    else if (d && c && !t && !v) layout = 'documents-chat';
-    else if (d && !c && !t && !v) layout = 'documents-only';
-    else if (t && v && c) layout = 'transcript-vote-chat';
-    else if (t && v) layout = 'transcript-vote';
-    else if (v && c) layout = 'vote-chat';
-    else if (t && c) layout = 'both';
-    else if (t) layout = 'transcript-only';
-    else if (v) layout = 'vote-only';
-    else if (c) layout = 'chat-only';
+    if (t && toolsOpen) layout = 'transcript-tools';
+    else if (t && !toolsOpen) layout = 'transcript-only';
+    else if (!t && toolsOpen) layout = 'tools-only';
     else layout = 'neither';
     shell.dataset.meetingLayout = layout;
-  }, [shellRef, transcriptOpen, voteOpen, chatOpen, documentsOpen]);
+    if (toolsOpen) {
+      shell.dataset.meetingToolsTab = activeToolsTab;
+    } else {
+      delete shell.dataset.meetingToolsTab;
+    }
+  }, [shellRef, transcriptOpen, voteOpen, chatOpen, documentsOpen, activeToolsTab]);
 
   useEffect(() => {
     updateShellLayout();
@@ -246,14 +250,26 @@ export default function MeetingShellEnhancements({
     if (!shell) return;
     const checkChat = () => {
       const chat = shell.querySelector('.lk-chat') as HTMLElement | null;
+      if (!chat) {
+        setChatOpen(false);
+        return;
+      }
+      if (chat.closest('.meeting-unified-chat-slot')) {
+        const bar = findControlBar(shell);
+        const toggle = bar?.querySelector(
+          '.lk-chat-toggle:not(.meeting-transcript-toggle)',
+        ) as HTMLElement | null;
+        const pressed =
+          toggle?.getAttribute('aria-pressed') === 'true' ||
+          toggle?.classList.contains('lk-button-active');
+        setChatOpen(!!pressed);
+        return;
+      }
       setChatOpen(isElementVisible(chat));
     };
     checkChat();
     const obs = new MutationObserver(checkChat);
-    const conference = shell.querySelector('.lk-video-conference');
-    if (conference) {
-      obs.observe(conference, { attributes: true, subtree: true, childList: true });
-    }
+    obs.observe(shell, { attributes: true, subtree: true, childList: true });
     const poll = window.setInterval(checkChat, 350);
     return () => {
       obs.disconnect();
@@ -289,8 +305,11 @@ export default function MeetingShellEnhancements({
       }
     };
 
+    const toolsSideOpen = () =>
+      voteOpenRef.current || documentsOpenRef.current || chatOpenRef.current;
+
     const syncVoteActive = (btn: HTMLButtonElement) => {
-      if (voteOpenRef.current) {
+      if (toolsSideOpen() && activeToolsTabRef.current === 'vote') {
         btn.setAttribute('data-active', 'true');
         btn.classList.add('lk-button-active');
       } else {
@@ -300,7 +319,7 @@ export default function MeetingShellEnhancements({
     };
 
     const syncDocumentsActive = (btn: HTMLButtonElement) => {
-      if (documentsOpenRef.current) {
+      if (toolsSideOpen() && activeToolsTabRef.current === 'documents') {
         btn.setAttribute('data-active', 'true');
         btn.classList.add('lk-button-active');
       } else {
@@ -327,7 +346,23 @@ export default function MeetingShellEnhancements({
         vBtn.type = 'button';
         vBtn.className = 'lk-button meeting-vote-toggle';
         vBtn.innerHTML = VOTE_BUTTON_INNER;
-        vBtn.addEventListener('click', () => setVoteOpen((x) => !x));
+        vBtn.addEventListener('click', () => {
+          const vote = voteOpenRef.current;
+          const tab = activeToolsTabRef.current;
+          if (vote && tab === 'vote') {
+            setVoteOpen(false);
+            if (documentsOpenRef.current) {
+              setActiveToolsTabRef.current?.('documents');
+            } else if (chatOpenRef.current) {
+              setActiveToolsTabRef.current?.('chat');
+            }
+            return;
+          }
+          if (!vote) {
+            setVoteOpen(true);
+          }
+          setActiveToolsTabRef.current?.('vote');
+        });
         placeVoteButtonInBar(bar, vBtn);
         voteBtnEl = vBtn;
       } else {
@@ -355,7 +390,23 @@ export default function MeetingShellEnhancements({
         dBtn.type = 'button';
         dBtn.className = 'lk-button meeting-documents-toggle';
         dBtn.innerHTML = DOCUMENTS_BUTTON_INNER;
-        dBtn.addEventListener('click', () => setDocumentsOpen((x) => !x));
+        dBtn.addEventListener('click', () => {
+          const docs = documentsOpenRef.current;
+          const tab = activeToolsTabRef.current;
+          if (docs && tab === 'documents') {
+            setDocumentsOpen(false);
+            if (voteOpenRef.current) {
+              setActiveToolsTabRef.current?.('vote');
+            } else if (chatOpenRef.current) {
+              setActiveToolsTabRef.current?.('chat');
+            }
+            return;
+          }
+          if (!docs) {
+            setDocumentsOpen(true);
+          }
+          setActiveToolsTabRef.current?.('documents');
+        });
         placeDocumentsButtonInBar(bar, dBtn);
         documentsBtnEl = dBtn;
       } else {
@@ -389,14 +440,15 @@ export default function MeetingShellEnhancements({
       transcriptBtnEl?.remove();
       documentsBtnEl?.remove();
     };
-  }, [shellRef, setTranscriptOpen, setVoteOpen, setDocumentsOpen]);
+  }, [shellRef, setTranscriptOpen, setVoteOpen, setDocumentsOpen, setActiveToolsTab]);
 
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
+    const toolsOpen = voteOpen || documentsOpen || chatOpen;
     const vBtn = shell.querySelector('.meeting-vote-toggle') as HTMLButtonElement | null;
     if (vBtn) {
-      if (voteOpen) {
+      if (toolsOpen && activeToolsTab === 'vote') {
         vBtn.setAttribute('data-active', 'true');
         vBtn.classList.add('lk-button-active');
       } else {
@@ -417,7 +469,7 @@ export default function MeetingShellEnhancements({
 
     const dBtn = shell.querySelector('.meeting-documents-toggle') as HTMLButtonElement | null;
     if (dBtn) {
-      if (documentsOpen) {
+      if (toolsOpen && activeToolsTab === 'documents') {
         dBtn.setAttribute('data-active', 'true');
         dBtn.classList.add('lk-button-active');
       } else {
@@ -425,7 +477,7 @@ export default function MeetingShellEnhancements({
         dBtn.classList.remove('lk-button-active');
       }
     }
-  }, [shellRef, voteOpen, transcriptOpen, documentsOpen]);
+  }, [shellRef, voteOpen, transcriptOpen, documentsOpen, chatOpen, activeToolsTab]);
 
   return null;
 }

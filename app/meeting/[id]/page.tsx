@@ -19,9 +19,9 @@ import TranscriptPanel from '@/components/TranscriptPanel';
 import { TranscriptRoomProvider } from '@/components/TranscriptRoomProvider';
 import MeetingChatHistoryHydrator from '@/components/MeetingChatHistoryHydrator';
 import { VoteRoomProvider } from '@/components/VoteRoomProvider';
-import VotePanel from '@/components/VotePanel';
 import MeetingShellEnhancements from '@/components/MeetingShellEnhancements';
-import MeetingDocumentsPanel from '@/components/MeetingDocumentsPanel';
+import MeetingUnifiedSidePanel from '@/components/MeetingUnifiedSidePanel';
+import type { MeetingToolsTab } from '@/components/MeetingUnifiedSidePanel';
 import '@livekit/components-styles';
 import { Button, Modal, Typography } from 'antd';
 
@@ -366,6 +366,10 @@ export default function MeetingPage() {
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [voteOpen, setVoteOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [meetingChatOpen, setMeetingChatOpen] = useState(false);
+  const [activeToolsTab, setActiveToolsTab] = useState<MeetingToolsTab>('vote');
+
+  const toolsSideOpen = voteOpen || documentsOpen || meetingChatOpen;
   const meetingShellRef = useRef<HTMLDivElement>(null);
   const [hostLeaveModalOpen, setHostLeaveModalOpen] = useState(false);
   const [hostLeaveLoading, setHostLeaveLoading] = useState(false);
@@ -822,6 +826,9 @@ export default function MeetingPage() {
                     setVoteOpen={setVoteOpen}
                     documentsOpen={documentsOpen}
                     setDocumentsOpen={setDocumentsOpen}
+                    activeToolsTab={activeToolsTab}
+                    setActiveToolsTab={setActiveToolsTab}
+                    onChatVisibilityChange={setMeetingChatOpen}
                   />
 
                   {/** Documents side panel is rendered inside meeting-side-stack (no overlay) */}
@@ -829,12 +836,19 @@ export default function MeetingPage() {
                   <VideoConference />
                   <div className="meeting-side-stack">
                     <TranscriptPanel currentUserName={transcriptDisplayName} onClose={() => setTranscriptOpen(false)} />
-                    <VotePanel canCreatePoll={canCreatePoll} onClose={() => setVoteOpen(false)} />
-                    <MeetingDocumentsPanel
+                    <MeetingUnifiedSidePanel
+                      shellRef={meetingShellRef}
+                      visible={toolsSideOpen}
+                      activeTab={activeToolsTab}
+                      setActiveTab={setActiveToolsTab}
+                      voteOpen={voteOpen}
+                      setVoteOpen={setVoteOpen}
                       documentsOpen={documentsOpen}
+                      setDocumentsOpen={setDocumentsOpen}
+                      chatOpen={meetingChatOpen}
+                      canCreatePoll={canCreatePoll}
                       meetingId={currentMeetingId ?? meetingId}
                       canUpload={isHost}
-                      onClose={() => setDocumentsOpen(false)}
                     />
                   </div>
                 </div>

@@ -46,9 +46,12 @@ function PollCountdown({ endAt }: { endAt: number }) {
 export default function VotePanel({
   canCreatePoll = true,
   onClose,
+  embedded = false,
 }: {
   canCreatePoll?: boolean;
   onClose?: () => void;
+  /** Ẩn tiêu đề/đóng riêng — dùng trong panel tab thống nhất */
+  embedded?: boolean;
 }) {
   const {
     polls,
@@ -183,19 +186,24 @@ export default function VotePanel({
 
   return (
     <aside
-      className={`meeting-vote-panel${showCreateForm ? ' meeting-vote-panel--creating' : ''}`}
+      className={`meeting-vote-panel${showCreateForm ? ' meeting-vote-panel--creating' : ''}${embedded ? ' meeting-vote-panel--embedded' : ''}`}
     >
+      {(!embedded || canCreatePoll) && (
       <div className="meeting-vote-header">
-        <span className="meeting-vote-header-title">Biểu quyết</span>
-        {onClose && (
-          <button
-            type="button"
-            className="meeting-vote-header-close"
-            aria-label="Đóng biểu quyết"
-            onClick={onClose}
-          >
-            ×
-          </button>
+        {!embedded && (
+          <>
+            <span className="meeting-vote-header-title">Biểu quyết</span>
+            {onClose && (
+              <button
+                type="button"
+                className="meeting-vote-header-close"
+                aria-label="Đóng biểu quyết"
+                onClick={onClose}
+              >
+                ×
+              </button>
+            )}
+          </>
         )}
         {canCreatePoll && (
           <div className="meeting-vote-header-actions">
@@ -237,6 +245,7 @@ export default function VotePanel({
           </div>
         )}
       </div>
+      )}
 
       {canCreatePoll && showCreateForm && (
       <form className="meeting-vote-create" onSubmit={handleCreate}>
