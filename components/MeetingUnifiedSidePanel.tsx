@@ -278,12 +278,15 @@ export default function MeetingUnifiedSidePanel({
     }
   };
 
-  if (!visible) {
-    return null;
-  }
-
+  // Luôn giữ aside trong DOM khi đóng công cụ: `.lk-chat` được append vào slot bên trong;
+  // nếu return null thì React gỡ cả subtree trước khi useLayoutEffect chạy restore → mất node chat.
+  // Ẩn bằng CSS: `.meeting-unified-side-panel { display: none }` khi shell không `data-meeting-layout='tools-only'`.
   return (
-    <aside className="meeting-unified-side-panel" aria-label="Biểu quyết, tài liệu và tin nhắn">
+    <aside
+      className="meeting-unified-side-panel"
+      aria-label="Biểu quyết, tài liệu và tin nhắn"
+      aria-hidden={!visible}
+    >
       <div className="meeting-unified-tabs">
         <div className="meeting-unified-tabs-inner" role="tablist">
           <button
