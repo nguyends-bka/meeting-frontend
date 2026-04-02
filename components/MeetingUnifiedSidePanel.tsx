@@ -1,10 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useChat, useRoomContext } from '@livekit/components-react';
 import VotePanel from '@/components/VotePanel';
 import MeetingDocumentsPanel from '@/components/MeetingDocumentsPanel';
+import TranscriptPanel from '@/components/TranscriptPanel';
+import { useTranscriptRoom } from '@/components/TranscriptRoomProvider';
+import { useVoteRoom } from '@/components/VoteRoomProvider';
+import { meetingApi } from '@/services/meeting/meetingApi';
 
-export type MeetingToolsTab = 'vote' | 'documents' | 'chat';
+export type MeetingToolsTab = 'vote' | 'documents' | 'chat' | 'transcript';
 
 function findControlBar(shell: HTMLElement): HTMLElement | null {
   return shell.querySelector('.lk-control-bar') as HTMLElement | null;
@@ -23,28 +28,130 @@ export default function MeetingUnifiedSidePanel({
   visible,
   activeTab,
   setActiveTab,
+  transcriptOpen,
+  setTranscriptOpen,
   voteOpen,
   setVoteOpen,
   documentsOpen,
   setDocumentsOpen,
   chatOpen,
+  chatUnreadCount = 0,
   canCreatePoll,
   meetingId,
   canUpload,
+  currentUserName,
 }: {
   shellRef: React.RefObject<HTMLElement | null>;
   visible: boolean;
   activeTab: MeetingToolsTab;
   setActiveTab: React.Dispatch<React.SetStateAction<MeetingToolsTab>>;
+  transcriptOpen: boolean;
+  setTranscriptOpen: React.Dispatch<React.SetStateAction<boolean>>;
   voteOpen: boolean;
   setVoteOpen: React.Dispatch<React.SetStateAction<boolean>>;
   documentsOpen: boolean;
   setDocumentsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   chatOpen: boolean;
+  chatUnreadCount?: number;
   canCreatePoll: boolean;
   meetingId: string;
   canUpload: boolean;
+  currentUserName?: string;
 }) {
+  const { finalized, draftText } = useTranscriptRoom();
+  const { polls } = useVoteRoom();
+  const { chatMessages } = useChat();
+  const room = useRoomContext();
+  const [seenTranscriptKey, setSeenTranscriptKey] = useState<string>('');
+  const [seenVoteKey, setSeenVoteKey] = useState<string>('');
+  const [latestDocumentsKey, setLatestDocumentsKey] = useState<string>('');
+  const [seenDocumentsKey, setSeenDocumentsKey] = useState<string>('');
+  const [seenRemoteChatCount, setSeenRemoteChatCount] = useState(0);
+
+  const latestTranscriptKey = useMemo(() => {
+    const lastFinal = finalized.length > 0 ? finalized[finalized.length - 1] : null;
+    const draft = (draftText ?? '').trim();
+    if (draft) return `draft:${draft}`;
+    if (!lastFinal) return '';
+    return `final:${lastFinal.receivedAt}:${lastFinal.text}`;
+  }, [finalized, draftText]);
+
+  const latestVoteKey = useMemo(() => {
+    const list = Object.values(polls);
+    if (list.length === 0) return '';
+    const latest = list.reduce((a, b) => (a.createdAt > b.createdAt ? a : b));
+    return `${latest.id}:${latest.createdAt}:${latest.status}`;
+  }, [polls]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const mid = meetingId?.trim();
+    if (!mid) {
+      setLatestDocumentsKey('');
+      return;
+    }
+
+    const pull = async () => {
+      const res = await meetingApi.listMeetingDocuments(mid);
+      if (cancelled || res.error || !res.data || res.data.length === 0) return;
+      const latestDoc = [...res.data].sort((a, b) => {
+        const at = new Date(a.createdAt).getTime();
+        const bt = new Date(b.createdAt).getTime();
+        return bt - at;
+      })[0];
+      setLatestDocumentsKey(`${latestDoc.id}:${latestDoc.createdAt}`);
+    };
+
+    void pull();
+    const timer = window.setInterval(() => void pull(), 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [meetingId]);
+
+  useEffect(() => {
+    if (activeTab === 'transcript' && latestTranscriptKey) {
+      setSeenTranscriptKey(latestTranscriptKey);
+    }
+  }, [activeTab, latestTranscriptKey]);
+
+  useEffect(() => {
+    if (activeTab === 'vote' && latestVoteKey) {
+      setSeenVoteKey(latestVoteKey);
+    }
+  }, [activeTab, latestVoteKey]);
+
+  useEffect(() => {
+    if (activeTab === 'documents' && latestDocumentsKey) {
+      setSeenDocumentsKey(latestDocumentsKey);
+    }
+  }, [activeTab, latestDocumentsKey]);
+
+  const remoteChatCount = useMemo(() => {
+    const localIdentity = room.localParticipant.identity;
+    return chatMessages.reduce((acc, msg) => {
+      const sender = msg.from?.identity?.trim() || '';
+      if (!sender || sender === localIdentity) return acc;
+      return acc + 1;
+    }, 0);
+  }, [chatMessages, room.localParticipant.identity]);
+
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      setSeenRemoteChatCount(remoteChatCount);
+    }
+  }, [activeTab, remoteChatCount]);
+
+  const showTranscriptBadge = false;
+  const showVoteBadge = Boolean(latestVoteKey && latestVoteKey !== seenVoteKey && activeTab !== 'vote');
+  const showDocumentsBadge = Boolean(
+    latestDocumentsKey && latestDocumentsKey !== seenDocumentsKey && activeTab !== 'documents',
+  );
+  const computedChatUnread = Math.max(0, remoteChatCount - seenRemoteChatCount);
+  const effectiveChatUnread = Math.max(chatUnreadCount, computedChatUnread);
+  const showChatBadge = effectiveChatUnread > 0;
+
   const chatSlotRef = useRef<HTMLDivElement | null>(null);
   const chatRestoreParentRef = useRef<{ parent: Node | null; next: ChildNode | null }>({
     parent: null,
@@ -110,6 +217,26 @@ export default function MeetingUnifiedSidePanel({
   }, [visible, shellRef, mountChatInSlot]);
 
   useEffect(() => {
+    if (!visible || activeTab !== 'chat') return;
+    const shell = shellRef.current;
+    if (!shell) return;
+
+    const ensureChatVisible = () => {
+      const chat = shell.querySelector('.lk-chat') as HTMLElement | null;
+      const isVisible = !!chat && chat.offsetParent !== null;
+      if (!isVisible) {
+        clickChatToggle(shell);
+        return;
+      }
+      mountChatInSlot();
+    };
+
+    ensureChatVisible();
+    const timer = window.setInterval(ensureChatVisible, 350);
+    return () => window.clearInterval(timer);
+  }, [visible, activeTab, shellRef, mountChatInSlot]);
+
+  useEffect(() => {
     return () => {
       restoreChatToConference();
     };
@@ -117,12 +244,13 @@ export default function MeetingUnifiedSidePanel({
 
   const closeAll = useCallback(() => {
     const shell = shellRef.current;
+    setTranscriptOpen(false);
     setVoteOpen(false);
     setDocumentsOpen(false);
     if (chatOpen && shell) {
       clickChatToggle(shell);
     }
-  }, [shellRef, setVoteOpen, setDocumentsOpen, chatOpen]);
+  }, [shellRef, setTranscriptOpen, setVoteOpen, setDocumentsOpen, chatOpen]);
 
   const onTabVote = () => {
     setActiveTab('vote');
@@ -143,6 +271,13 @@ export default function MeetingUnifiedSidePanel({
     }
   };
 
+  const onTabTranscript = () => {
+    setActiveTab('transcript');
+    if (!transcriptOpen) {
+      setTranscriptOpen(true);
+    }
+  };
+
   if (!visible) {
     return null;
   }
@@ -154,11 +289,16 @@ export default function MeetingUnifiedSidePanel({
           <button
             type="button"
             role="tab"
-            aria-selected={activeTab === 'vote'}
-            className={`meeting-unified-tab${activeTab === 'vote' ? ' is-active' : ''}`}
-            onClick={onTabVote}
+            aria-selected={activeTab === 'chat'}
+            className={`meeting-unified-tab${activeTab === 'chat' ? ' is-active' : ''}`}
+            onClick={onTabChat}
           >
-            Biểu quyết
+            Chat
+            {showChatBadge ? (
+              <span className="meeting-unified-tab-badge" aria-label={`${effectiveChatUnread} unread messages`}>
+                {effectiveChatUnread > 99 ? '99+' : effectiveChatUnread}
+              </span>
+            ) : null}
           </button>
           <button
             type="button"
@@ -168,15 +308,27 @@ export default function MeetingUnifiedSidePanel({
             onClick={onTabDocuments}
           >
             Tài liệu
+            {showDocumentsBadge ? <span className="meeting-unified-tab-dot" aria-hidden="true" /> : null}
           </button>
           <button
             type="button"
             role="tab"
-            aria-selected={activeTab === 'chat'}
-            className={`meeting-unified-tab${activeTab === 'chat' ? ' is-active' : ''}`}
-            onClick={onTabChat}
+            aria-selected={activeTab === 'transcript'}
+            className={`meeting-unified-tab${activeTab === 'transcript' ? ' is-active' : ''}`}
+            onClick={onTabTranscript}
           >
-            Chat
+            Transcript
+            {showTranscriptBadge ? <span className="meeting-unified-tab-dot" aria-hidden="true" /> : null}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'vote'}
+            className={`meeting-unified-tab${activeTab === 'vote' ? ' is-active' : ''}`}
+            onClick={onTabVote}
+          >
+            Biểu quyết
+            {showVoteBadge ? <span className="meeting-unified-tab-dot" aria-hidden="true" /> : null}
           </button>
         </div>
         <button
@@ -220,6 +372,13 @@ export default function MeetingUnifiedSidePanel({
           hidden={activeTab !== 'chat'}
         >
           <div ref={chatSlotRef} className="meeting-unified-chat-slot" />
+        </div>
+        <div
+          className="meeting-unified-panel"
+          role="tabpanel"
+          hidden={activeTab !== 'transcript'}
+        >
+          <TranscriptPanel currentUserName={currentUserName} onClose={closeAll} />
         </div>
       </div>
     </aside>

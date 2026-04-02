@@ -15,8 +15,7 @@ import { apiService, meetingApi } from '@/services/api';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
 import { startPhysicalMicWebSocket } from '@/lib/physicalMicWebSocket';
-import TranscriptPanel from '@/components/TranscriptPanel';
-import { TranscriptRoomProvider } from '@/components/TranscriptRoomProvider';
+import { TranscriptRoomProvider, useTranscriptRoom } from '@/components/TranscriptRoomProvider';
 import MeetingChatHistoryHydrator from '@/components/MeetingChatHistoryHydrator';
 import { VoteRoomProvider } from '@/components/VoteRoomProvider';
 import MeetingShellEnhancements from '@/components/MeetingShellEnhancements';
@@ -337,6 +336,48 @@ function PhysicalMicForwarder({
   return null;
 }
 
+function LatestTranscriptStrip() {
+  const { finalized, draftText } = useTranscriptRoom();
+  const [hidden, setHidden] = useState(false);
+  const MAX_TAIL_CHARS = 180;
+  const lastFinal = finalized.length > 0 ? finalized[finalized.length - 1] : null;
+  const latest = (draftText && draftText.trim()) || lastFinal?.text || '';
+  const latestTail =
+    latest.length > MAX_TAIL_CHARS
+      ? `...${latest.slice(latest.length - MAX_TAIL_CHARS)}`
+      : latest;
+  const speaker = lastFinal?.speaker?.trim() || '';
+  if (hidden || !latestTail) {
+    return (
+      <button
+        type="button"
+        className="meeting-latest-transcript-toggle"
+        onClick={() => setHidden(false)}
+      >
+        Transcript
+      </button>
+    );
+  }
+  return (
+    <div className="meeting-latest-transcript-strip">
+      <div className="meeting-latest-transcript-content">
+        <>
+          {speaker ? <strong>{speaker}: </strong> : null}
+          <span>{latestTail}</span>
+        </>
+      </div>
+      <button
+        type="button"
+        className="meeting-latest-transcript-hide"
+        onClick={() => setHidden(true)}
+        aria-label="An transcript moi nhat"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 export default function MeetingPage() {
   const params = useParams();
   const router = useRouter();
@@ -367,9 +408,10 @@ export default function MeetingPage() {
   const [voteOpen, setVoteOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [meetingChatOpen, setMeetingChatOpen] = useState(false);
-  const [activeToolsTab, setActiveToolsTab] = useState<MeetingToolsTab>('vote');
+  const [meetingChatUnread, setMeetingChatUnread] = useState(0);
+  const [activeToolsTab, setActiveToolsTab] = useState<MeetingToolsTab>('chat');
 
-  const toolsSideOpen = voteOpen || documentsOpen || meetingChatOpen;
+  const toolsSideOpen = transcriptOpen || voteOpen || documentsOpen || meetingChatOpen;
   const meetingShellRef = useRef<HTMLDivElement>(null);
   const [hostLeaveModalOpen, setHostLeaveModalOpen] = useState(false);
   const [hostLeaveLoading, setHostLeaveLoading] = useState(false);
@@ -829,26 +871,31 @@ export default function MeetingPage() {
                     activeToolsTab={activeToolsTab}
                     setActiveToolsTab={setActiveToolsTab}
                     onChatVisibilityChange={setMeetingChatOpen}
+                    onChatUnreadChange={setMeetingChatUnread}
                   />
 
                   {/** Documents side panel is rendered inside meeting-side-stack (no overlay) */}
 
                   <VideoConference />
+                  <LatestTranscriptStrip />
                   <div className="meeting-side-stack">
-                    <TranscriptPanel currentUserName={transcriptDisplayName} onClose={() => setTranscriptOpen(false)} />
                     <MeetingUnifiedSidePanel
                       shellRef={meetingShellRef}
                       visible={toolsSideOpen}
                       activeTab={activeToolsTab}
                       setActiveTab={setActiveToolsTab}
+                      transcriptOpen={transcriptOpen}
+                      setTranscriptOpen={setTranscriptOpen}
                       voteOpen={voteOpen}
                       setVoteOpen={setVoteOpen}
                       documentsOpen={documentsOpen}
                       setDocumentsOpen={setDocumentsOpen}
                       chatOpen={meetingChatOpen}
+                      chatUnreadCount={meetingChatUnread}
                       canCreatePoll={canCreatePoll}
                       meetingId={currentMeetingId ?? meetingId}
                       canUpload={isHost}
+                      currentUserName={transcriptDisplayName}
                     />
                   </div>
                 </div>

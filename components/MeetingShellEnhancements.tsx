@@ -43,19 +43,7 @@ function syncControlBarCompact(bar: HTMLElement, chatOpen: boolean) {
   }
 }
 
-/** Vote → Transcript → Chat → Leave */
-function placeVoteButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
-  const transcriptBtn = bar.querySelector('.meeting-transcript-toggle');
-  const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)');
-  const disconnectBtn = bar.querySelector('.lk-disconnect-button');
-  const anchor = (transcriptBtn ?? chatToggle ?? disconnectBtn) as HTMLElement | null;
-  if (!anchor?.parentNode) return;
-  const parent = anchor.parentNode;
-  if (btn.nextSibling === anchor && btn.parentNode === parent) return;
-  parent.insertBefore(btn, anchor);
-}
-
-function placeTranscriptButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
+function placeToolsButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
   const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)');
   const disconnectBtn = bar.querySelector('.lk-disconnect-button');
   const anchor = (chatToggle ?? disconnectBtn) as HTMLElement | null;
@@ -65,34 +53,13 @@ function placeTranscriptButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
   parent.insertBefore(btn, anchor);
 }
 
-function placeDocumentsButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
-  const transcriptBtn = bar.querySelector('.meeting-transcript-toggle') as HTMLElement | null;
-  const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)') as HTMLElement | null;
-  const disconnectBtn = bar.querySelector('.lk-disconnect-button') as HTMLElement | null;
-  const anchor = (transcriptBtn ?? chatToggle ?? disconnectBtn) as HTMLElement | null;
-  if (!anchor?.parentNode) return;
-  const parent = anchor.parentNode;
-  if (btn.nextSibling === anchor && btn.parentNode === parent) return;
-  parent.insertBefore(btn, anchor);
-}
-
-const VOTE_BUTTON_INNER =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>' +
-  '<span class="lk-button-text">Biểu quyết</span>';
-
-const TRANSCRIPT_BUTTON_INNER =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>' +
-  '<span class="lk-button-text">Transcript</span>';
-
-const DOCUMENTS_BUTTON_INNER =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M7 13h10"/><path d="M7 17h6"/></svg>' +
-  '<span class="lk-button-text">Tài liệu</span>';
+const TOOLS_BUTTON_INNER =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' +
+  '<span class="lk-button-text">Công cụ</span>';
 
 export type MeetingLayoutDataset =
   | 'neither'
-  | 'transcript-only'
-  | 'tools-only'
-  | 'transcript-tools';
+  | 'tools-only';
 
 export type { MeetingToolsTab };
 
@@ -107,6 +74,7 @@ export default function MeetingShellEnhancements({
   activeToolsTab,
   setActiveToolsTab,
   onChatVisibilityChange,
+  onChatUnreadChange,
 }: {
   shellRef: React.RefObject<HTMLDivElement | null>;
   transcriptOpen: boolean;
@@ -118,6 +86,7 @@ export default function MeetingShellEnhancements({
   activeToolsTab: MeetingToolsTab;
   setActiveToolsTab?: (tab: MeetingToolsTab) => void;
   onChatVisibilityChange?: (open: boolean) => void;
+  onChatUnreadChange?: (count: number) => void;
 }) {
   const [chatOpen, setChatOpen] = useState(false);
   const chatOpenRef = useRef(chatOpen);
@@ -145,6 +114,21 @@ export default function MeetingShellEnhancements({
   useEffect(() => {
     onChatVisibilityChange?.(chatOpen);
   }, [chatOpen, onChatVisibilityChange]);
+
+  useEffect(() => {
+    if (!onChatUnreadChange) return;
+    const shell = shellRef.current;
+    if (!shell) return;
+    const bar = findControlBar(shell);
+    if (!bar) return;
+    const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)') as HTMLElement | null;
+    const unreadRaw =
+      chatToggle?.getAttribute('data-lk-unread-msgs') ??
+      chatToggle?.getAttribute('data-unread-msgs') ??
+      '0';
+    const unreadNum = Number.parseInt(unreadRaw, 10);
+    onChatUnreadChange(Number.isFinite(unreadNum) ? unreadNum : 0);
+  }, [shellRef, onChatUnreadChange, chatOpen, activeToolsTab]);
 
   // Add an explicit "X" close button for Chat panel header.
   // LiveKit's chat toggle can be closed via control-bar button; we just provide UI in the panel header.
@@ -226,12 +210,10 @@ export default function MeetingShellEnhancements({
     const v = voteOpen;
     const c = chatOpen;
     const d = documentsOpen;
-    const toolsOpen = v || d || c;
+    const toolsOpen = t || v || d || c;
     let layout: MeetingLayoutDataset = 'neither';
 
-    if (t && toolsOpen) layout = 'transcript-tools';
-    else if (t && !toolsOpen) layout = 'transcript-only';
-    else if (!t && toolsOpen) layout = 'tools-only';
+    if (toolsOpen) layout = 'tools-only';
     else layout = 'neither';
     shell.dataset.meetingLayout = layout;
     if (toolsOpen) {
@@ -290,133 +272,78 @@ export default function MeetingShellEnhancements({
     if (!shell) return;
 
     let cancelled = false;
-    let voteBtnEl: HTMLButtonElement | null = null;
-    let transcriptBtnEl: HTMLButtonElement | null = null;
-    let documentsBtnEl: HTMLButtonElement | null = null;
+    let toolsBtnEl: HTMLButtonElement | null = null;
     let resizeObserver: ResizeObserver | null = null;
 
-    const syncTranscriptActive = (btn: HTMLButtonElement) => {
-      if (transcriptOpenRef.current) {
-        btn.setAttribute('data-active', 'true');
-        btn.classList.add('lk-button-active');
-      } else {
-        btn.removeAttribute('data-active');
-        btn.classList.remove('lk-button-active');
-      }
-    };
-
     const toolsSideOpen = () =>
-      voteOpenRef.current || documentsOpenRef.current || chatOpenRef.current;
-
-    const syncVoteActive = (btn: HTMLButtonElement) => {
-      if (toolsSideOpen() && activeToolsTabRef.current === 'vote') {
-        btn.setAttribute('data-active', 'true');
-        btn.classList.add('lk-button-active');
-      } else {
-        btn.removeAttribute('data-active');
-        btn.classList.remove('lk-button-active');
-      }
-    };
-
-    const syncDocumentsActive = (btn: HTMLButtonElement) => {
-      if (toolsSideOpen() && activeToolsTabRef.current === 'documents') {
-        btn.setAttribute('data-active', 'true');
-        btn.classList.add('lk-button-active');
-      } else {
-        btn.removeAttribute('data-active');
-        btn.classList.remove('lk-button-active');
-      }
-    };
+      transcriptOpenRef.current || voteOpenRef.current || documentsOpenRef.current || chatOpenRef.current;
 
     const syncButtonUI = () => {
       if (cancelled) return;
       const bar = findControlBar(shell);
       if (!bar) return;
       syncControlBarCompact(bar, chatOpenRef.current);
+      if (!toolsBtnEl) return;
+
+      const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)') as HTMLElement | null;
+      const unread =
+        chatToggle?.getAttribute('data-lk-unread-msgs') ??
+        chatToggle?.getAttribute('data-unread-msgs') ??
+        '0';
+      if (unread && unread !== '0') {
+        toolsBtnEl.setAttribute('data-unread-msgs', unread);
+      } else {
+        toolsBtnEl.removeAttribute('data-unread-msgs');
+      }
+      onChatUnreadChange?.(unread && unread !== '0' ? Number.parseInt(unread, 10) || 0 : 0);
+
+      if (toolsSideOpen()) {
+        toolsBtnEl.setAttribute('data-active', 'true');
+        toolsBtnEl.classList.add('lk-button-active');
+      } else {
+        toolsBtnEl.removeAttribute('data-active');
+        toolsBtnEl.classList.remove('lk-button-active');
+      }
     };
 
     const attach = () => {
       if (cancelled) return;
       const bar = findControlBar(shell);
       if (!bar) return;
-
-      let vBtn = bar.querySelector('.meeting-vote-toggle') as HTMLButtonElement | null;
-      if (!vBtn) {
-        vBtn = document.createElement('button');
-        vBtn.type = 'button';
-        vBtn.className = 'lk-button meeting-vote-toggle';
-        vBtn.innerHTML = VOTE_BUTTON_INNER;
-        vBtn.addEventListener('click', () => {
-          const vote = voteOpenRef.current;
-          const tab = activeToolsTabRef.current;
-          if (vote && tab === 'vote') {
+      let btn = bar.querySelector('.meeting-tools-toggle') as HTMLButtonElement | null;
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'lk-button meeting-tools-toggle';
+        btn.innerHTML = TOOLS_BUTTON_INNER;
+        btn.addEventListener('click', () => {
+          const isOpen = toolsSideOpen();
+          if (isOpen) {
+            setTranscriptOpen(false);
             setVoteOpen(false);
-            if (documentsOpenRef.current) {
-              setActiveToolsTabRef.current?.('documents');
-            } else if (chatOpenRef.current) {
-              setActiveToolsTabRef.current?.('chat');
+            setDocumentsOpen(false);
+            if (chatOpenRef.current) {
+              const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)') as HTMLElement | null;
+              chatToggle?.click();
             }
             return;
           }
-          if (!vote) {
+
+          const tab = activeToolsTabRef.current;
+          if (tab === 'transcript') {
+            setTranscriptOpen(true);
+          } else if (tab === 'documents') {
+            setDocumentsOpen(true);
+          } else if (tab === 'chat') {
+            const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)') as HTMLElement | null;
+            chatToggle?.click();
+          } else {
             setVoteOpen(true);
           }
-          setActiveToolsTabRef.current?.('vote');
         });
-        placeVoteButtonInBar(bar, vBtn);
-        voteBtnEl = vBtn;
-      } else {
-        placeVoteButtonInBar(bar, vBtn);
-        voteBtnEl = vBtn;
       }
-
-      let tBtn = bar.querySelector('.meeting-transcript-toggle') as HTMLButtonElement | null;
-      if (!tBtn) {
-        tBtn = document.createElement('button');
-        tBtn.type = 'button';
-        tBtn.className = 'lk-button meeting-transcript-toggle';
-        tBtn.innerHTML = TRANSCRIPT_BUTTON_INNER;
-        tBtn.addEventListener('click', () => setTranscriptOpen((x) => !x));
-        placeTranscriptButtonInBar(bar, tBtn);
-        transcriptBtnEl = tBtn;
-      } else {
-        placeTranscriptButtonInBar(bar, tBtn);
-        transcriptBtnEl = tBtn;
-      }
-
-      let dBtn = bar.querySelector('.meeting-documents-toggle') as HTMLButtonElement | null;
-      if (!dBtn) {
-        dBtn = document.createElement('button');
-        dBtn.type = 'button';
-        dBtn.className = 'lk-button meeting-documents-toggle';
-        dBtn.innerHTML = DOCUMENTS_BUTTON_INNER;
-        dBtn.addEventListener('click', () => {
-          const docs = documentsOpenRef.current;
-          const tab = activeToolsTabRef.current;
-          if (docs && tab === 'documents') {
-            setDocumentsOpen(false);
-            if (voteOpenRef.current) {
-              setActiveToolsTabRef.current?.('vote');
-            } else if (chatOpenRef.current) {
-              setActiveToolsTabRef.current?.('chat');
-            }
-            return;
-          }
-          if (!docs) {
-            setDocumentsOpen(true);
-          }
-          setActiveToolsTabRef.current?.('documents');
-        });
-        placeDocumentsButtonInBar(bar, dBtn);
-        documentsBtnEl = dBtn;
-      } else {
-        placeDocumentsButtonInBar(bar, dBtn);
-        documentsBtnEl = dBtn;
-      }
-
-      syncVoteActive(vBtn);
-      syncTranscriptActive(tBtn);
-      if (dBtn) syncDocumentsActive(dBtn);
+      placeToolsButtonInBar(bar, btn);
+      toolsBtnEl = btn;
       syncButtonUI();
 
       if (!resizeObserver) {
@@ -436,45 +363,22 @@ export default function MeetingShellEnhancements({
       if (resizeObserver) resizeObserver.disconnect();
       const bar = findControlBar(shell);
       if (bar) delete bar.dataset.meetingBarCompact;
-      voteBtnEl?.remove();
-      transcriptBtnEl?.remove();
-      documentsBtnEl?.remove();
+      toolsBtnEl?.remove();
     };
-  }, [shellRef, setTranscriptOpen, setVoteOpen, setDocumentsOpen, setActiveToolsTab]);
+  }, [shellRef, setTranscriptOpen, setVoteOpen, setDocumentsOpen, setActiveToolsTab, onChatUnreadChange]);
 
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
-    const toolsOpen = voteOpen || documentsOpen || chatOpen;
-    const vBtn = shell.querySelector('.meeting-vote-toggle') as HTMLButtonElement | null;
-    if (vBtn) {
-      if (toolsOpen && activeToolsTab === 'vote') {
-        vBtn.setAttribute('data-active', 'true');
-        vBtn.classList.add('lk-button-active');
+    const toolsOpen = voteOpen || documentsOpen || chatOpen || transcriptOpen;
+    const toolsBtn = shell.querySelector('.meeting-tools-toggle') as HTMLButtonElement | null;
+    if (toolsBtn) {
+      if (toolsOpen) {
+        toolsBtn.setAttribute('data-active', 'true');
+        toolsBtn.classList.add('lk-button-active');
       } else {
-        vBtn.removeAttribute('data-active');
-        vBtn.classList.remove('lk-button-active');
-      }
-    }
-    const tBtn = shell.querySelector('.meeting-transcript-toggle') as HTMLButtonElement | null;
-    if (tBtn) {
-      if (transcriptOpen) {
-        tBtn.setAttribute('data-active', 'true');
-        tBtn.classList.add('lk-button-active');
-      } else {
-        tBtn.removeAttribute('data-active');
-        tBtn.classList.remove('lk-button-active');
-      }
-    }
-
-    const dBtn = shell.querySelector('.meeting-documents-toggle') as HTMLButtonElement | null;
-    if (dBtn) {
-      if (toolsOpen && activeToolsTab === 'documents') {
-        dBtn.setAttribute('data-active', 'true');
-        dBtn.classList.add('lk-button-active');
-      } else {
-        dBtn.removeAttribute('data-active');
-        dBtn.classList.remove('lk-button-active');
+        toolsBtn.removeAttribute('data-active');
+        toolsBtn.classList.remove('lk-button-active');
       }
     }
   }, [shellRef, voteOpen, transcriptOpen, documentsOpen, chatOpen, activeToolsTab]);

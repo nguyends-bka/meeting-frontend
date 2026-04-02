@@ -320,7 +320,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
         </Space>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div className="sidebar-scroll-area" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
         {/* Bọc ConfigProvider để chỉnh Style Menu giống ảnh */}
         <ConfigProvider
           theme={{
