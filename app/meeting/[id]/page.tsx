@@ -149,6 +149,8 @@ function VirtualMicPublisher({
   const room = useRoomContext();
   const publishedTrackRef = useRef<LocalAudioTrack | null>(null);
   const stopReceiverRef = useRef<(() => Promise<void>) | null>(null);
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   useEffect(() => {
     let mounted = true;
@@ -174,7 +176,7 @@ function VirtualMicPublisher({
         console.error('Virtual mic publish failed:', error);
         const message =
           error instanceof Error ? error.message : 'Không thể khởi tạo micro ảo';
-        onError(message);
+        onErrorRef.current(message);
       }
     };
 
@@ -206,7 +208,7 @@ function VirtualMicPublisher({
 
       void cleanup();
     };
-  }, [enabled, room, wsUrl, onError]);
+  }, [enabled, room, wsUrl]);
 
   return null;
 }
@@ -223,6 +225,8 @@ function PhysicalMicForwarder({
   onError: (message: string) => void;
 }) {
   const room = useRoomContext();
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   // lưu stop function của session hiện tại
   const stopSenderRef = useRef<(() => Promise<void>) | null>(null);
@@ -270,9 +274,9 @@ function PhysicalMicForwarder({
         error instanceof Error
           ? error.message
           : 'Không thể gửi âm thanh mic thật qua websocket';
-      onError(message);
+      onErrorRef.current(message);
     }
-  }, [enabled, onError, preferredDeviceId, wsUrl]);
+  }, [enabled, preferredDeviceId, wsUrl]);
 
   useEffect(() => {
     let mounted = true;
@@ -370,9 +374,9 @@ function LatestTranscriptStrip() {
         type="button"
         className="meeting-latest-transcript-hide"
         onClick={() => setHidden(true)}
-        aria-label="An transcript moi nhat"
+        aria-label="Ẩn transcript mới nhất"
       >
-        ×
+        Ẩn transcript
       </button>
     </div>
   );
