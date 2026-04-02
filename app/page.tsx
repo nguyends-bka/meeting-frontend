@@ -107,6 +107,13 @@ export default function HomePage() {
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
   const isNarrow = !screens.lg;
+  /** Màn rộng (vd. 1920×1200): tận dụng gần hết vùng content sau sidebar */
+  const isWideHome = Boolean(screens.xxl);
+  // "Thu nhỏ" = không phải màn hình lớn (xxl), nhưng vẫn >= lg (vd tablet/desktop nhỏ).
+  // Khi thu nhỏ vẫn hiển thị 3 thẻ thống kê trên 1 hàng (không chuyển sang 1 cột).
+  const isCompactStats = !isWideHome && screens.lg;
+  const statScale = isCompactStats ? 0.85 : 1;
+  const ss = (n: number) => Math.round(n * statScale);
 
   const router = useRouter();
   const { user, isAuthenticated, loading, isAdmin } = useAuth();
@@ -353,7 +360,7 @@ export default function HomePage() {
       {
         title: 'STT',
         key: 'stt',
-        width: 60,
+        width: isWideHome ? 80 : 50,
         align: 'center' as const,
         render: (_: unknown, __: HomeMeetingRow, index: number) => (
           <Text type="secondary">{index + 1}</Text>
@@ -362,7 +369,7 @@ export default function HomePage() {
       {
         title: 'THÔNG TIN CUỘC HỌP',
         key: 'info',
-        width: 480,
+        width: isWideHome ? 560 : 100,
         render: (_: unknown, record: HomeMeetingRow) => (
           <Space align="start" size="middle">
             <div
@@ -396,7 +403,7 @@ export default function HomePage() {
       {
         title: 'TRẠNG THÁI',
         key: 'status',
-        width: 200,
+        width: isWideHome ? 200 : 50,
         responsive: ['md'] as const,
         render: (_: unknown, record: HomeMeetingRow) => {
           const isEnded = Boolean(record.endedAt);
@@ -442,7 +449,7 @@ export default function HomePage() {
       {
         title: 'TRUY CẬP',
         key: 'access',
-        width: 450,
+        width: isWideHome ? 520 : 450,
         align: 'left' as const,
         responsive: ['lg'] as const,
         render: (_: unknown, record: HomeMeetingRow) => (
@@ -559,7 +566,7 @@ export default function HomePage() {
       {
         title: 'THAO TÁC',
         key: 'actions',
-        width: 160,
+        width: isWideHome ? 160 : 50,
         fixed: 'right' as const,
         render: (_: unknown, record: HomeMeetingRow) => {
           const isEnded = Boolean(record.endedAt);
@@ -581,7 +588,16 @@ export default function HomePage() {
                 }
                 setDetailMeeting(record);
               }}
-              style={{ fontWeight: 500, width: 112, justifyContent: 'center' }}
+              style={{
+                fontWeight: 500,
+                width: 112,
+                minWidth: 112,
+                height: 36,
+                paddingInline: 8,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
               className="meeting-action-main-btn"
             >
               {actionLabel}
@@ -590,7 +606,7 @@ export default function HomePage() {
         },
       },
     ],
-    [router, copyText, buildMeetingLink, openHistoryModal]
+    [router, copyText, buildMeetingLink, openHistoryModal, isWideHome]
   );
 
   const onJoinMeeting = async () => {
@@ -623,18 +639,26 @@ export default function HomePage() {
 
   return (
     <MainLayout>
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: isNarrow ? 16 : 24 }}>
+      <div
+        style={{
+          width: '100%',
+          maxWidth: isNarrow ? undefined : 'min(1720px, 100%)',
+          margin: '0 auto',
+          padding: isNarrow ? 16 : isWideHome ? 28 : 24,
+          boxSizing: 'border-box',
+        }}
+      >
         <div
           style={{
             display: 'flex',
-            alignItems: 'flex-start',
+            alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 16,
+            gap: 20,
             marginBottom: 18,
             flexWrap: 'wrap',
           }}
         >
-          <div style={{ minWidth: 260 }}>
+          <div style={{ minWidth: 260, flex: '1 1 280px' }}>
             <Title level={3} style={{ margin: 0 }}>
               Chào mừng trở lại, {user?.fullName}
             </Title>
@@ -643,94 +667,150 @@ export default function HomePage() {
             </Text>
           </div>
 
-          <Space wrap>
-            <Button onClick={() => setJoinOpen(true)} icon={<RightCircleOutlined />}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'row',     // luôn nằm ngang
+              gap: 12,
+              flexWrap: 'nowrap',       // ❌ không cho xuống dòng
+              width: '100%',
+              maxWidth: 520,            // giới hạn để không bị tràn
+            }}
+          >
+            <Button
+              size="large"
+              onClick={() => setJoinOpen(true)}
+              icon={<RightCircleOutlined />}
+              style={{
+                flex: isNarrow ? undefined : 1,
+                width: isNarrow ? '40%' : undefined,
+                minWidth: isNarrow ? undefined : 0,
+                height: isWideHome ? 48 : isNarrow ? 42 : 44,
+                fontSize: isWideHome ? 16 : 14,
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               Nhập mã tham gia
             </Button>
-            <Button type="primary" onClick={() => setCreateOpen(true)} icon={<PlusOutlined />}>
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => setCreateOpen(true)}
+              icon={<PlusOutlined />}
+              style={{
+                flex: isNarrow ? undefined : 1,
+                width: isNarrow ? '40%' : undefined,
+                minWidth: isNarrow ? undefined : 0,
+                height: isWideHome ? 48 : isNarrow ? 42 : 44,
+                fontSize: isWideHome ? 16 : 14,
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               Tạo cuộc họp mới
             </Button>
-          </Space>
+          </div>
         </div>
 
         {stats && (
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: isNarrow ? '1fr' : 'repeat(3, 1fr)',
-              gap: 16,
-              marginBottom: 18,
+              gridTemplateColumns: isNarrow ? '1fr' : 'repeat(3, minmax(0, 1fr))',
+              justifyContent: 'stretch',
+              gap: isCompactStats ? ss(16) : isWideHome ? 20 : 16,
+              marginBottom: isCompactStats ? ss(18) : isWideHome ? 22 : 18,
+              alignItems: 'stretch',
             }}
           >
-            <Card bordered={false} style={{ borderRadius: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <Card bordered={false} style={{ borderRadius: ss(12), height: '100%', minHeight: ss(92) }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: ss(14) }}>
                 <div
                   style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 12,
+                    width: ss(42),
+                    height: ss(42),
+                    borderRadius: ss(12),
                     background: '#e6f4ff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: '#1677ff',
-                    fontSize: 18,
+                    fontSize: ss(18),
                   }}
                 >
                   <VideoCameraOutlined />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <Text type="secondary">Tổng cuộc họp đã tạo</Text>
-                  <div style={{ fontSize: 24, fontWeight: 700, lineHeight: '28px' }}>{stats.totalMeetings}</div>
+                <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
+                  Tổng cuộc họp đã tạo
+                </Text>
+                  <div style={{ fontSize: ss(24), fontWeight: 700, lineHeight: `${ss(28)}px` }}>
+                    {stats.totalMeetings}
+                  </div>
                 </div>
               </div>
             </Card>
-            <Card bordered={false} style={{ borderRadius: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <Card bordered={false} style={{ borderRadius: ss(12), height: '100%', minHeight: ss(92) }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: ss(14) }}>
                 <div
                   style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 12,
+                    width: ss(42),
+                    height: ss(42),
+                    borderRadius: ss(12),
                     background: '#eafff2',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: '#22c55e',
-                    fontSize: 18,
+                    fontSize: ss(18),
                   }}
                 >
                   <span style={{ fontWeight: 800 }}>👥</span>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <Text type="secondary">Đang diễn ra</Text>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ fontSize: 24, fontWeight: 700, lineHeight: '28px' }}>{stats.activeMeetings}</div>
-                    {stats.activeMeetings > 0 && <Tag color="green">Live</Tag>}
+                  <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
+                    Đang diễn ra
+                  </Text>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: ss(8) }}>
+                    <div style={{ fontSize: ss(24), fontWeight: 700, lineHeight: `${ss(28)}px` }}>
+                      {stats.activeMeetings}
+                    </div>
+                    {stats.activeMeetings > 0 && (
+                      <Tag color="green" style={{ fontSize: ss(12), lineHeight: `${ss(20)}px`, paddingInline: ss(7) }}>
+                        Live
+                      </Tag>
+                    )}
                   </div>
                 </div>
               </div>
             </Card>
-            <Card bordered={false} style={{ borderRadius: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <Card bordered={false} style={{ borderRadius: ss(12), height: '100%', minHeight: ss(92) }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: ss(14) }}>
                 <div
                   style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 12,
+                    width: ss(42),
+                    height: ss(42),
+                    borderRadius: ss(12),
                     background: '#f3f4f6',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: '#6b7280',
-                    fontSize: 18,
+                    fontSize: ss(18),
                   }}
                 >
                   <CalendarOutlined />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <Text type="secondary">Sắp diễn ra hôm nay</Text>
-                  <div style={{ fontSize: 24, fontWeight: 700, lineHeight: '28px' }}>{stats.todayMeetings}</div>
+                  <Text type="secondary" style={{ fontSize: ss(14) }}>Sắp diễn ra hôm nay</Text>
+                  <div style={{ fontSize: ss(24), fontWeight: 700, lineHeight: `${ss(28)}px` }}>
+                    {stats.todayMeetings}
+                  </div>
                 </div>
               </div>
             </Card>
@@ -754,7 +834,9 @@ export default function HomePage() {
             dataSource={recentMeetings}
             pagination={false}
             tableLayout="fixed"
-            scroll={{ x: isNarrow ? 860 : undefined }}
+            scroll={{
+              x: isNarrow ? 860 : isWideHome ? 1520 : 1360,
+            }}
             columns={homeScheduleColumns as any}
             locale={{
               emptyText: <div style={{ padding: 16 }}><Text type="secondary">Chưa có dữ liệu.</Text></div>,
