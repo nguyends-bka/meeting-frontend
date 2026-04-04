@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import dayjs from 'dayjs';
 import { Button, Popconfirm, Space, Tag, Typography, message } from 'antd';
 import { CloseOutlined, DeleteOutlined, FileTextOutlined, EyeOutlined, UploadOutlined } from '@ant-design/icons';
 import { meetingApi } from '@/services/meeting/meetingApi';
+
+const MeetingPdfViewer = dynamic(() => import('@/components/MeetingPdfViewer'), { ssr: false });
 
 const { Text } = Typography;
 
@@ -37,7 +40,6 @@ export default function MeetingDocumentsPanel({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Overlay viewer (hiển thị PDF/ảnh "chiếm" phần nội dung chính giống demo)
-  const [controlBarHeight, setControlBarHeight] = useState<number>(80);
   const [overlayLeftPx, setOverlayLeftPx] = useState<number>(0);
   const [overlayWidthPx, setOverlayWidthPx] = useState<number>(0);
   const [overlayTopPx, setOverlayTopPx] = useState<number>(0);
@@ -78,7 +80,6 @@ export default function MeetingDocumentsPanel({
 
       const bar = shell.querySelector('.lk-control-bar') as HTMLElement | null;
       const h = bar ? Math.ceil(bar.getBoundingClientRect().height) : 80;
-      setControlBarHeight(h);
 
       const focus = shell.querySelector('.lk-focus-layout-wrapper') as HTMLElement | null;
       const grid = shell.querySelector('.lk-grid-layout-wrapper') as HTMLElement | null;
@@ -86,19 +87,45 @@ export default function MeetingDocumentsPanel({
 
       const barTopY = bar ? bar.getBoundingClientRect().top : window.innerHeight - h;
 
-      // Default overlay bounds
+      // Default overlay bounds (full shell)
       let overlayLeft = shellRect.left;
       let overlayRight = shellRect.right;
       let overlayTop = shellRect.top;
-      let overlayBottomEdgeY = barTopY; // cap at control bar top to keep buttons clickable
+      let overlayBottomEdgeY = barTopY;
 
-      if (target) {
+      // Side stack: đo trước để dùng cho cả ngang lẫn dọc.
+      const sideStack = shell.querySelector('.meeting-side-stack') as HTMLElement | null;
+      const stackDisplayed =
+        sideStack &&
+        getComputedStyle(sideStack).display !== 'none' &&
+        getComputedStyle(sideStack).visibility !== 'hidden';
+      const ss = (stackDisplayed && sideStack) ? sideStack.getBoundingClientRect() : null;
+
+      // Ngang: mép phải overlay = mép trái side panel (không đè lên panel công cụ).
+      const vcInner = shell.querySelector('.lk-video-conference-inner') as HTMLElement | null;
+      if (vcInner) {
+        const ir = vcInner.getBoundingClientRect();
+        overlayLeft = ir.left;
+        overlayRight = ss ? ss.left : ir.right;
+      } else if (target) {
         const t = target.getBoundingClientRect();
         overlayLeft = t.left;
-        overlayRight = t.right;
-        overlayTop = t.top;
-        overlayBottomEdgeY = Math.min(t.bottom, barTopY);
+        overlayRight = ss ? ss.left : t.right;
+      } else if (ss) {
+        overlayRight = ss.left;
       }
+
+      // Dọc: top & bottom khớp chính xác với side panel → thẳng hàng với panel công cụ bên phải.
+      if (ss) {
+        overlayTop = ss.top;
+        overlayBottomEdgeY = ss.bottom;
+      } else if (target) {
+        const t = target.getBoundingClientRect();
+        overlayTop = t.top;
+        overlayBottomEdgeY = barTopY;
+      }
+
+      overlayBottomEdgeY = Math.min(overlayBottomEdgeY, window.innerHeight);
 
       const width = Math.max(0, Math.round(overlayRight - overlayLeft));
       setOverlayLeftPx(Math.round(overlayLeft));
@@ -199,32 +226,9 @@ export default function MeetingDocumentsPanel({
     }
   };
 
-  const viewer = useMemo(() => {
-    if (!activeDoc || !activeObjectUrl) return null;
-
-    if (activeDoc.contentType.startsWith('image/')) {
-      return <img src={activeObjectUrl} alt={activeDoc.fileName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
-    }
-
-    if (activeDoc.contentType === 'application/pdf') {
-      return <iframe src={activeObjectUrl} title={activeDoc.fileName} style={{ width: '100%', height: '100%', border: 0, background: '#fff' }} />;
-    }
-
-    return (
-      <div style={{ textAlign: 'center', padding: 24 }}>
-        <Text type="secondary">Trình duyệt không hỗ trợ xem trực tiếp định dạng này.</Text>
-        <div style={{ marginTop: 12 }}>
-          <a href={activeObjectUrl} download={activeDoc.fileName}>
-            Tải xuống: {activeDoc.fileName}
-          </a>
-        </div>
-      </div>
-    );
-  }, [activeDoc, activeObjectUrl]);
-
   return (
     <>
-      {activeDoc && viewer && (
+      {activeDoc && activeObjectUrl && (
         <div
           style={{
             position: 'fixed',
@@ -232,41 +236,82 @@ export default function MeetingDocumentsPanel({
             left: overlayLeftPx,
             width: overlayWidthPx,
             bottom: overlayBottomPx,
-            zIndex: 4,
+            zIndex: 20,
             background: '#0b1220',
             overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
           <div
             style={{
               position: 'relative',
               width: '100%',
-              height: '100%',
-              display: 'grid',
-              gridTemplateRows: '48px 1fr',
+              flex: '1 1 0%',
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0 12px 0 16px',
-                background: 'rgba(15, 23, 42, 0.95)',
-                borderBottom: '1px solid rgba(148, 163, 184, 0.2)',
-              }}
-            >
-              <Text style={{ color: '#e2e8f0', fontWeight: 600 }} ellipsis>
-                {activeDoc.fileName}
-              </Text>
-              <Button
-                icon={<CloseOutlined />}
-                onClick={() => setActiveDoc(null)}
-                type="text"
-                style={{ color: '#e2e8f0' }}
+            {activeDoc.contentType === 'application/pdf' ? (
+              <MeetingPdfViewer
+                fileUrl={activeObjectUrl}
+                fileName={activeDoc.fileName}
+                onClose={() => setActiveDoc(null)}
               />
-            </div>
-            <div style={{ width: '100%', height: '100%', padding: 10 }}>{viewer}</div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0 12px 0 16px',
+                    minHeight: 48,
+                    background: 'rgba(15, 23, 42, 0.95)',
+                    borderBottom: '1px solid rgba(148, 163, 184, 0.2)',
+                  }}
+                >
+                  <Text style={{ color: '#e2e8f0', fontWeight: 600 }} ellipsis>
+                    {activeDoc.fileName}
+                  </Text>
+                  <Button
+                    icon={<CloseOutlined />}
+                    onClick={() => setActiveDoc(null)}
+                    type="text"
+                    style={{ color: '#e2e8f0' }}
+                  />
+                </div>
+                <div
+                  style={{
+                    width: '100%',
+                    flex: 1,
+                    minHeight: 0,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  {activeDoc.contentType.startsWith('image/') ? (
+                    <img
+                      src={activeObjectUrl}
+                      alt={activeDoc.fileName}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    />
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: 24 }}>
+                      <Text type="secondary">Trình duyệt không hỗ trợ xem trực tiếp định dạng này.</Text>
+                      <div style={{ marginTop: 12 }}>
+                        <a href={activeObjectUrl} download={activeDoc.fileName}>
+                          Tải xuống: {activeDoc.fileName}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -386,4 +431,3 @@ export default function MeetingDocumentsPanel({
     </>
   );
 }
-
