@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from 'antd';
-import { CloseOutlined } from '@ant-design/icons';
+import { CloseOutlined, RotateLeftOutlined } from '@ant-design/icons';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -63,13 +63,21 @@ export default function MeetingPdfViewer({
   /** Chiều rộng khung (fit theo chiều ngang), chưa nhân zoom */
   const [basePageWidth, setBasePageWidth] = useState<number | undefined>(undefined);
   const [zoom, setZoom] = useState(1);
+  /** Góc theo react-pdf: 0, 90, 180, 270 (270 = xoay trái / ngược chiều kim đồng hồ 90°) */
+  const [pageRotate, setPageRotate] = useState(0);
+  const [zoomPercentDraft, setZoomPercentDraft] = useState('100');
   const [activePage, setActivePage] = useState(1);
 
   useEffect(() => {
     setNumPages(0);
     setZoom(1);
+    setPageRotate(0);
     setActivePage(1);
   }, [fileUrl]);
+
+  useEffect(() => {
+    setZoomPercentDraft(String(Math.round(zoom * 100)));
+  }, [zoom]);
 
   const measureWidth = (el: HTMLDivElement) => {
     const w = el.clientWidth;
@@ -124,6 +132,22 @@ export default function MeetingPdfViewer({
   const zoomIn = () => setZoom((z) => Math.min(ZOOM_MAX, Math.round(z * ZOOM_STEP * 100) / 100));
   const zoomOut = () => setZoom((z) => Math.max(ZOOM_MIN, Math.round((z / ZOOM_STEP) * 100) / 100));
   const zoomReset = () => setZoom(1);
+
+  const rotateCounterClockwise = () => setPageRotate((r) => (r - 90 + 360) % 360);
+
+  const applyZoomPercentDraft = useCallback(() => {
+    const raw = String(zoomPercentDraft).replace(/%/g, '').replace(',', '.').trim();
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) {
+      setZoomPercentDraft(String(Math.round(zoom * 100)));
+      return;
+    }
+    const pctMin = Math.round(ZOOM_MIN * 100);
+    const pctMax = Math.round(ZOOM_MAX * 100);
+    const pct = Math.min(pctMax, Math.max(pctMin, Math.round(n)));
+    setZoom(pct / 100);
+    setZoomPercentDraft(String(pct));
+  }, [zoomPercentDraft, zoom]);
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -206,6 +230,23 @@ export default function MeetingPdfViewer({
               {activePage} / {numPages}
             </span>
             <span style={toolbarDivider} aria-hidden />
+            <button
+              type="button"
+              onClick={rotateCounterClockwise}
+              title="Xoay ngược chiều kim đồng hồ"
+              aria-label="Xoay ngược chiều kim đồng hồ"
+              style={{
+                ...zoomBtn,
+                minWidth: 36,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+              }}
+            >
+              <RotateLeftOutlined style={{ fontSize: 16 }} />
+            </button>
+            <span style={toolbarDivider} aria-hidden />
           </>
         ) : null}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -223,8 +264,32 @@ export default function MeetingPdfViewer({
           >
             −
           </button>
-          <span style={{ ...toolbarPill, minWidth: 48, textAlign: 'center', paddingLeft: 8, paddingRight: 8 }}>
-            {Math.round(zoom * 100)}%
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={zoomPercentDraft}
+              onChange={(e) => setZoomPercentDraft(e.target.value)}
+              onBlur={applyZoomPercentDraft}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.currentTarget.blur();
+                }
+              }}
+              title="Nhập % zoom (20–300), Enter hoặc rời ô để áp dụng"
+              aria-label="Phần trăm zoom"
+              style={{
+                ...toolbarPill,
+                minWidth: 44,
+                maxWidth: 56,
+                textAlign: 'center',
+                paddingLeft: 6,
+                paddingRight: 6,
+                boxSizing: 'border-box',
+                outline: 'none',
+              }}
+            />
+            <span style={{ color: '#94a3b8', fontSize: 13, fontWeight: 600, flexShrink: 0 }}>%</span>
           </span>
           <button
             type="button"
@@ -312,6 +377,7 @@ export default function MeetingPdfViewer({
                   <Page
                     pageNumber={i + 1}
                     width={renderPageWidth}
+                    rotate={pageRotate}
                     renderTextLayer
                     renderAnnotationLayer
                   />

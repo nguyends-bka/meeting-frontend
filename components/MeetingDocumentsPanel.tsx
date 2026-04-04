@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import dayjs from 'dayjs';
 import { Button, Popconfirm, Space, Tag, Typography, message } from 'antd';
@@ -226,95 +227,100 @@ export default function MeetingDocumentsPanel({
     }
   };
 
-  return (
-    <>
-      {activeDoc && activeObjectUrl && (
+  const documentOverlay =
+    activeDoc && activeObjectUrl ? (
+      <div
+        style={{
+          position: 'fixed',
+          top: overlayTopPx,
+          left: overlayLeftPx,
+          width: overlayWidthPx,
+          bottom: overlayBottomPx,
+          zIndex: 20,
+          background: '#0b1220',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         <div
           style={{
-            position: 'fixed',
-            top: overlayTopPx,
-            left: overlayLeftPx,
-            width: overlayWidthPx,
-            bottom: overlayBottomPx,
-            zIndex: 20,
-            background: '#0b1220',
-            overflow: 'hidden',
+            position: 'relative',
+            width: '100%',
+            flex: '1 1 0%',
+            minHeight: 0,
             display: 'flex',
             flexDirection: 'column',
           }}
         >
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              flex: '1 1 0%',
-              minHeight: 0,
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            {activeDoc.contentType === 'application/pdf' ? (
-              <MeetingPdfViewer
-                fileUrl={activeObjectUrl}
-                fileName={activeDoc.fileName}
-                onClose={() => setActiveDoc(null)}
-              />
-            ) : (
-              <>
-                <div
-                  style={{
-                    flexShrink: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0 12px 0 16px',
-                    minHeight: 48,
-                    background: 'rgba(15, 23, 42, 0.95)',
-                    borderBottom: '1px solid rgba(148, 163, 184, 0.2)',
-                  }}
-                >
-                  <Text style={{ color: '#e2e8f0', fontWeight: 600 }} ellipsis>
-                    {activeDoc.fileName}
-                  </Text>
-                  <Button
-                    icon={<CloseOutlined />}
-                    onClick={() => setActiveDoc(null)}
-                    type="text"
-                    style={{ color: '#e2e8f0' }}
+          {activeDoc.contentType === 'application/pdf' ? (
+            <MeetingPdfViewer
+              fileUrl={activeObjectUrl}
+              fileName={activeDoc.fileName}
+              onClose={() => setActiveDoc(null)}
+            />
+          ) : (
+            <>
+              <div
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0 12px 0 16px',
+                  minHeight: 48,
+                  background: 'rgba(15, 23, 42, 0.95)',
+                  borderBottom: '1px solid rgba(148, 163, 184, 0.2)',
+                }}
+              >
+                <Text style={{ color: '#e2e8f0', fontWeight: 600 }} ellipsis>
+                  {activeDoc.fileName}
+                </Text>
+                <Button
+                  icon={<CloseOutlined />}
+                  onClick={() => setActiveDoc(null)}
+                  type="text"
+                  style={{ color: '#e2e8f0' }}
+                />
+              </div>
+              <div
+                style={{
+                  width: '100%',
+                  flex: 1,
+                  minHeight: 0,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                {activeDoc.contentType.startsWith('image/') ? (
+                  <img
+                    src={activeObjectUrl}
+                    alt={activeDoc.fileName}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
-                </div>
-                <div
-                  style={{
-                    width: '100%',
-                    flex: 1,
-                    minHeight: 0,
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  {activeDoc.contentType.startsWith('image/') ? (
-                    <img
-                      src={activeObjectUrl}
-                      alt={activeDoc.fileName}
-                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                    />
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: 24 }}>
-                      <Text type="secondary">Trình duyệt không hỗ trợ xem trực tiếp định dạng này.</Text>
-                      <div style={{ marginTop: 12 }}>
-                        <a href={activeObjectUrl} download={activeDoc.fileName}>
-                          Tải xuống: {activeDoc.fileName}
-                        </a>
-                      </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: 24 }}>
+                    <Text type="secondary">Trình duyệt không hỗ trợ xem trực tiếp định dạng này.</Text>
+                    <div style={{ marginTop: 12 }}>
+                      <a href={activeObjectUrl} download={activeDoc.fileName}>
+                        Tải xuống: {activeDoc.fileName}
+                      </a>
                     </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
+    ) : null;
+
+  return (
+    <>
+      {typeof document !== 'undefined' && documentOverlay
+        ? createPortal(documentOverlay, document.body)
+        : null}
 
       <aside
         className={`meeting-documents-panel${embedded ? ' meeting-documents-panel--embedded' : ''}`}
