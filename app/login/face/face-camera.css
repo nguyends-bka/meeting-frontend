@@ -1,0 +1,245 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&display=swap');
+
+.face-cam-page {
+  --bg: #030810;
+  --surface: #080f1e;
+  --border: #0d2340;
+  --accent: #00d4ff;
+  --accent2: #00ff9d;
+  --text: #c8dff5;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  position: relative;
+}
+
+.face-cam-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 212, 255, 0.02) 2px,
+    rgba(0, 212, 255, 0.02) 4px
+  );
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.face-cam-page .fc-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 520px;
+  z-index: 1;
+}
+
+.face-cam-page .fc-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.5;
+}
+
+.face-cam-page .fc-panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.face-cam-page .fc-title-main {
+  color: var(--accent);
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.7);
+}
+
+.face-cam-page .fc-panel-title span.fc-sub {
+  color: #8ab4d4;
+  font-weight: 400;
+  letter-spacing: 1px;
+  font-size: 12px;
+}
+
+.face-cam-page .fc-video-wrapper {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #000;
+  aspect-ratio: 4/3;
+  margin-bottom: 14px;
+}
+
+.face-cam-page .fc-video-wrapper video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scaleX(-1);
+}
+
+.face-cam-page .fc-scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  box-shadow: 0 0 12px var(--accent);
+  animation: fc-scan 2.5s linear infinite;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.face-cam-page .fc-scan-line.active {
+  opacity: 1;
+}
+
+@keyframes fc-scan {
+  0% {
+    top: 0;
+  }
+  100% {
+    top: 100%;
+  }
+}
+
+.face-cam-page .fc-corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-color: var(--accent);
+  border-style: solid;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.face-cam-page .fc-corner.tl {
+  top: 8px;
+  left: 8px;
+  border-width: 2px 0 0 2px;
+}
+.face-cam-page .fc-corner.tr {
+  top: 8px;
+  right: 8px;
+  border-width: 2px 2px 0 0;
+}
+.face-cam-page .fc-corner.bl {
+  bottom: 8px;
+  left: 8px;
+  border-width: 0 0 2px 2px;
+}
+.face-cam-page .fc-corner.br {
+  bottom: 8px;
+  right: 8px;
+  border-width: 0 2px 2px 0;
+}
+
+.face-cam-page .fc-face-guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44%;
+  aspect-ratio: 3/4;
+  border: 2px dashed rgba(0, 212, 255, 0.3);
+  border-radius: 50%;
+  pointer-events: none;
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
+}
+
+.face-cam-page .fc-face-guide.detected {
+  border-color: var(--accent2);
+  box-shadow: 0 0 20px rgba(0, 255, 157, 0.2);
+  border-style: solid;
+}
+
+.face-cam-page .fc-btn-row {
+  display: flex;
+  gap: 10px;
+}
+
+.face-cam-page .fc-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.face-cam-page .fc-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: white;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.face-cam-page .fc-btn:active::after {
+  opacity: 0.08;
+}
+
+.face-cam-page .fc-btn-primary {
+  background: linear-gradient(135deg, #0066aa, #0099cc);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(0, 150, 200, 0.4);
+}
+
+.face-cam-page .fc-btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 22px rgba(0, 200, 255, 0.6);
+  transform: translateY(-1px);
+}
+
+.face-cam-page .fc-btn-primary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.face-cam-page .fc-btn-close {
+  background: linear-gradient(135deg, #550011, #aa1133);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(180, 30, 60, 0.4);
+}
+
+.face-cam-page .fc-btn-close:hover:not(:disabled) {
+  box-shadow: 0 0 22px rgba(255, 60, 90, 0.6);
+  transform: translateY(-1px);
+}
+
+.face-cam-page .fc-btn-close:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
