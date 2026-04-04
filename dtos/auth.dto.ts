@@ -12,6 +12,10 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface FaceLoginRequest {
+  embedding: number[];
+}
+
 export interface AuthUser {
   id: string;
   username: string;

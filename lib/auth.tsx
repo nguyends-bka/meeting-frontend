@@ -21,6 +21,7 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithFaceEmbedding: (embedding: number[]) => Promise<{ success: boolean; error?: string }>;
   register: (username: string, password: string, fullName?: string, email?: string) => Promise<{ success: boolean; error?: string }>;
   updateUser: (patch: Partial<User>) => void;
   logout: () => void;
@@ -70,6 +71,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
+  const loginWithFaceEmbedding = async (embedding: number[]) => {
+    const result = await apiService.loginWithFaceEmbedding(embedding);
+
+    if (result.error || !result.data) {
+      return { success: false, error: result.error || 'Face login failed' };
+    }
+
+    const { token: newToken, user: userData } = result.data;
+
+    setToken(newToken);
+    setUser(userData);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('token', newToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+    }
+
+    return { success: true };
+  };
+
   const register = async (username: string, password: string, fullName?: string, email?: string) => {
     const result = await apiService.register(username, password, fullName, email);
     
@@ -111,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         loading,
         login,
+        loginWithFaceEmbedding,
         register,
         updateUser,
         logout,

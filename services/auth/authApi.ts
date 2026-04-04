@@ -1,5 +1,5 @@
 import { apiClient } from '../base/apiClient';
-import type { RegisterRequest, LoginRequest, LoginResponse } from '@/dtos/auth.dto';
+import type { RegisterRequest, LoginRequest, LoginResponse, FaceLoginRequest } from '@/dtos/auth.dto';
 
 // Auth domain API - React Query compatible
 export const authApi = {
@@ -12,6 +12,13 @@ export const authApi = {
 
   login: async (request: LoginRequest) => {
     return apiClient.request<LoginResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  loginWithFaceEmbedding: async (request: FaceLoginRequest) => {
+    return apiClient.request<LoginResponse>('/api/auth/login/face', {
       method: 'POST',
       body: JSON.stringify(request),
     });

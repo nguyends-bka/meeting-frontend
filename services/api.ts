@@ -20,6 +20,10 @@ class ApiService {
     return authApi.login({ username, password });
   }
 
+  async loginWithFaceEmbedding(embedding: number[]) {
+    return authApi.loginWithFaceEmbedding({ embedding });
+  }
+
   async createMeeting(title: string, hostName: string, passcode?: string) {
     return meetingApi.create({ title, hostName, passcode });
   }
