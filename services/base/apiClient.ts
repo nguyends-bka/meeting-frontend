@@ -33,7 +33,11 @@ class ApiClient {
       });
 
       if (!response.ok) {
-        if (response.status === 401 && typeof window !== 'undefined') {
+        // Face login thất bại cũng có thể là 401 — không được reload /login vì sẽ tắt luồng FaceID (camera, WS) dù user chưa đăng nhập.
+        const isFaceLoginAttempt =
+          endpoint.includes('/api/auth/login/face') && options.method === 'POST';
+
+        if (response.status === 401 && typeof window !== 'undefined' && !isFaceLoginAttempt) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           window.location.href = '/login';
