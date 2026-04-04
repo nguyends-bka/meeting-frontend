@@ -92,26 +92,39 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div style={{ marginTop: 20, textAlign: 'center' }}>
-          <Link
-            href="/login/face"
-            style={{
-              display: 'inline-block',
-              padding: '12px 16px',
-              backgroundColor: '#111827',
-              color: '#fff',
-              borderRadius: '6px',
-              fontSize: '15px',
-              fontWeight: 600,
-              textDecoration: 'none',
-            }}
-          >
-            Đăng nhập bằng khuôn mặt
-          </Link>
-          <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-            Màn hình xác thực kiểu camera — cùng luồng WebSocket FaceID như trước
-          </div>
+        {/* Divider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 20 }}>
+          <div style={{ flex: 1, height: 1, backgroundColor: '#e5e7eb' }} />
+          <span style={{ fontSize: 13, color: '#9ca3af', fontWeight: 500 }}>hoặc</span>
+          <div style={{ flex: 1, height: 1, backgroundColor: '#e5e7eb' }} />
         </div>
+
+        {/* Nút đăng nhập bằng khuôn mặt */}
+        <Link
+          href="/login/face"
+          style={{
+            marginTop: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+            padding: '12px 16px',
+            backgroundColor: '#111827',
+            color: '#fff',
+            borderRadius: '6px',
+            fontSize: '15px',
+            fontWeight: 600,
+            textDecoration: 'none',
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.85 }}>
+            <path d="M9 10a1 1 0 100-2 1 1 0 000 2z" fill="currentColor" stroke="none"/>
+            <path d="M15 10a1 1 0 100-2 1 1 0 000 2z" fill="currentColor" stroke="none"/>
+            <path d="M9 15c.83 1 1.94 1.5 3 1.5s2.17-.5 3-1.5"/>
+            <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/>
+          </svg>
+          Đăng nhập bằng khuôn mặt
+        </Link>
 
         <div style={styles.footer}>
           <span>Chưa có tài khoản? </span>
