@@ -44,7 +44,7 @@ export default function MeetingDocumentsPanel({
   const [overlayLeftPx, setOverlayLeftPx] = useState<number>(0);
   const [overlayWidthPx, setOverlayWidthPx] = useState<number>(0);
   const [overlayTopPx, setOverlayTopPx] = useState<number>(0);
-  const [overlayBottomPx, setOverlayBottomPx] = useState<number>(80);
+  const [overlayHeightPx, setOverlayHeightPx] = useState<number>(0);
 
   const fetchDocs = async () => {
     setLoading(true);
@@ -129,10 +129,11 @@ export default function MeetingDocumentsPanel({
       overlayBottomEdgeY = Math.min(overlayBottomEdgeY, window.innerHeight);
 
       const width = Math.max(0, Math.round(overlayRight - overlayLeft));
+      const height = Math.max(0, Math.round(overlayBottomEdgeY - overlayTop));
       setOverlayLeftPx(Math.round(overlayLeft));
       setOverlayWidthPx(width);
-      setOverlayTopPx(overlayTop);
-      setOverlayBottomPx(Math.max(0, Math.round(window.innerHeight - overlayBottomEdgeY)));
+      setOverlayTopPx(Math.round(overlayTop));
+      setOverlayHeightPx(height);
 
     };
 
@@ -235,7 +236,7 @@ export default function MeetingDocumentsPanel({
           top: overlayTopPx,
           left: overlayLeftPx,
           width: overlayWidthPx,
-          bottom: overlayBottomPx,
+          height: overlayHeightPx,
           zIndex: 20,
           background: '#0b1220',
           overflow: 'hidden',
