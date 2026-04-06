@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiService } from '@/services/api';
+import { FaceRegistrationGate } from '@/components/FaceRegistrationGate';
 
 interface User {
   id: string;
@@ -14,6 +15,8 @@ interface User {
   academicDegree?: 'TS' | 'ThS' | 'CN' | 'KS' | null;
   organizationUnitId?: string | null;
   faceTemplate?: string | null;
+  /** Đã có FaceEmbedding trong DB (đăng nhập bằng khuôn mặt) */
+  hasFaceEmbedding?: boolean;
 }
 
 interface NamePlatePayload {
@@ -142,8 +145,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const savedUser = localStorage.getItem('user');
 
       if (savedToken && savedUser) {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
+        try {
+          const parsed = JSON.parse(savedUser) as User;
+          setToken(savedToken);
+          setUser(parsed);
+          if (!('hasFaceEmbedding' in parsed)) {
+            void apiService.getProfile().then((res) => {
+              if (res.data && typeof res.data.hasFaceEmbedding === 'boolean') {
+                setUser((prev) => {
+                  if (!prev) return prev;
+                  const next = { ...prev, hasFaceEmbedding: res.data!.hasFaceEmbedding };
+                  localStorage.setItem('user', JSON.stringify(next));
+                  return next;
+                });
+              }
+            });
+          }
+        } catch {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
       }
 
       setLoading(false);
@@ -230,6 +251,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     stopNamePlateRetry();
     lastDeliveredPayloadKey = null;
+    try {
+      sessionStorage.removeItem('bk_face_reg_skipped');
+    } catch {
+      // ignore
+    }
     setToken(null);
     setUser(null);
 
@@ -265,6 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      <FaceRegistrationGate />
     </AuthContext.Provider>
   );
 }

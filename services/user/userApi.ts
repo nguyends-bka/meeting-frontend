@@ -35,4 +35,11 @@ export const userApi = {
       body: JSON.stringify(request),
     });
   },
+
+  registerFaceEmbedding: async (embedding: number[]) => {
+    return apiClient.request<{ message: string; hasFaceEmbedding?: boolean }>('/api/user/profile/face-embedding', {
+      method: 'PUT',
+      body: JSON.stringify({ embedding }),
+    });
+  },
 };

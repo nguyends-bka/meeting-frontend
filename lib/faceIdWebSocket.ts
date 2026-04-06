@@ -4,6 +4,9 @@ export interface FaceEmbeddingResponse {
 
 const DEFAULT_FACE_WS_URL = 'ws://127.0.0.1:9001/faceId';
 
+/** WebSocket đăng ký khuôn mặt (embedding) — tách biệt với luồng xác thực /faceId */
+export const DEFAULT_REGISTER_FACE_WS_URL = 'ws://127.0.0.1:9001/registerface';
+
 type FaceIdConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
 class FaceIdDeviceWebSocketManager {
@@ -208,6 +211,7 @@ class FaceIdDeviceWebSocketManager {
 }
 
 let faceIdManager: FaceIdDeviceWebSocketManager | null = null;
+let registerFaceManager: FaceIdDeviceWebSocketManager | null = null;
 
 export function startFaceIdDeviceConnection(wsUrl: string = DEFAULT_FACE_WS_URL) {
   if (typeof window === 'undefined') return;
@@ -260,6 +264,51 @@ export async function sendFaceImageToDevice(
   startFaceIdDeviceConnection(wsUrl);
   if (!faceIdManager) throw new Error('FaceId WebSocket manager not initialized');
   await faceIdManager.sendImage(imageBase64);
+}
+
+export function startRegisterFaceDeviceConnection(wsUrl: string = DEFAULT_REGISTER_FACE_WS_URL) {
+  if (typeof window === 'undefined') return;
+  if (!registerFaceManager) registerFaceManager = new FaceIdDeviceWebSocketManager(wsUrl);
+  registerFaceManager.start();
+}
+
+export function stopRegisterFaceDeviceConnection() {
+  if (!registerFaceManager) return;
+  registerFaceManager.stop();
+  registerFaceManager = null;
+}
+
+export async function requestRegisterFaceEmbeddingFromDevice(
+  imageBase64: string,
+  wsUrl: string = DEFAULT_REGISTER_FACE_WS_URL,
+): Promise<number[]> {
+  if (typeof window === 'undefined') throw new Error('WebSocket not available');
+
+  startRegisterFaceDeviceConnection(wsUrl);
+  if (!registerFaceManager) throw new Error('Register face WebSocket manager not initialized');
+
+  return registerFaceManager.requestEmbedding(imageBase64);
+}
+
+/** Gửi ảnh lên /registerface (fire-and-forget), giống sendFaceImageToDevice cho /faceId — dùng với addRegisterFaceEmbeddingListener. */
+export async function sendRegisterFaceImageToDevice(
+  imageBase64: string,
+  wsUrl: string = DEFAULT_REGISTER_FACE_WS_URL,
+): Promise<void> {
+  if (typeof window === 'undefined') throw new Error('WebSocket not available');
+  startRegisterFaceDeviceConnection(wsUrl);
+  if (!registerFaceManager) throw new Error('Register face WebSocket manager not initialized');
+  await registerFaceManager.sendImage(imageBase64);
+}
+
+export function addRegisterFaceEmbeddingListener(listener: (embedding: number[]) => void) {
+  if (!registerFaceManager) return;
+  registerFaceManager.addEmbeddingListener(listener);
+}
+
+export function removeRegisterFaceEmbeddingListener(listener: (embedding: number[]) => void) {
+  if (!registerFaceManager) return;
+  registerFaceManager.removeEmbeddingListener(listener);
 }
 
 export async function checkFaceIdDeviceConnection(

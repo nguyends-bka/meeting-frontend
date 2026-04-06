@@ -107,6 +107,10 @@ class ApiService {
   async changePassword(oldPassword: string, newPassword: string) {
     return userApi.changePassword({ oldPassword, newPassword });
   }
+
+  async registerFaceEmbedding(embedding: number[]) {
+    return userApi.registerFaceEmbedding(embedding);
+  }
 }
 
 export const apiService = new ApiService();

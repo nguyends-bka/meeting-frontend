@@ -12,6 +12,7 @@ export interface UserProfile {
   organizationUnitId: string | null;
   organizationUnitName: string | null;
   faceTemplate: string | null;
+  hasFaceEmbedding?: boolean;
   createdAt: string;
 }
 

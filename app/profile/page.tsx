@@ -79,6 +79,7 @@ type ProfileData = {
   organizationUnitId: string | null;
   organizationUnitName: string | null;
   faceTemplate: string | null;
+  hasFaceEmbedding?: boolean;
   createdAt: string;
 };
 
@@ -473,7 +474,7 @@ export default function ProfilePage() {
                         <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
                       )}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Ảnh khuôn mặt">
+                    <Descriptions.Item label="Ảnh đại diện">
                       {showUpdateForm ? (
                         <Space direction="vertical" size={8}>
                           <Form.Item
@@ -524,6 +525,13 @@ export default function ProfilePage() {
                         <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
                       )}
                     </Descriptions.Item>
+                    <Descriptions.Item label="Đăng ký sinh trắc học">
+                      {profile.hasFaceEmbedding ? (
+                        <Tag color="success">Đã đăng ký</Tag>
+                      ) : (
+                        <Tag color="warning">Chưa đăng ký</Tag>
+                      )}
+                    </Descriptions.Item>
                     <Descriptions.Item label="Role">
                       <Tag color={profile.role === 'Admin' ? 'red' : 'blue'}>
                         {profile.role}
@@ -572,6 +580,20 @@ export default function ProfilePage() {
                   >
                     Đổi mật khẩu
                   </Button>
+                  {!profile?.hasFaceEmbedding && (
+                    <Button
+                      onClick={() => {
+                        try {
+                          sessionStorage.removeItem('bk_face_reg_skipped');
+                        } catch {
+                          // ignore
+                        }
+                        window.location.reload();
+                      }}
+                    >
+                      Đăng ký sinh trắc học
+                    </Button>
+                  )}
                 </div>
               )}
             </Card>

@@ -26,6 +26,8 @@ export interface AuthUser {
   academicDegree?: 'TS' | 'ThS' | 'CN' | 'KS' | null;
   organizationUnitId?: string | null;
   faceTemplate?: string | null;
+  /** Có embedding khuôn mặt trong DB (đăng nhập Face) */
+  hasFaceEmbedding?: boolean;
 }
 
 export interface LoginResponse {
