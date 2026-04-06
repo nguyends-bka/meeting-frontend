@@ -16,6 +16,11 @@ interface User {
   faceTemplate?: string | null;
 }
 
+interface NamePlatePayload {
+  name: string;
+  position: string;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
@@ -31,6 +36,100 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const NAMEPLATE_WS_URL = 'ws://127.0.0.1:9001/setnameplate';
+const NAMEPLATE_RETRY_MS = 2000;
+const DEFAULT_NAMEPLATE: NamePlatePayload = {
+  name: 'Chào mừng đại biểu',
+  position: 'Cộng hòa Xã hội chủ nghĩa Việt Nam',
+};
+
+let namePlateRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let namePlateSocket: WebSocket | null = null;
+let lastDeliveredPayloadKey: string | null = null;
+
+function stopNamePlateRetry(): void {
+  if (namePlateRetryTimer) {
+    clearTimeout(namePlateRetryTimer);
+    namePlateRetryTimer = null;
+  }
+
+  if (namePlateSocket) {
+    namePlateSocket.close();
+    namePlateSocket = null;
+  }
+}
+
+function buildDisplayName(user: User): string {
+  const parts = [
+    user.academicRank?.trim() || null,
+    user.academicDegree?.trim() || null,
+    user.fullName?.trim() || null,
+  ].filter(Boolean) as string[];
+
+  return parts.join(' ').trim();
+}
+
+function getNamePlatePayload(user: User): NamePlatePayload | null {
+  const payload: NamePlatePayload = {
+    name: buildDisplayName(user),
+    position: user.position?.trim() || '',
+  };
+
+  if (!payload.name) return null;
+  return payload;
+}
+
+function sendNamePlateRaw(payload: NamePlatePayload, retry = false): void {
+  if (typeof window === 'undefined') return;
+
+  const normalizedPayload: NamePlatePayload = {
+    name: payload.name.trim(),
+    position: payload.position.trim(),
+  };
+
+  if (!normalizedPayload.name) return;
+
+  const payloadKey = JSON.stringify(normalizedPayload);
+  if (lastDeliveredPayloadKey === payloadKey) return;
+
+  stopNamePlateRetry();
+
+  const tryConnect = () => {
+    const ws = new WebSocket(NAMEPLATE_WS_URL);
+    namePlateSocket = ws;
+    let sent = false;
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify(normalizedPayload));
+      sent = true;
+      lastDeliveredPayloadKey = payloadKey;
+      ws.close();
+    };
+
+    ws.onerror = () => {
+      ws.close();
+    };
+
+    ws.onclose = () => {
+      if (namePlateSocket === ws) {
+        namePlateSocket = null;
+      }
+
+      if (!sent && retry) {
+        namePlateRetryTimer = setTimeout(tryConnect, NAMEPLATE_RETRY_MS);
+      }
+    };
+  };
+
+  tryConnect();
+}
+
+function sendNamePlate(user: User): void {
+  const payload = getNamePlatePayload(user);
+  if (!payload) return;
+  sendNamePlateRaw(payload, true);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -38,31 +137,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Load token from localStorage on mount
     if (typeof window !== 'undefined') {
       const savedToken = localStorage.getItem('token');
       const savedUser = localStorage.getItem('user');
-      
+
       if (savedToken && savedUser) {
         setToken(savedToken);
         setUser(JSON.parse(savedUser));
       }
+
       setLoading(false);
     }
   }, []);
 
+  useEffect(() => {
+    if (token && user) {
+      sendNamePlate(user);
+    } else {
+      stopNamePlateRetry();
+      lastDeliveredPayloadKey = null;
+    }
+
+    return () => {
+      stopNamePlateRetry();
+    };
+  }, [token, user]);
+
   const login = async (username: string, password: string) => {
     const result = await apiService.login(username, password);
-    
+
     if (result.error || !result.data) {
       return { success: false, error: result.error || 'Login failed' };
     }
 
     const { token: newToken, user: userData } = result.data;
-    
+
     setToken(newToken);
     setUser(userData);
-    
+
     if (typeof window !== 'undefined') {
       localStorage.setItem('token', newToken);
       localStorage.setItem('user', JSON.stringify(userData));
@@ -93,36 +205,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (username: string, password: string, fullName?: string, email?: string) => {
     const result = await apiService.register(username, password, fullName, email);
-    
+
     if (result.error) {
       return { success: false, error: result.error };
     }
 
-    // After registration, auto login
     return await login(username, password);
   };
 
   const updateUser = (patch: Partial<User>) => {
     setUser((prev) => {
       if (!prev) return prev;
+
       const next = { ...prev, ...patch };
+
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(next));
       }
+
       return next;
     });
   };
 
   const logout = () => {
+    stopNamePlateRetry();
+    lastDeliveredPayloadKey = null;
     setToken(null);
     setUser(null);
-    
+
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
-    
+
     router.push('/login');
+
+    // Gửi nameplate mặc định sau khi đã clear session để useEffect không đóng socket đang mở
+    // và không gọi stopNamePlateRetry() ngay sau khi bắt đầu kết nối.
+    if (typeof window !== 'undefined') {
+      queueMicrotask(() => {
+        sendNamePlateRaw(DEFAULT_NAMEPLATE, false);
+      });
+    }
   };
 
   return (
@@ -147,8 +271,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
+
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 }

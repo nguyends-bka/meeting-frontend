@@ -174,6 +174,10 @@ export default function ProfilePage() {
     messageApi.success('Cập nhật thông tin thành công');
     updateUser({
       fullName: values.fullName || null,
+      position: values.position || null,
+      academicRank: values.academicRank || null,
+      academicDegree: values.academicDegree || null,
+      organizationUnitId: values.organizationUnitId || null,
       faceTemplate: values.faceTemplate || null,
     });
     setShowUpdateForm(false);
