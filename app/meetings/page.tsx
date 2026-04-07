@@ -577,6 +577,19 @@ export default function MeetingsPage() {
     return filteredMeetings.slice(start, start + tablePageSize);
   }, [filteredMeetings, tablePage, tablePageSize]);
 
+  const TABLE_COL = {
+    stt: { xs: 2, md: 1 },
+    info: { xs: 10, md: 13 },
+    status: { xs: 6, md: 5 },
+    action: { xs: 6, md: 4 },
+  } as const;
+  const TABLE_PADDING = {
+    header: isMobile ? '10px 6px' : '14px 20px',
+    body: isMobile ? '10px 6px' : '16px 20px',
+    headerTight: isMobile ? '10px 1px' : '14px 20px',
+    bodyTight: isMobile ? '10px 1px' : '16px 20px',
+  } as const;
+
 
   if (loading) return <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}><Spin size="large" /></div>;
   if (!isAuthenticated) return null;
@@ -590,7 +603,8 @@ export default function MeetingsPage() {
         
         .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .search-input-wrapper { flex: 1; min-width: 250px; }
-        .filter-chip { height: 38px; padding: 0 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #64748b; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .filter-chip-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .filter-chip { height: 38px; padding: 0 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #64748b; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; flex: 0 0 auto; }
         .filter-chip:hover { border-color: #2563eb; color: #2563eb; }
         .filter-chip.active { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; font-weight: 600; }
         
@@ -648,6 +662,19 @@ export default function MeetingsPage() {
         .btn-edit:hover { background: #f8fafc; }
         .btn-delete { padding: 10px 18px; border-radius: 6px; border: 1px solid #fecaca; background: white; color: #ef4444; font-size: 13px; cursor: pointer; transition: background 0.15s; font-weight: 500; white-space: nowrap;}
         .btn-delete:hover { background: #fef2f2; }
+
+        @media (max-width: 768px) {
+          .search-input-wrapper { min-width: 100%; }
+          .filter-chip-row {
+            width: 100%;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding-bottom: 2px;
+          }
+          .filter-chip-row::-webkit-scrollbar { display: none; }
+        }
       `}}/>
 
       <div className="dashboard-container">
@@ -695,33 +722,29 @@ export default function MeetingsPage() {
         {!detailMeeting ? (
           <>
             {/* Stats Section sử dụng Row Col với 2 thông số */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }} align="stretch">
               <Col xs={24} sm={12} md={6}>
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500 }}>Tổng cuộc họp</div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500, minHeight: 38 }}>Tổng cuộc họp</div>
                   <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b', lineHeight: 1 }}>{statTotal}</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>tất cả thời gian</div>
                 </div>
               </Col>
               <Col xs={24} sm={12} md={6}>
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500 }}>Chưa diễn ra</div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500, minHeight: 38 }}>Chưa diễn ra</div>
                   <div style={{ fontSize: 28, fontWeight: 700, color: '#2563eb', lineHeight: 1 }}>{statUpcoming}</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>đã lên lịch</div>
                 </div>
               </Col>
               <Col xs={24} sm={12} md={6}>
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500 }}>Đang diễn ra</div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500, minHeight: 38 }}>Đang diễn ra</div>
                   <div style={{ fontSize: 28, fontWeight: 700, color: '#16a34a', lineHeight: 1 }}>{statLive}</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>trực tiếp ngay giờ</div>
                 </div>
               </Col>
               <Col xs={24} sm={12} md={6}>
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500 }}>Đã kết thúc</div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500, minHeight: 38 }}>Đã kết thúc</div>
                   <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b', lineHeight: 1 }}>{statDone}</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>có biên bản</div>
                 </div>
               </Col>
             </Row>
@@ -739,18 +762,20 @@ export default function MeetingsPage() {
                   allowClear
                 />
               </div>
-              <button className={`filter-chip ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>
-                Tất cả
-              </button>
-              <button className={`filter-chip ${filterStatus === 'upcoming' ? 'active' : ''}`} onClick={() => setFilterStatus('upcoming')}>
-                <HourglassOutlined /> Chưa diễn ra
-              </button>
-              <button className={`filter-chip ${filterStatus === 'live' ? 'active' : ''}`} onClick={() => setFilterStatus('live')}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444' }}></div> Đang diễn ra
-              </button>
-              <button className={`filter-chip ${filterStatus === 'done' ? 'active' : ''}`} onClick={() => setFilterStatus('done')}>
-                <CheckCircleOutlined /> Đã kết thúc
-              </button>
+              <div className="filter-chip-row">
+                <button className={`filter-chip ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>
+                  Tất cả
+                </button>
+                <button className={`filter-chip ${filterStatus === 'upcoming' ? 'active' : ''}`} onClick={() => setFilterStatus('upcoming')}>
+                  <HourglassOutlined /> Chưa diễn ra
+                </button>
+                <button className={`filter-chip ${filterStatus === 'live' ? 'active' : ''}`} onClick={() => setFilterStatus('live')}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444' }}></div> Đang diễn ra
+                </button>
+                <button className={`filter-chip ${filterStatus === 'done' ? 'active' : ''}`} onClick={() => setFilterStatus('done')}>
+                  <CheckCircleOutlined /> Đã kết thúc
+                </button>
+              </div>
             </div>
 
             {/* Custom Table Component */}
@@ -765,10 +790,10 @@ export default function MeetingsPage() {
                   flexWrap: 'nowrap' 
                 }}
               >
-                <Col xs={2} md={1} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '12px 4px' : '14px 20px', fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', borderRight: '1px solid #e2e8f0' }}>STT</Col>
-                <Col xs={11} md={13} style={{ display: 'flex', alignItems: 'center',justifyContent: 'center', padding: isMobile ? '12px 8px' : '14px 20px', fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', borderRight: '1px solid #e2e8f0' }}>THÔNG TIN CUỘC HỌP</Col>
-                <Col xs={7} md={6} style={{ display: 'flex', alignItems: 'center',justifyContent: 'center', padding: isMobile ? '12px 8px' : '14px 20px', fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', borderRight: '1px solid #e2e8f0' }}>TRẠNG THÁI</Col>
-                <Col xs={4} md={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '12px 4px' : '14px 20px', fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>THAO TÁC</Col>
+                <Col {...TABLE_COL.stt} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: TABLE_PADDING.header, fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', whiteSpace: 'nowrap', borderRight: '1px solid #e2e8f0' }}>STT</Col>
+                <Col {...TABLE_COL.info} style={{ display: 'flex', alignItems: 'center',justifyContent: 'center', padding: TABLE_PADDING.header, fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', whiteSpace: 'nowrap', borderRight: '1px solid #e2e8f0' }}>THÔNG TIN CUỘC HỌP</Col>
+                <Col {...TABLE_COL.status} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: TABLE_PADDING.headerTight, fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', whiteSpace: 'nowrap', borderRight: '1px solid #e2e8f0' }}>TRẠNG THÁI</Col>
+                <Col {...TABLE_COL.action} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 0, fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>THAO TÁC</Col>
               </Row>
 
               <div>
@@ -799,12 +824,12 @@ export default function MeetingsPage() {
                         onClick={() => openDetailModal(m)}
                       >
                         {/* Cột 1: STT */}
-                        <Col xs={2} md={1} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '12px 4px' : '16px 20px', fontSize: isMobile ? 11 : 14, color: '#94a3b8', fontWeight: 600, borderRight: '1px solid #e2e8f0' }}>
+                        <Col {...TABLE_COL.stt} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: TABLE_PADDING.body, fontSize: isMobile ? 11 : 14, color: '#94a3b8', fontWeight: 600, borderRight: '1px solid #e2e8f0' }}>
                            {(tablePage - 1) * tablePageSize + index + 1}
                         </Col>
 
                         {/* Cột 2: Thông tin */}
-                        <Col xs={11} md={13} style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 14, minWidth: 0, padding: isMobile ? '12px 8px' : '16px 20px', borderRight: '1px solid #e2e8f0' }}>
+                        <Col {...TABLE_COL.info} style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 14, minWidth: 0, padding: TABLE_PADDING.body, borderRight: '1px solid #e2e8f0' }}>
                            <div style={{ width: isMobile ? 28 : 42, height: isMobile ? 28 : 42, flexShrink: 0, background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: isMobile ? 6 : 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', fontSize: isMobile ? 12 : 18 }}>
                               <CalendarOutlined />
                            </div>
@@ -812,19 +837,19 @@ export default function MeetingsPage() {
                               <div style={{ fontSize: isMobile ? 12 : 15, fontWeight: 600, color: '#1e293b', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={m.title}>
                                 {m.title}
                               </div>
-                              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 2 : 12, fontSize: isMobile ? 10 : 13, color: '#64748b' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, fontSize: isMobile ? 10 : 13, color: '#64748b' }}>
                                   <span style={{ whiteSpace: 'nowrap' }}>{dayjs(m.createdAt).format(isMobile ? 'HH:mm DD/MM/YY' : 'HH:mm · DD/MM/YYYY')}</span>
                                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500, minWidth: 0 }}>
                                     {!isMobile && <Avatar size={18} style={{ backgroundColor: '#dbeafe', color: '#1d4ed8', fontSize: 10, flexShrink: 0 }}>{m.hostName.charAt(0).toUpperCase()}</Avatar>}
-                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobile ? 80 : 120 }}>{isMobile ? `A ${m.hostName}` : m.hostName}</span>
+                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobile ? 100 : 180 }}>{isMobile ? `A ${m.hostName}` : m.hostName}</span>
                                   </span>
                               </div>
                            </div>
                         </Col>
 
                         {/* Cột 3: Trạng thái */}
-                        <Col xs={7} md={6} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, minWidth: 0, padding: isMobile ? '12px 8px' : '16px 20px', borderRight: '1px solid #e2e8f0' }}>
-                           <div>
+                        <Col {...TABLE_COL.status} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', gap: 4, minWidth: 0, padding: TABLE_PADDING.bodyTight, borderRight: '1px solid #e2e8f0' }}>
+                           <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                               {isUpcoming && <span style={{ display: 'inline-flex', alignItems: 'center', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: isMobile ? '2px 4px' : '4px 10px', borderRadius: 99, fontSize: isMobile ? 9 : 11, fontWeight: 600, whiteSpace: 'nowrap' }}>Chưa diễn ra</span>}
                               {isLive && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: isMobile ? '2px 4px' : '4px 10px', borderRadius: 99, fontSize: isMobile ? 9 : 11, fontWeight: 600, whiteSpace: 'nowrap' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', animation: 'blink 1.5s ease-in-out infinite' }}></span> Đang diễn ra</span>}
                               {isDone && <span style={{ display: 'inline-flex', alignItems: 'center', background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', padding: isMobile ? '2px 4px' : '4px 10px', borderRadius: 99, fontSize: isMobile ? 9 : 11, fontWeight: 600, whiteSpace: 'nowrap' }}>Đã kết thúc</span>}
@@ -837,10 +862,10 @@ export default function MeetingsPage() {
                         </Col>
 
                         {/* Cột 4: Thao tác */}
-                        <Col xs={4} md={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0, padding: isMobile ? '12px 4px' : '16px 20px' }} onClick={(e) => e.stopPropagation()}>
+                        <Col {...TABLE_COL.action} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minWidth: 0, padding: 0 }} onClick={(e) => e.stopPropagation()}>
                            {isLive ? (
                               <button 
-                                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: isMobile ? '4px' : '8px 18px', borderRadius: 6, border: 'none', background: '#10b981', color: 'white', fontSize: isMobile ? 10 : 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', width: '100%' }}
+                                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: isMobile ? '2px 6px' : '4px 10px', borderRadius: 99, border: '1px solid #10b981', background: '#10b981', color: 'white', fontSize: isMobile ? 9 : 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', width: 'auto', minWidth: 0, margin: '0 auto', lineHeight: 1.3 }}
                                 onClick={(e) => { e.stopPropagation(); router.push(`/meeting/${m.id}`); }}
                               >
                                 <PlayCircleOutlined /> {!isMobile && <span>Tham gia</span>}
@@ -848,7 +873,7 @@ export default function MeetingsPage() {
                               </button>
                            ) : (
                               <button 
-                                style={{ padding: isMobile ? '4px' : '8px 16px', borderRadius: 6, border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontSize: isMobile ? 10 : 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', width: '100%', textAlign: 'center' }}
+                                style={{ padding: isMobile ? '2px 6px' : '4px 10px', borderRadius: 99, border: '1px solid #bfdbfe', background: '#fff', color: '#1d4ed8', fontSize: isMobile ? 9 : 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', width: 'auto', textAlign: 'center', minWidth: 0, margin: '0 auto', lineHeight: 1.3 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (isDone) openHistoryModal(m);
