@@ -32,6 +32,9 @@ import {
   Typography,
   Popconfirm,
   Dropdown,
+  Pagination,
+  Row,
+  Col,
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -52,6 +55,13 @@ import {
   DeleteOutlined,
   EyeOutlined,
   FileWordOutlined,
+  SearchOutlined,
+  HourglassOutlined,
+  PlayCircleOutlined,
+  CheckCircleOutlined,
+  PlusOutlined,
+  LinkOutlined,
+  ArrowLeftOutlined,
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 
@@ -117,7 +127,9 @@ function formatHistoryParticipationDuration(r: HistoryEntry): string {
 export default function MeetingsPage() {
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
-  const isNarrow = !screens.lg;
+  
+  // Xác định màn hình mobile để tinh chỉnh font-size trực tiếp trên thẻ
+  const isMobile = screens.md === false; 
 
   const router = useRouter();
   const { user, isAuthenticated, loading, isAdmin } = useAuth();
@@ -127,6 +139,10 @@ export default function MeetingsPage() {
   const [loadingMeetings, setLoadingMeetings] = useState(false);
   const [tablePage, setTablePage] = useState(1);
   const [tablePageSize, setTablePageSize] = useState(10);
+  
+  const [searchText, setSearchText] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'live' | 'done'>('all');
+
   const [pollModalMeeting, setPollModalMeeting] = useState<Meeting | null>(null);
   const [savingPoll, setSavingPoll] = useState(false);
   const [editingDraftPollId, setEditingDraftPollId] = useState<string | null>(null);
@@ -145,6 +161,7 @@ export default function MeetingsPage() {
   const [historyTablePage, setHistoryTablePage] = useState(1);
   const [historyTablePageSize, setHistoryTablePageSize] = useState(10);
   const [exportingHistoryExcel, setExportingHistoryExcel] = useState(false);
+  
   const [detailMeeting, setDetailMeeting] = useState<Meeting | null>(null);
 
   const [reportMeeting, setReportMeeting] = useState<Meeting | null>(null);
@@ -191,9 +208,10 @@ export default function MeetingsPage() {
     setLoadingMeetings(false);
   };
 
-  const copyText = async (text: string) => {
+  const copyText = async (text: string, typeName?: string) => {
     try {
       await navigator.clipboard.writeText(text);
+      message.success(`Đã sao chép ${typeName ? typeName : ''}`);
     } catch {
       message.error('Không thể copy. Vui lòng thử lại.');
     }
@@ -204,6 +222,7 @@ export default function MeetingsPage() {
     return `${baseUrl}/meeting/${meetingId}`;
   };
 
+  // --- Các hàm xử lý Biểu quyết, Tài liệu, Biên bản giữ nguyên ---
   const submitPollForMeeting = async () => {
     if (!pollModalMeeting) return;
     const values = await pollForm.validateFields();
@@ -369,7 +388,6 @@ export default function MeetingsPage() {
     }
     const items = (res.data as HistoryEntry[]) ?? [];
 
-    // MeetingHistoryItem currently only returns username; enrich fullName for better UX when possible.
     if (isAdmin && items.length > 0) {
       const usersRes = await apiService.getAllUsers();
       if (usersRes.data && Array.isArray(usersRes.data)) {
@@ -519,351 +537,480 @@ export default function MeetingsPage() {
     }
   };
 
-  const getDropdownMenuItems = (record: Meeting): MenuProps['items'] => {
-    if (!isHostForMeeting(record)) return [];
-
-    const items: MenuProps['items'] = [
-      {
-        key: 'minutes_report',
-        icon: <FileTextOutlined />,
-        label: 'Biên bản & báo cáo',
-        onClick: () => void openReportModal(record),
-      },
-    ];
-
-    items.push({
-      key: 'manage_documents',
-      icon: <FileTextOutlined />,
-      label: 'Quản lý tài liệu',
-      onClick: () => void openDocumentsModal(record),
-    });
-
-    items.push({
-      key: 'manage_poll',
-      icon: <SettingOutlined />,
-      label: 'Quản lý biểu quyết',
-      onClick: () => void openPollListModal(record),
-    });
-
-    return items;
-  };
-
   const openDetailModal = (meeting: Meeting) => {
     setDetailMeeting(meeting);
   };
 
-  const columns = useMemo(
-    () => [
-      {
-        title: 'STT',
-        key: 'stt',
-        width: 60,
-        align: 'center' as const,
-        render: (_: unknown, __: Meeting, index: number) => (
-          <Typography.Text type="secondary">
-            {(tablePage - 1) * tablePageSize + index + 1}
-          </Typography.Text>
-        ),
-      },
-      {
-        title: 'THÔNG TIN CUỘC HỌP',
-        key: 'info',
-        width: 480,
-        render: (_: unknown, record: Meeting) => (
-          <Space align="start" size="middle">
-            <div style={{
-              fontSize: '20px',
-              color: '#1677ff',
-              padding: '8px 12px',
-              border: '1px solid #e6f4ff',
-              borderRadius: '8px'
-            }}>
-              <CalendarOutlined />
-            </div>
-            <Space direction="vertical" size={0}>
-              <Typography.Text strong style={{ fontSize: '15px' }}>{record.title}</Typography.Text>
-              <Typography.Text type="secondary" style={{ fontSize: '13px' }}>
-                {dayjs(record.createdAt).format('DD/MM/YYYY HH:mm')}
-              </Typography.Text>
-              <Space style={{ marginTop: 4 }}>
-                <UserOutlined style={{ color: '#8c8c8c' }} />
-                <Typography.Text type="secondary" style={{ fontSize: '13px' }}>
-                  Host: {record.hostName}
-                </Typography.Text>
-              </Space>
-            </Space>
-          </Space>
-        ),
-      },
-      {
-        title: 'TRẠNG THÁI',
-        key: 'status',
-        width: 200,
-        responsive: ['md'],
-        render: (_: unknown, record: Meeting) => {
-          const isEnded = Boolean(record.endedAt);
-          const isLive = !isEnded && (record.activeParticipantCount ?? 0) > 0;
-          const when = dayjs(record.createdAt);
-          const timeDateLine = (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-              <Typography.Text strong>{when.format('HH:mm')}</Typography.Text>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {when.format('DD/MM/YYYY')}
-              </Typography.Text>
-            </div>
-          );
-          if (isLive) {
-            return (
-              <div>
-                <Tag color="success">Đang diễn ra</Tag>
-                {timeDateLine}
-              </div>
-            );
-          }
-          if (isEnded) {
-            const endWhen = record.endedAt ? dayjs(record.endedAt) : when;
-            return (
-              <div>
-                <Tag>Đã kết thúc</Tag>
-                <div style={{ marginTop: 6 }}>
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    Kết thúc: {endWhen.format('HH:mm DD/MM/YYYY')}
-                  </Typography.Text>
-                </div>
-              </div>
-            );
-          }
-          return (
-            <div>
-              <Tag color="processing">Chưa diễn ra</Tag>
-              {timeDateLine}
-            </div>
-          );
-        },
-      },
-      {
-        title: 'TRUY CẬP',
-        key: 'access',
-        width: 450,
-        align: 'left' as const,
-        responsive: ['lg'],
-        render: (_: unknown, record: Meeting) => (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '44px 1fr',
-              rowGap: 8,
-              columnGap: 8,
-              width: 'fit-content',
-              maxWidth: '100%',
-              minWidth: 0,
-              alignItems: 'center',
-            }}
-          >
-            <Typography.Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
-              Mã:
-            </Typography.Text>
-            <div
-              style={{
-                display: 'inline-grid',
-                gridTemplateColumns: '110px 12px 44px 8px 110px',
-                alignItems: 'center',
-                minWidth: 0,
-              }}
-            >
-              <div
-                style={{
-                  gridColumn: 1,
-                  background: '#f5f5f5',
-                  padding: '4px 12px',
-                  borderRadius: 4,
-                  width: 110,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  minWidth: 0,
-                }}
-              >
-                <Typography.Text strong style={{ flex: 1, minWidth: 0 }} ellipsis>
-                  {record.meetingCode}
-                </Typography.Text>
-                <CopyOutlined
-                  style={{ color: '#8c8c8c', cursor: 'pointer', flex: '0 0 auto' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void copyText(record.meetingCode);
-                  }}
-                />
-              </div>
+  // --- LOGIC TÍNH TOÁN STATS VÀ LỌC ---
+  const meetingsWithStatus = useMemo(() => {
+    return meetings.map(m => {
+      const isEnded = Boolean(m.endedAt);
+      const isLive = !isEnded && (m.activeParticipantCount ?? 0) > 0;
+      const statusObj = isLive ? 'live' : isEnded ? 'done' : 'upcoming';
+      return { ...m, computedStatus: statusObj };
+    });
+  }, [meetings]);
 
-              <Typography.Text type="secondary" style={{ gridColumn: 3, whiteSpace: 'nowrap', width: 44 }}>
-                Pass:
-              </Typography.Text>
+  const statTotal = meetings.length;
+  const statUpcoming = meetingsWithStatus.filter(m => m.computedStatus === 'upcoming').length;
+  const statLive = meetingsWithStatus.filter(m => m.computedStatus === 'live').length;
+  const statDone = meetingsWithStatus.filter(m => m.computedStatus === 'done').length;
 
-              <div
-                style={{
-                  gridColumn: 5,
-                  background: '#f5f5f5',
-                  padding: '4px 12px',
-                  borderRadius: 4,
-                  width: 110,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  minWidth: 0,
-                }}
-              >
-                <Typography.Text strong style={{ flex: 1, minWidth: 0 }}>
-                  {record.passcode}
-                </Typography.Text>
-                <CopyOutlined
-                  style={{ color: '#8c8c8c', cursor: 'pointer', flex: '0 0 auto' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void copyText(record.passcode);
-                  }}
-                />
-              </div>
-            </div>
+  const filteredMeetings = useMemo(() => {
+    let result = meetingsWithStatus;
+    if (filterStatus !== 'all') {
+      result = result.filter(m => m.computedStatus === filterStatus);
+    }
+    if (searchText) {
+      const lower = searchText.toLowerCase();
+      result = result.filter(m => 
+        m.title.toLowerCase().includes(lower) || 
+        m.meetingCode.toLowerCase().includes(lower) || 
+        m.hostName.toLowerCase().includes(lower)
+      );
+    }
+    return result;
+  }, [meetingsWithStatus, filterStatus, searchText]);
 
-            <Typography.Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
-              Link:
-            </Typography.Text>
-            <div
-              style={{
-                background: '#f5f5f5',
-                padding: '4px 12px',
-                borderRadius: 4,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                minWidth: 0,
-                width: 110 + 12 + 44 + 8 + 110,
-              }}
-            >
-              <Typography.Text
-                style={{ color: '#1677ff', flex: 1, minWidth: 0 }}
-                ellipsis={{ tooltip: buildMeetingLink(record.id) }}
-              >
-                {buildMeetingLink(record.id)}
-              </Typography.Text>
-              <CopyOutlined
-                style={{ color: '#8c8c8c', cursor: 'pointer', flex: '0 0 auto' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void copyText(buildMeetingLink(record.id));
-                }}
-              />
-            </div>
-          </div>
-        ),
-      },
-      {
-        title: 'THAO TÁC',
-        key: 'actions',
-        width: 160,
-        fixed: 'right' as const,
-        render: (_: unknown, record: Meeting) => {
-          const isEnded = Boolean(record.endedAt);
-          const isLive = !isEnded && (record.activeParticipantCount ?? 0) > 0;
-          const actionLabel = isLive ? 'Tham gia' : isEnded ? 'Xem lịch sử' : 'Chi tiết';
-          const showHostMenu = isHostForMeeting(record);
+  const paginatedMeetings = useMemo(() => {
+    const start = (tablePage - 1) * tablePageSize;
+    return filteredMeetings.slice(start, start + tablePageSize);
+  }, [filteredMeetings, tablePage, tablePageSize]);
 
-          return (
-            <Space>
-              <Button
-                type={isLive ? 'primary' : 'default'}
-                icon={isLive ? <CaretRightOutlined /> : undefined}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isLive) {
-                    router.push(`/meeting/${record.id}`);
-                    return;
-                  }
-                  if (isEnded) {
-                    void openHistoryModal(record);
-                    return;
-                  }
-                  openDetailModal(record);
-                }}
-                style={{ fontWeight: 500, width: 112, justifyContent: 'center' }}
-                className="meeting-action-main-btn"
-              >
-                {actionLabel}
-              </Button>
-              {showHostMenu && (
-                <Dropdown menu={{ items: getDropdownMenuItems(record) }} trigger={['click']}>
-                  <Button icon={<MoreOutlined />} onClick={(e) => e.stopPropagation()} />
-                </Dropdown>
-              )}
-            </Space>
-          );
-        },
-      },
-    ],
-    [router, tablePage, tablePageSize, pollForm, openHistoryModal]
-  );
 
-  if (loading) return <div style={{ padding: 24 }}>Đang tải...</div>;
+  if (loading) return <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}><Spin size="large" /></div>;
   if (!isAuthenticated) return null;
 
   return (
     <MainLayout>
-      <div style={{ padding: 24, width: '100%', margin: 0 }}>
+      {/* CSS Tuỳ chỉnh: Đã lược bỏ toàn bộ Media Queries của Grid vì chúng ta dùng Row/Col */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .dashboard-container { padding: 24px; width: 100%; animation: fadeIn 0.2s ease-out;}
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .search-input-wrapper { flex: 1; min-width: 250px; }
+        .filter-chip { height: 38px; padding: 0 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #64748b; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .filter-chip:hover { border-color: #2563eb; color: #2563eb; }
+        .filter-chip.active { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; font-weight: 600; }
+        
+        .table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+        
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+        .page-detail { animation: fadeIn 0.2s ease-out; }
+        .detail-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #64748b; cursor: pointer; margin-bottom: 18px; background: none; border: none; padding: 6px 10px; border-radius: 6px; transition: all 0.15s; font-weight: 500;}
+        .detail-back:hover { background: #fff; color: #2563eb; }
+        .detail-header { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+        .detail-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .detail-title { font-size: 20px; font-weight: 600; color: #1e293b; }
+        .detail-sub { font-size: 12px; color: #94a3b8; margin-top: 3px; }
+        
+        .info-block { background: #f8fafc; border-radius: 6px; padding: 12px 14px; height: 100%; }
+        .ib-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; font-weight: 600; }
+        .ib-value { font-size: 15px; font-weight: 600; color: #1e293b; }
+        .ib-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+        
+        .detail-divider { border: none; border-top: 1px solid #e2e8f0; margin: 14px 0; }
+        
+        .access-card { background: #f8fafc; border-radius: 6px; padding: 10px 14px; height: 100%; }
+        .ac-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+        .ac-val-row { display: flex; align-items: center; gap: 8px; }
+        .ac-val { font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; color: #1e293b; letter-spacing: 0.05em; word-break: break-all; }
+        .btn-copy { font-size: 11px; padding: 3px 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #64748b; cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0;}
+        .btn-copy:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+        
+        .section-title-sm { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 10px; }
+        
+        .qa-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column; gap: 6px; height: 100%; }
+        .qa-card:hover { border-color: #2563eb; box-shadow: 0 0 0 3px #eff6ff; }
+        .qa-icon { width: 34px; height: 34px; background: #eff6ff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-bottom: 2px; }
+        .qa-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+        .qa-desc { font-size: 11px; color: #94a3b8; }
+        
+        .participants-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+        .p-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; }
+        .p-row:last-child { border-bottom: none; }
+        .p-avatar { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+        .av-blue { background: #dbeafe; color: #1d4ed8; }
+        .av-amber { background: #fef3c7; color: #92400e; }
+        .p-name-col { flex: 1; min-width: 0; }
+        .p-name { font-size: 13px; font-weight: 500; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .p-role { font-size: 11px; color: #94a3b8; }
+        .p-status-badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; font-weight: 500; white-space: nowrap; }
+        .psb-host { background: #dbeafe; color: #1d4ed8; }
+        .psb-invited { background: #f1f5f9; color: #64748b; }
+        
+        .bottom-btns { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+        .btn-join { flex: 1; padding: 10px; border-radius: 6px; background: #2563eb; color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; white-space: nowrap; min-width: 150px; }
+        .btn-join:hover { background: #1d4ed8; }
+        .btn-edit { padding: 10px 18px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; color: #1e293b; font-size: 13px; cursor: pointer; transition: background 0.15s; font-weight: 500; white-space: nowrap;}
+        .btn-edit:hover { background: #f8fafc; }
+        .btn-delete { padding: 10px 18px; border-radius: 6px; border: 1px solid #fecaca; background: white; color: #ef4444; font-size: 13px; cursor: pointer; transition: background 0.15s; font-weight: 500; white-space: nowrap;}
+        .btn-delete:hover { background: #fef2f2; }
+      `}}/>
+
+      <div className="dashboard-container">
         
         {/* Header Section */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <Space align="start" size="middle">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <Space align="center" size="middle">
             <div style={{
-              background: '#1677ff',
+              background: '#2563eb',
               color: 'white',
-              padding: '10px',
-              borderRadius: '8px',
+              width: 44,
+              height: 44,
+              borderRadius: 10,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '20px'
+              fontSize: 20,
+              boxShadow: '0 4px 10px rgba(37, 99, 235, 0.2)'
             }}>
               <VideoCameraOutlined />
             </div>
             <div>
-              <Typography.Title level={4} style={{ margin: 0 }}>
-                {isAdmin ? 'Quản lý tất cả cuộc họp' : 'Quản lý cuộc họp'}
+              <Typography.Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1e293b' }}>
+                {detailMeeting 
+                  ? detailMeeting.title 
+                  : (isAdmin ? 'Quản lý tất cả cuộc họp' : 'Quản lý cuộc họp')}
               </Typography.Title>
-              <Typography.Text type="secondary">
-                Tổng cộng <Typography.Text strong style={{ color: '#1677ff' }}>{meetings.length}</Typography.Text> cuộc họp đã tạo
+              <Typography.Text style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
+                {detailMeeting 
+                  ? `Tạo bởi ${detailMeeting.hostName} · ${dayjs(detailMeeting.createdAt).format('DD/MM/YYYY')}`
+                  : <>Tổng cộng <span style={{ color: '#2563eb', fontWeight: 700 }}>{meetings.length}</span> cuộc họp đã tạo</>
+                }
               </Typography.Text>
             </div>
           </Space>
-          <Button icon={<ReloadOutlined />} onClick={() => void loadMeetings()} loading={loadingMeetings}>
-            Làm mới dữ liệu
-          </Button>
+          
+          {!detailMeeting && (
+            <Button icon={<ReloadOutlined />} onClick={() => void loadMeetings()} loading={loadingMeetings} size="large" style={{ borderRadius: 8, fontWeight: 500 }}>
+              {isMobile ? '' : 'Làm mới dữ liệu'}
+            </Button>
+          )}
         </div>
 
-        {/* Table Section */}
-        <Card bodyStyle={{ padding: 0 }} bordered={false} style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)' }}>
-          <Table<Meeting>
-            rowKey="id"
-            loading={loadingMeetings}
-            tableLayout="fixed"
-            columns={columns as any}
-            dataSource={meetings}
-            scroll={{ x: isNarrow ? 860 : undefined }}
-            pagination={{
-              current: tablePage,
-              pageSize: tablePageSize,
-              total: meetings.length,
-              showSizeChanger: true,
-              pageSizeOptions: [10, 20, 50, 100],
-              onChange: (p, ps) => {
-                setTablePage(p);
-                setTablePageSize(ps);
-              },
-              showTotal: (total, range) => `Hiển thị ${range[0]}-${range[1]} trong số ${total} cuộc họp`,
-              style: { padding: '16px 24px', margin: 0, borderTop: '1px solid #f0f0f0' }
-            }}
-          />
-        </Card>
+        {/* --- VIEW: DANH SÁCH CUỘC HỌP --- */}
+        {!detailMeeting ? (
+          <>
+            {/* Stats Section sử dụng Row Col với 2 thông số */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+              <Col xs={24} sm={12} md={6}>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500 }}>Tổng cuộc họp</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b', lineHeight: 1 }}>{statTotal}</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>tất cả thời gian</div>
+                </div>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500 }}>Chưa diễn ra</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: '#2563eb', lineHeight: 1 }}>{statUpcoming}</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>đã lên lịch</div>
+                </div>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500 }}>Đang diễn ra</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: '#16a34a', lineHeight: 1 }}>{statLive}</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>trực tiếp ngay giờ</div>
+                </div>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500 }}>Đã kết thúc</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b', lineHeight: 1 }}>{statDone}</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>có biên bản</div>
+                </div>
+              </Col>
+            </Row>
+
+            {/* Filter Section */}
+            <div className="filter-bar">
+              <div className="search-input-wrapper">
+                <Input 
+                  prefix={<SearchOutlined style={{ color: '#94a3b8' }} />} 
+                  placeholder="Tìm tên cuộc họp, mã, host..." 
+                  size="large"
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  style={{ borderRadius: 8 }}
+                  allowClear
+                />
+              </div>
+              <button className={`filter-chip ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>
+                Tất cả
+              </button>
+              <button className={`filter-chip ${filterStatus === 'upcoming' ? 'active' : ''}`} onClick={() => setFilterStatus('upcoming')}>
+                <HourglassOutlined /> Chưa diễn ra
+              </button>
+              <button className={`filter-chip ${filterStatus === 'live' ? 'active' : ''}`} onClick={() => setFilterStatus('live')}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444' }}></div> Đang diễn ra
+              </button>
+              <button className={`filter-chip ${filterStatus === 'done' ? 'active' : ''}`} onClick={() => setFilterStatus('done')}>
+                <CheckCircleOutlined /> Đã kết thúc
+              </button>
+            </div>
+
+            {/* Custom Table Component */}
+            <div className="table-card">
+              
+              {/* TABLE HEADER - Dùng thẻ Row/Col */}
+              <Row 
+                align="stretch" 
+                style={{ 
+                  borderBottom: '1px solid #e2e8f0', 
+                  background: '#f8fafc', 
+                  flexWrap: 'nowrap' 
+                }}
+              >
+                <Col xs={2} md={1} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '12px 4px' : '14px 20px', fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', borderRight: '1px solid #e2e8f0' }}>STT</Col>
+                <Col xs={11} md={13} style={{ display: 'flex', alignItems: 'center',justifyContent: 'center', padding: isMobile ? '12px 8px' : '14px 20px', fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', borderRight: '1px solid #e2e8f0' }}>THÔNG TIN CUỘC HỌP</Col>
+                <Col xs={7} md={6} style={{ display: 'flex', alignItems: 'center',justifyContent: 'center', padding: isMobile ? '12px 8px' : '14px 20px', fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', borderRight: '1px solid #e2e8f0' }}>TRẠNG THÁI</Col>
+                <Col xs={4} md={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '12px 4px' : '14px 20px', fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>THAO TÁC</Col>
+              </Row>
+
+              <div>
+                {loadingMeetings ? (
+                  <div style={{ padding: 40, textAlign: 'center' }}><Spin /></div>
+                ) : paginatedMeetings.length === 0 ? (
+                  <Empty description="Không tìm thấy cuộc họp" style={{ padding: 40 }} />
+                ) : (
+                  paginatedMeetings.map((m, index) => {
+                    const isLive = m.computedStatus === 'live';
+                    const isDone = m.computedStatus === 'done';
+                    const isUpcoming = m.computedStatus === 'upcoming';
+                    const actionLabel = isLive ? 'Tham gia' : isDone ? 'Xem lịch sử' : 'Chi tiết';
+
+                    return (
+                      /* TABLE BODY - Dùng thẻ Row/Col (Có 2 tham số xs và md) */
+                      <Row 
+                        key={m.id}
+                        align="stretch" 
+                        style={{ 
+                          borderBottom: '1px solid #e2e8f0', 
+                          cursor: 'pointer', 
+                          flexWrap: 'nowrap', 
+                          transition: 'background 0.2s' 
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        onClick={() => openDetailModal(m)}
+                      >
+                        {/* Cột 1: STT */}
+                        <Col xs={2} md={1} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '12px 4px' : '16px 20px', fontSize: isMobile ? 11 : 14, color: '#94a3b8', fontWeight: 600, borderRight: '1px solid #e2e8f0' }}>
+                           {(tablePage - 1) * tablePageSize + index + 1}
+                        </Col>
+
+                        {/* Cột 2: Thông tin */}
+                        <Col xs={11} md={13} style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 14, minWidth: 0, padding: isMobile ? '12px 8px' : '16px 20px', borderRight: '1px solid #e2e8f0' }}>
+                           <div style={{ width: isMobile ? 28 : 42, height: isMobile ? 28 : 42, flexShrink: 0, background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: isMobile ? 6 : 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', fontSize: isMobile ? 12 : 18 }}>
+                              <CalendarOutlined />
+                           </div>
+                           <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ fontSize: isMobile ? 12 : 15, fontWeight: 600, color: '#1e293b', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={m.title}>
+                                {m.title}
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 2 : 12, fontSize: isMobile ? 10 : 13, color: '#64748b' }}>
+                                  <span style={{ whiteSpace: 'nowrap' }}>{dayjs(m.createdAt).format(isMobile ? 'HH:mm DD/MM/YY' : 'HH:mm · DD/MM/YYYY')}</span>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500, minWidth: 0 }}>
+                                    {!isMobile && <Avatar size={18} style={{ backgroundColor: '#dbeafe', color: '#1d4ed8', fontSize: 10, flexShrink: 0 }}>{m.hostName.charAt(0).toUpperCase()}</Avatar>}
+                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobile ? 80 : 120 }}>{isMobile ? `A ${m.hostName}` : m.hostName}</span>
+                                  </span>
+                              </div>
+                           </div>
+                        </Col>
+
+                        {/* Cột 3: Trạng thái */}
+                        <Col xs={7} md={6} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, minWidth: 0, padding: isMobile ? '12px 8px' : '16px 20px', borderRight: '1px solid #e2e8f0' }}>
+                           <div>
+                              {isUpcoming && <span style={{ display: 'inline-flex', alignItems: 'center', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: isMobile ? '2px 4px' : '4px 10px', borderRadius: 99, fontSize: isMobile ? 9 : 11, fontWeight: 600, whiteSpace: 'nowrap' }}>Chưa diễn ra</span>}
+                              {isLive && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: isMobile ? '2px 4px' : '4px 10px', borderRadius: 99, fontSize: isMobile ? 9 : 11, fontWeight: 600, whiteSpace: 'nowrap' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', animation: 'blink 1.5s ease-in-out infinite' }}></span> Đang diễn ra</span>}
+                              {isDone && <span style={{ display: 'inline-flex', alignItems: 'center', background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', padding: isMobile ? '2px 4px' : '4px 10px', borderRadius: 99, fontSize: isMobile ? 9 : 11, fontWeight: 600, whiteSpace: 'nowrap' }}>Đã kết thúc</span>}
+                           </div>
+                           {isDone && m.endedAt && (
+                              <div style={{ fontSize: isMobile ? 9 : 12, color: '#64748b', whiteSpace: isMobile ? 'normal' : 'nowrap', lineHeight: 1.2 }}>
+                                Kết thúc: {dayjs(m.endedAt).format(isMobile ? 'DD/MM/YY' : 'HH:mm DD/MM/YYYY')}
+                              </div>
+                           )}
+                        </Col>
+
+                        {/* Cột 4: Thao tác */}
+                        <Col xs={4} md={4} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0, padding: isMobile ? '12px 4px' : '16px 20px' }} onClick={(e) => e.stopPropagation()}>
+                           {isLive ? (
+                              <button 
+                                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: isMobile ? '4px' : '8px 18px', borderRadius: 6, border: 'none', background: '#10b981', color: 'white', fontSize: isMobile ? 10 : 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', width: '100%' }}
+                                onClick={(e) => { e.stopPropagation(); router.push(`/meeting/${m.id}`); }}
+                              >
+                                <PlayCircleOutlined /> {!isMobile && <span>Tham gia</span>}
+                                {isMobile && <span>Vào</span>}
+                              </button>
+                           ) : (
+                              <button 
+                                style={{ padding: isMobile ? '4px' : '8px 16px', borderRadius: 6, border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontSize: isMobile ? 10 : 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', width: '100%', textAlign: 'center' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isDone) openHistoryModal(m);
+                                  else openDetailModal(m);
+                                }}
+                              >
+                                {isMobile && isDone ? 'Lịch sử' : actionLabel}
+                              </button>
+                           )}
+                        </Col>
+                      </Row>
+                    );
+                  })
+                )}
+              </div>
+              
+              <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+                <Pagination 
+                    current={tablePage}
+                    pageSize={tablePageSize}
+                    total={filteredMeetings.length}
+                    showSizeChanger
+                    pageSizeOptions={['10', '20', '50', '100']}
+                    onChange={(p, ps) => { setTablePage(p); setTablePageSize(ps); }}
+                    showTotal={(total, range) => `Hiển thị ${range[0]}-${range[1]} / ${total}`}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          /* --- VIEW: TRANG CHI TIẾT --- */
+          <div className="page-detail">
+            <button className="detail-back" onClick={() => setDetailMeeting(null)}>
+              <ArrowLeftOutlined /> Quay lại danh sách
+            </button>
+
+            <div className="detail-header">
+              <div className="detail-title-row">
+                <div>
+                  <div className="detail-title">{detailMeeting.title}</div>
+                  <div className="detail-sub">Tạo bởi {detailMeeting.hostName} · {dayjs(detailMeeting.createdAt).format('DD/MM/YYYY')}</div>
+                </div>
+                <div>
+                  {(() => {
+                    const isEnded = Boolean(detailMeeting.endedAt);
+                    const isLive = !isEnded && (detailMeeting.activeParticipantCount ?? 0) > 0;
+                    if (isLive) return <span className="status-badge status-live"><span className="dot dot-blink"></span> Đang diễn ra</span>;
+                    if (isEnded) return <span className="status-badge status-done">Đã kết thúc</span>;
+                    return <span className="status-badge status-upcoming">Chưa diễn ra</span>;
+                  })()}
+                </div>
+              </div>
+              
+              <Row gutter={[10, 10]} style={{ marginBottom: 16 }}>
+                <Col xs={24} md={8}>
+                  <div className="info-block">
+                    <div className="ib-label">Thời gian bắt đầu</div>
+                    <div className="ib-value">{dayjs(detailMeeting.createdAt).format('HH:mm')}</div>
+                    <div className="ib-sub">{dayjs(detailMeeting.createdAt).format('DD/MM/YYYY')}</div>
+                  </div>
+                </Col>
+                <Col xs={24} md={8}>
+                  <div className="info-block">
+                    <div className="ib-label">Host</div>
+                    <div className="ib-value">{detailMeeting.hostName}</div>
+                    <div className="ib-sub">Quản trị viên</div>
+                  </div>
+                </Col>
+                <Col xs={24} md={8}>
+                  <div className="info-block">
+                    <div className="ib-label">Số người mời</div>
+                    <div className="ib-value">{detailMeeting.activeParticipantCount || 0}</div>
+                    <div className="ib-sub">đã được mời</div>
+                  </div>
+                </Col>
+              </Row>
+              
+              <hr className="detail-divider" />
+              
+              <Row gutter={[10, 10]}>
+                <Col xs={24} sm={12} md={6}>
+                  <div className="access-card">
+                    <div className="ac-label">Mã phòng</div>
+                    <div className="ac-val-row">
+                      <span className="ac-val">{detailMeeting.meetingCode}</span>
+                      <button className="btn-copy" onClick={() => copyText(detailMeeting.meetingCode, 'Mã phòng')}>Sao chép</button>
+                    </div>
+                  </div>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                  <div className="access-card">
+                    <div className="ac-label">Mật khẩu</div>
+                    <div className="ac-val-row">
+                      <span className="ac-val">{detailMeeting.passcode}</span>
+                      <button className="btn-copy" onClick={() => copyText(detailMeeting.passcode, 'Mật khẩu')}>Sao chép</button>
+                    </div>
+                  </div>
+                </Col>
+                <Col xs={24} md={12}>
+                  <div className="access-card">
+                    <div className="ac-label">Đường dẫn tham gia</div>
+                    <div className="ac-val-row">
+                      <span className="ac-val" style={{ fontSize: 13, letterSpacing: 0 }}>{buildMeetingLink(detailMeeting.id)}</span>
+                      <button className="btn-copy" onClick={() => copyText(buildMeetingLink(detailMeeting.id), 'Đường dẫn')}>Sao chép</button>
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+            </div>
+
+            <div className="section-title-sm">Thao tác nhanh</div>
+            <Row gutter={[10, 10]}>
+              <Col xs={24} sm={8}>
+                <div className="qa-card" onClick={() => openReportModal(detailMeeting)}>
+                  <div className="qa-icon">📄</div>
+                  <div className="qa-name">Biên bản & báo cáo</div>
+                  <div className="qa-desc">Xem và tạo biên bản họp</div>
+                </div>
+              </Col>
+              <Col xs={24} sm={8}>
+                <div className="qa-card" onClick={() => openDocumentsModal(detailMeeting)}>
+                  <div className="qa-icon">📁</div>
+                  <div className="qa-name">Quản lý tài liệu</div>
+                  <div className="qa-desc">Upload và chia sẻ file</div>
+                </div>
+              </Col>
+              <Col xs={24} sm={8}>
+                <div className="qa-card" onClick={() => openPollListModal(detailMeeting)}>
+                  <div className="qa-icon">🗳️</div>
+                  <div className="qa-name">Quản lý biểu quyết</div>
+                  <div className="qa-desc">Tạo và theo dõi vote</div>
+                </div>
+              </Col>
+            </Row>
+
+            <div className="section-title-sm" style={{ marginTop: 18 }}>Người tham gia</div>
+            <div className="participants-card">
+              <div className="p-row">
+                <div className="p-avatar av-blue">{detailMeeting.hostName.slice(0,2).toUpperCase()}</div>
+                <div className="p-name-col">
+                  <div className="p-name">{detailMeeting.hostName}</div>
+                  <div className="p-role">Host</div>
+                </div>
+                <span className="p-status-badge psb-host">Host</span>
+              </div>
+              <div className="p-row">
+                <div className="p-avatar av-amber">TV</div>
+                <div className="p-name-col">
+                  <div className="p-name">Thành viên 1</div>
+                  <div className="p-role">Thành viên</div>
+                </div>
+                <span className="p-status-badge psb-invited">Đã mời</span>
+              </div>
+            </div>
+
+            <div className="bottom-btns">
+              <button className="btn-join" onClick={() => router.push(`/meeting/${detailMeeting.id}`)}>Tham gia cuộc họp →</button>
+              <button className="btn-edit" onClick={() => message.info('Chức năng chỉnh sửa cuộc họp')}>Chỉnh sửa</button>
+              <button className="btn-delete" onClick={() => message.info('Chức năng xóa cuộc họp')}>Xóa</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* --- CÁC MODALS GIỮ NGUYÊN HOÀN TOÀN NHƯ CŨ --- */}
@@ -994,92 +1141,6 @@ export default function MeetingsPage() {
       </Modal>
 
       <Modal
-        open={Boolean(detailMeeting)}
-        onCancel={() => setDetailMeeting(null)}
-        footer={null}
-        centered
-        destroyOnHidden
-        width={560}
-        closeIcon={<CloseOutlined />}
-      >
-        {detailMeeting && (
-          <div style={{ padding: '4px 4px 0 4px' }}>
-            <Typography.Title level={4} style={{ margin: 0 }}>
-              {detailMeeting.title}
-            </Typography.Title>
-            <Typography.Text type="secondary">
-              Sắp diễn ra • {dayjs(detailMeeting.createdAt).format('DD/MM/YYYY, HH:mm')}
-            </Typography.Text>
-
-            <Card
-              style={{ marginTop: 14, borderRadius: 10, background: '#fafcff' }}
-              bodyStyle={{ padding: 14 }}
-            >
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '120px 1fr',
-                  rowGap: 14,
-                  alignItems: 'center',
-                  marginBottom: 12,
-                }}
-              >
-                <Typography.Text type="secondary">Mã tham gia:</Typography.Text>
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    justifySelf: 'start',
-                    background: '#fff',
-                    border: '1px solid #d9e2f0',
-                    borderRadius: 6,
-                    padding: '4px 8px',
-                  }}
-                >
-                  <Typography.Text strong>{detailMeeting.meetingCode}</Typography.Text>
-                  <CopyOutlined
-                    style={{ color: '#8c8c8c', cursor: 'pointer' }}
-                    onClick={() => void copyText(detailMeeting.meetingCode)}
-                  />
-                </div>
-
-                <Typography.Text type="secondary">Host</Typography.Text>
-                <Space>
-                  <Avatar size={24} icon={<UserOutlined />} />
-                  <Typography.Text strong>{detailMeeting.hostName}</Typography.Text>
-                </Space>
-              </div>
-
-              <div style={{ borderTop: '1px solid #edf1f7', paddingTop: 12 }}>
-                <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                  Link tham gia trực tiếp:
-                </Typography.Text>
-                <Space.Compact style={{ width: '100%' }}>
-                  <Input readOnly value={buildMeetingLink(detailMeeting.id)} />
-                  <Button onClick={() => void copyText(buildMeetingLink(detailMeeting.id))}>
-                    Copy Link
-                  </Button>
-                </Space.Compact>
-              </div>
-            </Card>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-              <Button onClick={() => setDetailMeeting(null)}>Đóng</Button>
-              <Button
-                type="primary"
-                onClick={() => {
-                  router.push(`/meeting/${detailMeeting.id}`);
-                }}
-              >
-                Tham gia ngay
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal
         title={
           <div style={{ minWidth: 0 }}>
             <Typography.Title level={5} style={{ margin: 0 }}>
@@ -1192,18 +1253,6 @@ export default function MeetingsPage() {
           ]}
         />
       </Modal>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            .meeting-action-main-btn {
-              width: 112px;
-              display: inline-flex;
-              justify-content: center;
-            }
-          `,
-        }}
-      />
 
       <Modal
         title={
