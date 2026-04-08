@@ -130,6 +130,7 @@ export default function MeetingsPage() {
   
   // Xác định màn hình mobile để tinh chỉnh font-size trực tiếp trên thẻ
   const isMobile = screens.md === false; 
+  const isCompactPagination = screens.lg === false;
 
   const router = useRouter();
   const { user, isAuthenticated, loading, isAdmin } = useAuth();
@@ -576,6 +577,7 @@ export default function MeetingsPage() {
     const start = (tablePage - 1) * tablePageSize;
     return filteredMeetings.slice(start, start + tablePageSize);
   }, [filteredMeetings, tablePage, tablePageSize]);
+  const totalPages = Math.max(1, Math.ceil(filteredMeetings.length / tablePageSize));
 
   const TABLE_COL = {
     stt: { xs: 2, md: 1 },
@@ -608,7 +610,10 @@ export default function MeetingsPage() {
         .filter-chip:hover { border-color: #2563eb; color: #2563eb; }
         .filter-chip.active { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; font-weight: 600; }
         
-        .table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+        .table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: visible; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+        .meetings-pagination { display: flex; align-items: center; flex-wrap: nowrap; white-space: nowrap; margin: 0; }
+        .meetings-pagination .ant-pagination-options { margin-inline-start: 6px; }
+        .meetings-pagination .ant-select-selector { min-width: 72px; }
         
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
@@ -629,8 +634,8 @@ export default function MeetingsPage() {
         
         .access-card { background: #f8fafc; border-radius: 6px; padding: 10px 14px; height: 100%; }
         .ac-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
-        .ac-val-row { display: flex; align-items: center; gap: 8px; }
-        .ac-val { font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; color: #1e293b; letter-spacing: 0.05em; word-break: break-all; }
+        .ac-val-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+        .ac-val { font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; color: #1e293b; letter-spacing: 0.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
         .btn-copy { font-size: 11px; padding: 3px 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #64748b; cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0;}
         .btn-copy:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
         
@@ -680,43 +685,38 @@ export default function MeetingsPage() {
       <div className="dashboard-container">
         
         {/* Header Section */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <Space align="center" size="middle">
-            <div style={{
-              background: '#2563eb',
-              color: 'white',
-              width: 44,
-              height: 44,
-              borderRadius: 10,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 20,
-              boxShadow: '0 4px 10px rgba(37, 99, 235, 0.2)'
-            }}>
-              <VideoCameraOutlined />
-            </div>
-            <div>
-              <Typography.Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1e293b' }}>
-                {detailMeeting 
-                  ? detailMeeting.title 
-                  : (isAdmin ? 'Quản lý tất cả cuộc họp' : 'Quản lý cuộc họp')}
-              </Typography.Title>
-              <Typography.Text style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-                {detailMeeting 
-                  ? `Tạo bởi ${detailMeeting.hostName} · ${dayjs(detailMeeting.createdAt).format('DD/MM/YYYY')}`
-                  : <>Tổng cộng <span style={{ color: '#2563eb', fontWeight: 700 }}>{meetings.length}</span> cuộc họp đã tạo</>
-                }
-              </Typography.Text>
-            </div>
-          </Space>
-          
-          {!detailMeeting && (
+        {!detailMeeting && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <Space align="center" size="middle">
+              <div style={{
+                background: '#2563eb',
+                color: 'white',
+                width: 44,
+                height: 44,
+                borderRadius: 10,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 20,
+                boxShadow: '0 4px 10px rgba(37, 99, 235, 0.2)'
+              }}>
+                <VideoCameraOutlined />
+              </div>
+              <div>
+                <Typography.Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1e293b' }}>
+                  {isAdmin ? 'Quản lý tất cả cuộc họp' : 'Quản lý cuộc họp'}
+                </Typography.Title>
+                <Typography.Text style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
+                  <>Tổng cộng <span style={{ color: '#2563eb', fontWeight: 700 }}>{meetings.length}</span> cuộc họp đã tạo</>
+                </Typography.Text>
+              </div>
+            </Space>
+
             <Button icon={<ReloadOutlined />} onClick={() => void loadMeetings()} loading={loadingMeetings} size="large" style={{ borderRadius: 8, fontWeight: 500 }}>
               {isMobile ? '' : 'Làm mới'}
             </Button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* --- VIEW: DANH SÁCH CUỘC HỌP --- */}
         {!detailMeeting ? (
@@ -787,7 +787,10 @@ export default function MeetingsPage() {
                 style={{ 
                   borderBottom: '1px solid #e2e8f0', 
                   background: '#f8fafc', 
-                  flexWrap: 'nowrap' 
+                  flexWrap: 'nowrap',
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 15
                 }}
               >
                 <Col {...TABLE_COL.stt} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: TABLE_PADDING.header, fontSize: isMobile ? 10 : 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', whiteSpace: 'nowrap', borderRight: '1px solid #e2e8f0' }}>STT</Col>
@@ -854,11 +857,6 @@ export default function MeetingsPage() {
                               {isLive && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: isMobile ? '2px 4px' : '4px 10px', borderRadius: 99, fontSize: isMobile ? 9 : 11, fontWeight: 600, whiteSpace: 'nowrap' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', animation: 'blink 1.5s ease-in-out infinite' }}></span> Đang diễn ra</span>}
                               {isDone && <span style={{ display: 'inline-flex', alignItems: 'center', background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', padding: isMobile ? '2px 4px' : '4px 10px', borderRadius: 99, fontSize: isMobile ? 9 : 11, fontWeight: 600, whiteSpace: 'nowrap' }}>Đã kết thúc</span>}
                            </div>
-                           {isDone && m.endedAt && (
-                              <div style={{ fontSize: isMobile ? 9 : 12, color: '#64748b', whiteSpace: isMobile ? 'normal' : 'nowrap', lineHeight: 1.2 }}>
-                                Kết thúc: {dayjs(m.endedAt).format(isMobile ? 'DD/MM/YY' : 'HH:mm DD/MM/YYYY')}
-                              </div>
-                           )}
                         </Col>
 
                         {/* Cột 4: Thao tác */}
@@ -890,15 +888,35 @@ export default function MeetingsPage() {
                 )}
               </div>
               
-              <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+              <div
+                style={{
+                  padding: isMobile ? '10px 12px' : '16px 24px',
+                  borderTop: '1px solid #e2e8f0',
+                  display: 'flex',
+                  justifyContent: isMobile ? 'center' : 'flex-end',
+                  overflowX: 'auto',
+                }}
+              >
                 <Pagination 
+                    className="meetings-pagination"
+                    size={isCompactPagination ? 'small' : 'default'}
                     current={tablePage}
                     pageSize={tablePageSize}
                     total={filteredMeetings.length}
                     showSizeChanger
                     pageSizeOptions={['10', '20', '50', '100']}
                     onChange={(p, ps) => { setTablePage(p); setTablePageSize(ps); }}
-                    showTotal={(total, range) => `Hiển thị ${range[0]}-${range[1]} / ${total}`}
+                    showTotal={isCompactPagination ? undefined : (total, range) => `Hiển thị ${range[0]}-${range[1]} / ${total}`}
+                    showLessItems={isCompactPagination}
+                    itemRender={(page, type, originalElement) => {
+                      if (!isCompactPagination) return originalElement;
+                      if (type === 'prev' || type === 'next') return null;
+                      if (type === 'jump-prev' || type === 'jump-next') return originalElement;
+                      if (type !== 'page' || totalPages <= 5) return originalElement;
+                      const isEdgePage = page <= 2 || page > totalPages - 2;
+                      const isCurrentPage = page === tablePage;
+                      return isEdgePage || isCurrentPage ? originalElement : null;
+                    }}
                 />
               </div>
             </div>
@@ -916,7 +934,7 @@ export default function MeetingsPage() {
                   <div className="detail-title">{detailMeeting.title}</div>
                   <div className="detail-sub">Tạo bởi {detailMeeting.hostName} · {dayjs(detailMeeting.createdAt).format('DD/MM/YYYY')}</div>
                 </div>
-                <div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                   {(() => {
                     const isEnded = Boolean(detailMeeting.endedAt);
                     const isLive = !isEnded && (detailMeeting.activeParticipantCount ?? 0) > 0;
@@ -924,6 +942,11 @@ export default function MeetingsPage() {
                     if (isEnded) return <span className="status-badge status-done">Đã kết thúc</span>;
                     return <span className="status-badge status-upcoming">Chưa diễn ra</span>;
                   })()}
+                  {detailMeeting.endedAt && (
+                    <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+                      {dayjs(detailMeeting.endedAt).format('HH:mm - DD/MM/YYYY')}
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -954,7 +977,7 @@ export default function MeetingsPage() {
               <hr className="detail-divider" />
               
               <Row gutter={[10, 10]}>
-                <Col xs={24} sm={12} md={6}>
+                <Col xs={24} sm={12} lg={6}>
                   <div className="access-card">
                     <div className="ac-label">Mã phòng</div>
                     <div className="ac-val-row">
@@ -963,7 +986,7 @@ export default function MeetingsPage() {
                     </div>
                   </div>
                 </Col>
-                <Col xs={24} sm={12} md={6}>
+                <Col xs={24} sm={12} lg={6}>
                   <div className="access-card">
                     <div className="ac-label">Mật khẩu</div>
                     <div className="ac-val-row">
@@ -972,7 +995,7 @@ export default function MeetingsPage() {
                     </div>
                   </div>
                 </Col>
-                <Col xs={24} md={12}>
+                <Col xs={24} lg={12}>
                   <div className="access-card">
                     <div className="ac-label">Đường dẫn tham gia</div>
                     <div className="ac-val-row">
