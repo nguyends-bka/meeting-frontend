@@ -131,6 +131,7 @@ export default function MeetingsPage() {
   // Xác định màn hình mobile để tinh chỉnh font-size trực tiếp trên thẻ
   const isMobile = screens.md === false; 
   const isCompactPagination = screens.lg === false;
+  const reportPreviewScale = isMobile ? 0.68 : screens.xl === false ? 0.82 : 1;
 
   const router = useRouter();
   const { user, isAuthenticated, loading, isAdmin } = useAuth();
@@ -1741,6 +1742,26 @@ export default function MeetingsPage() {
       <Modal
         title={
           <div style={{ minWidth: 0 }}>
+            <Space size={8} style={{ marginBottom: 8, flexWrap: 'wrap' }}>
+              <Button
+                type="primary"
+                icon={<CopyOutlined />}
+                size={isMobile ? 'small' : 'middle'}
+                onClick={() => void copyReportMinutesText()}
+                disabled={!reportMinutes || reportMinutesLoading}
+              >
+                Sao chép văn bản
+              </Button>
+              <Button
+                icon={<FileWordOutlined />}
+                size={isMobile ? 'small' : 'middle'}
+                loading={exportingReportWord}
+                onClick={() => void exportReportWord()}
+                disabled={!reportMinutes || reportMinutesLoading}
+              >
+                Xuất Word
+              </Button>
+            </Space>
             <Typography.Title level={5} style={{ margin: 0 }}>
               Biên bản / báo cáo cuộc họp
             </Typography.Title>
@@ -1767,9 +1788,16 @@ export default function MeetingsPage() {
           </div>
         }
         destroyOnHidden
-        width={900}
-        style={{ maxWidth: 'calc(100vw - 24px)' }}
-        styles={{ body: { maxHeight: '75vh', overflowY: 'auto' } }}
+        centered={!isMobile}
+        width={isMobile ? '96vw' : 900}
+        style={{ maxWidth: '96vw', top: isMobile ? 8 : undefined }}
+        styles={{
+          body: {
+            maxHeight: isMobile ? 'calc(100vh - 130px)' : '75vh',
+            overflow: 'hidden',
+            padding: isMobile ? 8 : 24,
+          },
+        }}
       >
         {reportMinutesLoading && (
           <div style={{ textAlign: 'center', padding: 24 }}>
@@ -1781,20 +1809,24 @@ export default function MeetingsPage() {
         )}
         {!reportMinutesLoading && reportMinutes && (
           <>
-            <Space style={{ marginBottom: 16 }}>
-              <Button type="primary" icon={<CopyOutlined />} onClick={() => void copyReportMinutesText()}>
-                Sao chép văn bản
-              </Button>
-              <Button
-                icon={<FileWordOutlined />}
-                loading={exportingReportWord}
-                onClick={() => void exportReportWord()}
+            <div style={{ overflowY: 'auto', overflowX: 'hidden', maxHeight: isMobile ? '64vh' : '60vh' }}>
+              <div
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  justifyContent: 'center',
+                }}
               >
-                Xuất Word
-              </Button>
-            </Space>
-            <div style={{ overflowX: 'auto' }}>
-              <MeetingMinutesPreview minutes={reportMinutes} reportRef={reportRef} />
+                <div
+                  style={{
+                    transform: `scale(${reportPreviewScale})`,
+                    transformOrigin: 'top center',
+                    width: 794,
+                  }}
+                >
+                  <MeetingMinutesPreview minutes={reportMinutes} reportRef={reportRef} />
+                </div>
+              </div>
             </div>
           </>
         )}
