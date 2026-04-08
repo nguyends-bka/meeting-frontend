@@ -713,7 +713,7 @@ export default function MeetingsPage() {
           
           {!detailMeeting && (
             <Button icon={<ReloadOutlined />} onClick={() => void loadMeetings()} loading={loadingMeetings} size="large" style={{ borderRadius: 8, fontWeight: 500 }}>
-              {isMobile ? '' : 'Làm mới dữ liệu'}
+              {isMobile ? '' : 'Làm mới'}
             </Button>
           )}
         </div>

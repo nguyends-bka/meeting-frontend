@@ -181,7 +181,7 @@ export default function FaceLoginPage() {
         } catch {
           // bỏ qua lỗi tạm thời, vòng lặp tiếp tục
         }
-        await new Promise((r) => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, 50));
       }
     } catch {
       faceAutoFlowRunningRef.current = false;

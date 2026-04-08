@@ -194,8 +194,8 @@ export function FaceRegistrationGate() {
       setCameraOn(true);
     };
 
-    /** Giống /login/face: gửi ảnh mỗi 1s; embedding nhận qua listener. */
-    const FRAME_INTERVAL_MS = 1000;
+    /** Giống /login/face: gửi ảnh mỗi 50ms; embedding nhận qua listener. */
+    const FRAME_INTERVAL_MS = 50;
     let regInFlight = false;
 
     const onEmbedding = async (embedding: number[]) => {
