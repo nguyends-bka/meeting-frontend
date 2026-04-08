@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import {
   addFaceEmbeddingListener,
+  FACE_FRAME_SEND_INTERVAL_MS,
   removeFaceEmbeddingListener,
   sendFaceImageToDevice,
   startFaceIdDeviceConnection,
@@ -181,7 +182,7 @@ export default function FaceLoginPage() {
         } catch {
           // bỏ qua lỗi tạm thời, vòng lặp tiếp tục
         }
-        await new Promise((r) => setTimeout(r, 50));
+        await new Promise((r) => setTimeout(r, FACE_FRAME_SEND_INTERVAL_MS));
       }
     } catch {
       faceAutoFlowRunningRef.current = false;

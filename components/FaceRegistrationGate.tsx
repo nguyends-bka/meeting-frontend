@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { apiService } from '@/services/api';
 import {
   addRegisterFaceEmbeddingListener,
+  FACE_FRAME_SEND_INTERVAL_MS,
   removeRegisterFaceEmbeddingListener,
   sendRegisterFaceImageToDevice,
   startRegisterFaceDeviceConnection,
@@ -14,12 +15,14 @@ import {
 import './face-registration-modal.css';
 
 const SESSION_SKIP_KEY = 'bk_face_reg_skipped';
+const SESSION_FORCE_OPEN_KEY = 'bk_face_reg_force_open';
 
 export function FaceRegistrationGate() {
   const { user, loading, isAuthenticated, updateUser } = useAuth();
   const { message } = App.useApp();
 
   const [skipHydrated, setSkipHydrated] = useState(false);
+  const [forcedBiometricOpen, setForcedBiometricOpen] = useState(false);
   const [sessionSkipped, setSessionSkipped] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
@@ -32,9 +35,11 @@ export function FaceRegistrationGate() {
   const flowActiveRef = useRef(false);
   const messageRef = useRef(message);
   const updateUserRef = useRef(updateUser);
+  const userHadFaceEmbeddingRef = useRef(false);
   const faceGuideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   messageRef.current = message;
   updateUserRef.current = updateUser;
+  userHadFaceEmbeddingRef.current = Boolean(user?.hasFaceEmbedding);
 
   useEffect(() => {
     setSkipHydrated(true);
@@ -51,6 +56,7 @@ export function FaceRegistrationGate() {
         // ignore
       }
       setSessionSkipped(false);
+      setForcedBiometricOpen(false);
       return;
     }
 
@@ -61,14 +67,28 @@ export function FaceRegistrationGate() {
     }
   }, [isAuthenticated, loading]);
 
+  useEffect(() => {
+    if (!skipHydrated || !isAuthenticated || loading) return;
+    try {
+      if (sessionStorage.getItem(SESSION_FORCE_OPEN_KEY) === '1') {
+        sessionStorage.removeItem(SESSION_FORCE_OPEN_KEY);
+        setForcedBiometricOpen(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, [skipHydrated, isAuthenticated, loading]);
+
   const needsRegistration =
     Boolean(user) && user!.hasFaceEmbedding === false;
+
+  const isUpdateBiometric = Boolean(user?.hasFaceEmbedding);
 
   const open =
     skipHydrated &&
     !loading &&
     isAuthenticated &&
-    needsRegistration &&
+    (needsRegistration || forcedBiometricOpen) &&
     !sessionSkipped;
 
   const stopCamera = useCallback(() => {
@@ -125,6 +145,7 @@ export function FaceRegistrationGate() {
     } catch {
       // ignore
     }
+    setForcedBiometricOpen(false);
     setSessionSkipped(true);
     resetFlow();
   }, [resetFlow]);
@@ -158,7 +179,7 @@ export function FaceRegistrationGate() {
         if (cancelled) throw new Error('Đã hủy');
         const video = videoRef.current;
         if (video && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) return;
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 50));
       }
       throw new Error('Camera chưa sẵn sàng để chụp ảnh');
     };
@@ -194,8 +215,6 @@ export function FaceRegistrationGate() {
       setCameraOn(true);
     };
 
-    /** Giống /login/face: gửi ảnh mỗi 50ms; embedding nhận qua listener. */
-    const FRAME_INTERVAL_MS = 50;
     let regInFlight = false;
 
     const onEmbedding = async (embedding: number[]) => {
@@ -208,7 +227,12 @@ export function FaceRegistrationGate() {
           return;
         }
         updateUserRef.current({ hasFaceEmbedding: true });
-        messageRef.current.success('Đăng ký sinh trắc học thành công');
+        messageRef.current.success(
+          userHadFaceEmbeddingRef.current
+            ? 'Cập nhật sinh trắc học thành công'
+            : 'Đăng ký sinh trắc học thành công',
+        );
+        setForcedBiometricOpen(false);
         flowActiveRef.current = false;
       } catch {
         // im lặng — tiếp tục gửi khung hình khi có embedding mới
@@ -244,7 +268,7 @@ export function FaceRegistrationGate() {
           } catch {
             // bỏ qua lỗi tạm thời, giống luồng face login
           }
-          await new Promise((r) => setTimeout(r, FRAME_INTERVAL_MS));
+          await new Promise((r) => setTimeout(r, FACE_FRAME_SEND_INTERVAL_MS));
         }
       } catch (e) {
         if (!cancelled) {
@@ -285,7 +309,9 @@ export function FaceRegistrationGate() {
   const primaryLabel = cameraStarting
     ? 'ĐANG MỞ CAMERA...'
     : registering || cameraFlowStarted
-      ? 'ĐANG ĐĂNG KÝ...'
+      ? isUpdateBiometric
+        ? 'ĐANG CẬP NHẬT...'
+        : 'ĐANG ĐĂNG KÝ...'
       : '▶ BẬT CAMERA';
 
   const primaryDisabled = cameraFlowStarted || registering || cameraStarting;
@@ -312,7 +338,9 @@ export function FaceRegistrationGate() {
             <span className="fr-title-icon" aria-hidden>
               🤖
             </span>
-            <span className="fc-title-main">ĐĂNG KÝ SINH TRẮC HỌC</span>
+            <span className="fc-title-main">
+              {isUpdateBiometric ? 'CẬP NHẬT SINH TRẮC HỌC' : 'ĐĂNG KÝ SINH TRẮC HỌC'}
+            </span>
           </div>
 
           <div className="fc-video-wrapper">

@@ -580,20 +580,21 @@ export default function ProfilePage() {
                   >
                     Đổi mật khẩu
                   </Button>
-                  {!profile?.hasFaceEmbedding && (
-                    <Button
-                      onClick={() => {
-                        try {
-                          sessionStorage.removeItem('bk_face_reg_skipped');
-                        } catch {
-                          // ignore
-                        }
-                        window.location.reload();
-                      }}
-                    >
-                      Đăng ký sinh trắc học
-                    </Button>
-                  )}
+                  <Button
+                    onClick={() => {
+                      try {
+                        sessionStorage.removeItem('bk_face_reg_skipped');
+                        sessionStorage.setItem('bk_face_reg_force_open', '1');
+                      } catch {
+                        // ignore
+                      }
+                      window.location.reload();
+                    }}
+                  >
+                    {profile?.hasFaceEmbedding
+                      ? 'Cập nhật sinh trắc học'
+                      : 'Đăng ký sinh trắc học'}
+                  </Button>
                 </div>
               )}
             </Card>
