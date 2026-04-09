@@ -627,47 +627,62 @@ export default function MeetingPage() {
 
     return (
       <div style={styles.container}>
-        <div style={styles.preJoinWrapper} className="prejoin-no-username">
-          <div style={styles.setupCard}>
-            <h2 style={styles.cardTitle}>Cài đặt thiết bị</h2>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Nguồn Microphone</label>
-              <select
-                value={audioSource}
-                onChange={(e) => setAudioSource(e.target.value as AudioSourceMode)}
-                style={styles.select}
-              >
-                <option value="real">Microphone mặc định của máy</option>
-                <option value="virtual">Microphone ảo (WS 9001)</option>
-              </select>
-            </div>
-
-            {audioSource === 'virtual' && (
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Địa chỉ WebSocket</label>
-                <input
-                  value={virtualMicWsUrl}
-                  onChange={(e) => setVirtualMicWsUrl(e.target.value)}
-                  style={styles.input}
-                  placeholder="ws://127.0.0.1:9001/audio"
-                />
-                <span style={styles.hint}>
-                  LiveKit sẽ không lấy mic thật mà sử dụng âm thanh từ kết nối này.
-                </span>
-              </div>
-            )}
-
-            {(noCamera || showMicWarning) && (
-              <div style={styles.deviceWarning}>
-                {noCamera && showMicWarning && 'Không tìm thấy camera và microphone. Vui lòng kiểm tra lại thiết bị!'}
-                {noCamera && !showMicWarning && 'Không tìm thấy camera. Vui lòng kiểm tra lại thiết bị!'}
-                {!noCamera && showMicWarning && 'Không tìm thấy microphone. Vui lòng kiểm tra lại thiết bị!'}
-              </div>
-            )}
-          </div>
-
-          <div style={{ position: 'relative' }}>
+        <div style={styles.preJoinWrapper} className="prejoin-no-username prejoin-shell">
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `
+                .prejoin-shell .lk-prejoin {
+                  background: #fff;
+                  border: 1px solid #e5e7eb;
+                  border-radius: 14px;
+                  padding: 0;
+                  overflow: hidden;
+                  box-shadow: 0 2px 10px rgba(15,23,42,0.05);
+                  height: 100%;
+                  display: flex;
+                  flex-direction: column;
+                }
+                .prejoin-shell .lk-video-preview {
+                  border-radius: 12px 12px 0 0;
+                  min-height: 0;
+                  flex: 1 1 auto;
+                  background: #05070b;
+                }
+                .prejoin-shell .lk-button-group {
+                  padding: 10px 14px 6px;
+                }
+                .prejoin-shell .lk-button-group .lk-button {
+                  min-height: 40px;
+                  border-radius: 10px;
+                }
+                .prejoin-shell .lk-prejoin .lk-button.lk-button-primary {
+                  margin: 8px 14px 12px;
+                  width: calc(100% - 28px);
+                  min-height: 46px;
+                  border-radius: 12px;
+                  font-size: 20px;
+                  font-weight: 600;
+                  background: #3b82f6;
+                  border-color: #3b82f6;
+                }
+                .prejoin-shell .lk-prejoin .lk-button.lk-button-primary:hover {
+                  background: #2563eb;
+                  border-color: #2563eb;
+                }
+                @media (max-width: 860px) {
+                  .prejoin-shell {
+                    grid-template-columns: 1fr !important;
+                    grid-template-rows: auto minmax(0, 1fr);
+                  }
+                  .prejoin-shell .lk-video-preview { min-height: 0; }
+                  .prejoin-shell .lk-prejoin .lk-button.lk-button-primary {
+                    font-size: 17px;
+                  }
+                }
+              `,
+            }}
+          />
+          <div style={{ position: 'relative', minHeight: 0 }}>
             {joining && (
               <div style={styles.joiningOverlay}>
                 <div style={styles.spinner}></div>
@@ -715,6 +730,43 @@ export default function MeetingPage() {
                 audioEnabled: false,
               }}
             />
+          </div>
+
+          <div style={styles.setupCard}>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Nguồn Microphone</label>
+              <select
+                value={audioSource}
+                onChange={(e) => setAudioSource(e.target.value as AudioSourceMode)}
+                style={styles.select}
+              >
+                <option value="real">Microphone mặc định của máy</option>
+                <option value="virtual">Microphone ảo (WS 9001)</option>
+              </select>
+            </div>
+
+            {audioSource === 'virtual' && (
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Địa chỉ WebSocket</label>
+                <input
+                  value={virtualMicWsUrl}
+                  onChange={(e) => setVirtualMicWsUrl(e.target.value)}
+                  style={styles.input}
+                  placeholder="ws://127.0.0.1:9001/audio"
+                />
+                <span style={styles.hint}>
+                  LiveKit sẽ không lấy mic thật mà sử dụng âm thanh từ kết nối này.
+                </span>
+              </div>
+            )}
+
+            {(noCamera || showMicWarning) && (
+              <div style={styles.deviceWarning}>
+                {noCamera && showMicWarning && 'Không tìm thấy camera và microphone. Vui lòng kiểm tra lại thiết bị!'}
+                {noCamera && !showMicWarning && 'Không tìm thấy camera. Vui lòng kiểm tra lại thiết bị!'}
+                {!noCamera && showMicWarning && 'Không tìm thấy microphone. Vui lòng kiểm tra lại thiết bị!'}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -914,9 +966,11 @@ const styles: { [key: string]: React.CSSProperties } = {
   container: {
     height: '100vh',
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
     backgroundColor: '#f3f4f6',
+    padding: '10px 16px',
+    overflow: 'hidden',
   },
   loadingContainer: {
     textAlign: 'center',
@@ -970,15 +1024,21 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   preJoinWrapper: {
     width: '100%',
-    maxWidth: '760px',
+    maxWidth: '1040px',
+    height: 'calc(100vh - 20px)',
+    maxHeight: 'calc(100vh - 20px)',
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) 320px',
+    gap: '14px',
+    alignItems: 'start',
   },
   setupCard: {
     backgroundColor: '#ffffff',
-    padding: '20px',
+    padding: '14px 20px',
     borderRadius: '12px',
-    marginBottom: '16px',
     boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
     border: '1px solid #e5e7eb',
+    alignSelf: 'start',
   },
   cardTitle: {
     fontSize: '20px',
@@ -987,7 +1047,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#111827',
   },
   formGroup: {
-    marginBottom: '16px',
+    marginBottom: '0',
     display: 'flex',
     flexDirection: 'column',
   },
