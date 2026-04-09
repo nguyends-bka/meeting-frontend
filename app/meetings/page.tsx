@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { apiService, meetingApi } from '@/services/api';
-import type { MeetingMinutes, PollResponse, PollManagerItem, MeetingDocumentDto } from '@/dtos/meeting.dto';
+import type { MeetingMinutes, PollResponse, PollManagerItem, MeetingDocumentDto, MeetingInvitee, MeetingCoHostItem } from '@/dtos/meeting.dto';
 import { MeetingMinutesPreview } from '@/components/meeting/MeetingMinutesPreview';
 import { buildMinutesText } from '@/lib/meetingMinutesFormat';
 import { exportMeetingMinutesWord } from '@/lib/exportMeetingMinutesWord';
@@ -19,10 +19,12 @@ import {
   Form,
   Input,
   InputNumber,
+  DatePicker,
   List,
   Modal,
   Empty,
   Radio,
+  Select,
   Progress,
   Segmented,
   Space,
@@ -71,6 +73,7 @@ type Meeting = {
   hostName: string;
   hostIdentity: string;
   canManagePoll: boolean;
+  isMeetingHost?: boolean;
   meetingCode: string;
   passcode: string;
   createdAt: string;
@@ -124,6 +127,15 @@ function formatHistoryParticipationDuration(r: HistoryEntry): string {
   return '—';
 }
 
+function participantInitials(displayName: string, username: string): string {
+  const s = (displayName || username || '?').trim();
+  const parts = s.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  }
+  return (s.slice(0, 2) || '?').toUpperCase();
+}
+
 export default function MeetingsPage() {
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
@@ -134,6 +146,8 @@ export default function MeetingsPage() {
   const reportPreviewScale = isMobile ? 0.68 : screens.xl === false ? 0.82 : 1;
 
   const router = useRouter();
+  const params = useParams<{ id?: string }>();
+  const forcedDetailMeetingId = typeof params?.id === 'string' ? params.id : undefined;
   const { user, isAuthenticated, loading, isAdmin } = useAuth();
   const { message } = App.useApp();
 
@@ -165,6 +179,18 @@ export default function MeetingsPage() {
   const [exportingHistoryExcel, setExportingHistoryExcel] = useState(false);
   
   const [detailMeeting, setDetailMeeting] = useState<Meeting | null>(null);
+  const [meetingInvitees, setMeetingInvitees] = useState<MeetingInvitee[]>([]);
+  const [meetingCoHosts, setMeetingCoHosts] = useState<MeetingCoHostItem[]>([]);
+  const [meetingInviteesLoading, setMeetingInviteesLoading] = useState(false);
+  const [promotingInviteeUsername, setPromotingInviteeUsername] = useState<string | null>(null);
+  const [demotingCoHostUsername, setDemotingCoHostUsername] = useState<string | null>(null);
+  const [removingCoHostUserId, setRemovingCoHostUserId] = useState<string | null>(null);
+  const [inviteUsernameInput, setInviteUsernameInput] = useState('');
+  const [addingInvitee, setAddingInvitee] = useState(false);
+  const [removingInviteeUsername, setRemovingInviteeUsername] = useState<string | null>(null);
+  const [editMeetingModal, setEditMeetingModal] = useState<Meeting | null>(null);
+  const [updatingMeeting, setUpdatingMeeting] = useState(false);
+  const [editMeetingForm] = Form.useForm();
 
   const [reportMeeting, setReportMeeting] = useState<Meeting | null>(null);
   const [reportMinutes, setReportMinutes] = useState<MeetingMinutes | null>(null);
@@ -183,6 +209,7 @@ export default function MeetingsPage() {
   };
 
   const isHostForMeeting = (m: Meeting): boolean => {
+    if (m.isMeetingHost) return true;
     const hostIdentity = String(m.hostIdentity || '').trim().toLowerCase();
     if (!hostIdentity) return false;
     const userId = String(user?.id || '').trim().toLowerCase();
@@ -190,11 +217,135 @@ export default function MeetingsPage() {
     return hostIdentity === userId || hostIdentity === username;
   };
 
+  const isUpcomingMeeting = (m: Meeting): boolean => {
+    return !m.endedAt && (m.activeParticipantCount ?? 0) === 0;
+  };
+
+  const canEditMeeting = (m: Meeting): boolean => {
+    return isHostForMeeting(m) && isUpcomingMeeting(m);
+  };
+
+  const canManageMeetingInvitees = (m: Meeting | null): boolean => {
+    if (!m) return false;
+    return isHostForMeeting(m) || Boolean(isAdmin);
+  };
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push('/login');
     }
   }, [isAuthenticated, loading, router]);
+
+  useEffect(() => {
+    if (!detailMeeting) {
+      setMeetingInvitees([]);
+      setMeetingCoHosts([]);
+      setInviteUsernameInput('');
+      return;
+    }
+    if (!canManageMeetingInvitees(detailMeeting)) {
+      setMeetingInvitees([]);
+      setMeetingCoHosts([]);
+      setInviteUsernameInput('');
+      return;
+    }
+    let cancelled = false;
+    setMeetingInviteesLoading(true);
+    void Promise.all([
+      meetingApi.listInvitees(detailMeeting.id),
+      meetingApi.listCoHosts(detailMeeting.id),
+    ]).then(([inv, co]) => {
+      if (cancelled) return;
+      setMeetingInviteesLoading(false);
+      if (inv.data) setMeetingInvitees(inv.data);
+      if (inv.error) message.error(inv.error);
+      if (co.data) setMeetingCoHosts(co.data);
+      if (co.error) message.error(co.error);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [detailMeeting, isAdmin, user?.id, user?.username]);
+
+  const submitAddInvitee = async () => {
+    if (!detailMeeting) return;
+    const u = inviteUsernameInput.trim();
+    if (!u) {
+      message.warning('Nhập username');
+      return;
+    }
+    setAddingInvitee(true);
+    const r = await meetingApi.addInvitee(detailMeeting.id, u);
+    setAddingInvitee(false);
+    if (r.data) {
+      setMeetingInvitees((prev) => {
+        const un = r.data!.username.toLowerCase();
+        if (prev.some((x) => x.username.toLowerCase() === un)) return prev;
+        return [...prev, r.data!];
+      });
+      message.success('Đã thêm vào danh sách mời');
+      setInviteUsernameInput('');
+    }
+    if (r.error) message.error(r.error);
+  };
+
+  const removeInviteeRow = async (invUsername: string) => {
+    if (!detailMeeting) return;
+    setRemovingInviteeUsername(invUsername);
+    const r = await meetingApi.removeInvitee(detailMeeting.id, invUsername);
+    setRemovingInviteeUsername(null);
+    if (!r.error) {
+      const key = invUsername.toLowerCase();
+      setMeetingInvitees((prev) => prev.filter((x) => x.username.toLowerCase() !== key));
+      message.success('Đã xóa khỏi danh sách mời');
+    }
+    if (r.error) message.error(r.error);
+  };
+
+  const promoteInviteeToCoHost = async (invUsername: string) => {
+    if (!detailMeeting) return;
+    setPromotingInviteeUsername(invUsername);
+    const r = await meetingApi.promoteInviteeToCoHost(detailMeeting.id, invUsername);
+    setPromotingInviteeUsername(null);
+    if (r.data) {
+      const key = invUsername.toLowerCase();
+      setMeetingInvitees((prev) => prev.filter((x) => x.username.toLowerCase() !== key));
+      setMeetingCoHosts((prev) => {
+        if (prev.some((x) => x.hostUserId === r.data!.hostUserId)) return prev;
+        return [...prev, r.data!];
+      });
+      message.success('Đã chỉ định làm đồng chủ trì');
+    }
+    if (r.error) message.error(r.error);
+  };
+
+  const demoteCoHostToInvitee = async (coHostUsername: string) => {
+    if (!detailMeeting) return;
+    setDemotingCoHostUsername(coHostUsername);
+    const r = await meetingApi.demoteCoHostToInvitee(detailMeeting.id, coHostUsername);
+    setDemotingCoHostUsername(null);
+    if (!r.error) {
+      const key = coHostUsername.toLowerCase();
+      setMeetingCoHosts((prev) => prev.filter((x) => x.username.toLowerCase() !== key));
+      // Load lại để đảm bảo đồng bộ danh sách từ server
+      const inv = await meetingApi.listInvitees(detailMeeting.id);
+      if (inv.data) setMeetingInvitees(inv.data);
+      message.success('Đã chuyển vai trò thành Thành viên');
+    }
+    if (r.error) message.error(r.error);
+  };
+
+  const removeCoHostRow = async (hostUserId: string) => {
+    if (!detailMeeting) return;
+    setRemovingCoHostUserId(hostUserId);
+    const r = await meetingApi.removeCoHost(detailMeeting.id, hostUserId);
+    setRemovingCoHostUserId(null);
+    if (!r.error) {
+      setMeetingCoHosts((prev) => prev.filter((x) => x.hostUserId !== hostUserId));
+      message.success('Đã gỡ đồng chủ trì');
+    }
+    if (r.error) message.error(r.error);
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -209,6 +360,19 @@ export default function MeetingsPage() {
     if (result.error) message.error(result.error);
     setLoadingMeetings(false);
   };
+
+  useEffect(() => {
+    if (!forcedDetailMeetingId) return;
+    if (loadingMeetings) return;
+    if (meetings.length === 0) return;
+    const target = meetings.find((m) => m.id === forcedDetailMeetingId);
+    if (target) {
+      setDetailMeeting(target);
+      return;
+    }
+    message.warning('Không tìm thấy cuộc họp');
+    router.replace('/meetings');
+  }, [forcedDetailMeetingId, meetings, loadingMeetings, message, router]);
 
   const copyText = async (text: string, typeName?: string) => {
     try {
@@ -540,7 +704,59 @@ export default function MeetingsPage() {
   };
 
   const openDetailModal = (meeting: Meeting) => {
-    setDetailMeeting(meeting);
+    router.push(`/meetings/${meeting.id}`);
+  };
+
+  const openEditMeetingModal = (meeting: Meeting) => {
+    if (!canEditMeeting(meeting)) {
+      message.warning('Chỉ host mới được chỉnh sửa cuộc họp chưa diễn ra');
+      return;
+    }
+    setEditMeetingModal(meeting);
+    editMeetingForm.setFieldsValue({
+      title: meeting.title,
+      startAt: dayjs(meeting.createdAt),
+      estimatedEndAt: meeting.startedAt ? dayjs(meeting.startedAt) : null,
+    });
+  };
+
+  const submitEditMeeting = async () => {
+    if (!editMeetingModal) return;
+    const values = await editMeetingForm.validateFields();
+    const title = String(values.title || '').trim();
+    const startAt = values.startAt?.valueOf?.();
+    const estimatedEndAt = values.estimatedEndAt?.valueOf?.() ?? null;
+
+    if (!title) {
+      message.error('Vui lòng nhập tiêu đề cuộc họp');
+      return;
+    }
+    if (!startAt || Number.isNaN(startAt)) {
+      message.error('Vui lòng chọn thời gian bắt đầu');
+      return;
+    }
+    if (estimatedEndAt != null && estimatedEndAt <= startAt) {
+      message.error('Thời gian kết thúc dự kiến phải sau thời gian bắt đầu');
+      return;
+    }
+
+    setUpdatingMeeting(true);
+    const res = await meetingApi.updateMeeting(editMeetingModal.id, {
+      title,
+      startAt,
+      estimatedEndAt,
+    });
+    setUpdatingMeeting(false);
+    if (res.error || !res.data) {
+      message.error(res.error || 'Không thể cập nhật cuộc họp');
+      return;
+    }
+
+    const updated = res.data as Meeting;
+    setMeetings((prev) => prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)));
+    setDetailMeeting((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+    setEditMeetingModal(null);
+    message.success('Đã cập nhật cuộc họp');
   };
 
   // --- LOGIC TÍNH TOÁN STATS VÀ LỌC ---
@@ -591,6 +807,15 @@ export default function MeetingsPage() {
     body: isMobile ? '10px 6px' : '16px 20px',
     headerTight: isMobile ? '10px 1px' : '14px 20px',
     bodyTight: isMobile ? '10px 1px' : '16px 20px',
+  } as const;
+  const ROLE_TABLE_LAYOUT = {
+    scrollX: isMobile ? 500 : 620,
+    stt: isMobile ? 42 : 50,
+    username: isMobile ? 60 : 80,
+    fullName: isMobile ? 120 : 150,
+    role: isMobile ? 88 : 120,
+    roleSelect: isMobile ? 96 : 120,
+    remove: isMobile ? 56 : 72,
   } as const;
 
 
@@ -660,6 +885,7 @@ export default function MeetingsPage() {
         .p-status-badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; font-weight: 500; white-space: nowrap; }
         .psb-host { background: #dbeafe; color: #1d4ed8; }
         .psb-invited { background: #f1f5f9; color: #64748b; }
+        .p-invite-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid #e2e8f0; background: #f8fafc; }
         
         .bottom-btns { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
         .btn-join { flex: 1; padding: 10px; border-radius: 6px; background: #2563eb; color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; white-space: nowrap; min-width: 150px; }
@@ -668,6 +894,41 @@ export default function MeetingsPage() {
         .btn-edit:hover { background: #f8fafc; }
         .btn-delete { padding: 10px 18px; border-radius: 6px; border: 1px solid #fecaca; background: white; color: #ef4444; font-size: 13px; cursor: pointer; transition: background 0.15s; font-weight: 500; white-space: nowrap;}
         .btn-delete:hover { background: #fef2f2; }
+
+        @media (max-width: 992px) {
+          .participants-card .ant-table { font-size: 12px; }
+          .participants-card .ant-table-thead > tr > th,
+          .participants-card .ant-table-tbody > tr > td {
+            padding: 6px 4px !important;
+            white-space: nowrap;
+          }
+          .participants-card .ant-btn-sm {
+            height: 26px;
+            padding: 0 8px;
+            font-size: 12px;
+          }
+          .participants-card .ant-select-selector {
+            height: 28px !important;
+            font-size: 12px;
+            padding-inline: 2px !important;
+          }
+          .participants-card .ant-select-selection-item {
+            line-height: 26px !important;
+          }
+          .p-invite-bar {
+            padding: 8px 10px;
+            gap: 6px;
+          }
+          .p-invite-bar .ant-input {
+            height: 32px;
+            font-size: 13px;
+          }
+          .p-invite-bar .ant-btn {
+            height: 32px;
+            font-size: 12px;
+            padding: 0 10px;
+          }
+        }
 
         @media (max-width: 768px) {
           .search-input-wrapper { min-width: 100%; }
@@ -680,6 +941,7 @@ export default function MeetingsPage() {
             padding-bottom: 2px;
           }
           .filter-chip-row::-webkit-scrollbar { display: none; }
+          .section-title-sm { font-size: 11px; margin: 12px 0 8px; }
         }
       `}}/>
 
@@ -925,7 +1187,16 @@ export default function MeetingsPage() {
         ) : (
           /* --- VIEW: TRANG CHI TIẾT --- */
           <div className="page-detail">
-            <button className="detail-back" onClick={() => setDetailMeeting(null)}>
+            <button
+              className="detail-back"
+              onClick={() => {
+                if (forcedDetailMeetingId) {
+                  router.push('/meetings');
+                } else {
+                  setDetailMeeting(null);
+                }
+              }}
+            >
               <ArrowLeftOutlined /> Quay lại danh sách
             </button>
 
@@ -961,16 +1232,25 @@ export default function MeetingsPage() {
                 </Col>
                 <Col xs={24} md={8}>
                   <div className="info-block">
-                    <div className="ib-label">Host</div>
-                    <div className="ib-value">{detailMeeting.hostName}</div>
-                    <div className="ib-sub">Quản trị viên</div>
+                    <div className="ib-label">Kết thúc dự kiến</div>
+                    {detailMeeting.startedAt ? (
+                      <>
+                        <div className="ib-value">{dayjs(detailMeeting.startedAt).format('HH:mm')}</div>
+                        <div className="ib-sub">{dayjs(detailMeeting.startedAt).format('DD/MM/YYYY')}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="ib-value">—</div>
+                        <div className="ib-sub">Chưa đặt thời gian</div>
+                      </>
+                    )}
                   </div>
                 </Col>
                 <Col xs={24} md={8}>
                   <div className="info-block">
-                    <div className="ib-label">Số người mời</div>
-                    <div className="ib-value">{detailMeeting.activeParticipantCount || 0}</div>
-                    <div className="ib-sub">đã được mời</div>
+                    <div className="ib-label">Host</div>
+                    <div className="ib-value">{detailMeeting.hostName}</div>
+                    <div className="ib-sub">Quản trị viên</div>
                   </div>
                 </Col>
               </Row>
@@ -1036,31 +1316,269 @@ export default function MeetingsPage() {
             <div className="section-title-sm" style={{ marginTop: 18 }}>Người tham gia</div>
             <div className="participants-card">
               <div className="p-row">
-                <div className="p-avatar av-blue">{detailMeeting.hostName.slice(0,2).toUpperCase()}</div>
+                <div className="p-avatar av-blue">{participantInitials(detailMeeting.hostName, detailMeeting.hostName)}</div>
                 <div className="p-name-col">
                   <div className="p-name">{detailMeeting.hostName}</div>
-                  <div className="p-role">Host</div>
+                  <div className="p-role">Chủ trì (tạo phòng)</div>
                 </div>
-                <span className="p-status-badge psb-host">Host</span>
+                <span className="p-status-badge psb-host">Chủ trì</span>
               </div>
-              <div className="p-row">
-                <div className="p-avatar av-amber">TV</div>
-                <div className="p-name-col">
-                  <div className="p-name">Thành viên 1</div>
-                  <div className="p-role">Thành viên</div>
+              <div className="p-invitees-section">
+                <div className="section-title-sm" style={{ margin: '12px 16px 8px' }}>Đồng chủ trì</div>
+                <div style={{ padding: '0 12px 12px' }}>
+                  <Table<MeetingCoHostItem>
+                    loading={meetingInviteesLoading}
+                    rowKey={(r) => r.hostUserId}
+                    dataSource={meetingCoHosts}
+                    pagination={false}
+                    scroll={{ x: ROLE_TABLE_LAYOUT.scrollX }}
+                    size="small"
+                    locale={{ emptyText: 'Chưa có đồng chủ trì' }}
+                    columns={[
+                      {
+                        title: 'STT',
+                        key: 'stt',
+                        width: ROLE_TABLE_LAYOUT.stt,
+                        align: 'center',
+                        render: (_v, _r, index) => index + 1,
+                      },
+                      {
+                        title: 'Username',
+                        dataIndex: 'username',
+                        key: 'username',
+                        width: ROLE_TABLE_LAYOUT.username,
+                        ellipsis: true,
+                      },
+                      {
+                        title: 'Họ và tên',
+                        dataIndex: 'fullName',
+                        key: 'fullName',
+                        width: ROLE_TABLE_LAYOUT.fullName,
+                        ellipsis: true,
+                      },
+                      ...(canManageMeetingInvitees(detailMeeting)
+                        ? [
+                            {
+                              title: 'Vai trò',
+                              key: 'role',
+                              width: ROLE_TABLE_LAYOUT.role,
+                              align: 'center' as const,
+                              render: (_v: unknown, r: MeetingCoHostItem) => (
+                                <Select
+                                  size="small"
+                                  style={{ width: ROLE_TABLE_LAYOUT.roleSelect }}
+                                  value="host"
+                                  loading={demotingCoHostUsername === r.username}
+                                  options={[
+                                    { value: 'host', label: 'Chủ trì' },
+                                    { value: 'member', label: 'Thành viên' },
+                                  ]}
+                                  onChange={(value) => {
+                                    if (value === 'member') void demoteCoHostToInvitee(r.username);
+                                  }}
+                                />
+                              ),
+                            },
+                          ]
+                        : []),
+                      ...(canManageMeetingInvitees(detailMeeting)
+                        ? [
+                            {
+                              title: 'Xóa',
+                              key: 'delCo',
+                              width: ROLE_TABLE_LAYOUT.remove,
+                              align: 'center' as const,
+                              render: (_v: unknown, r: MeetingCoHostItem) => (
+                                <Popconfirm
+                                  title={`Gỡ quyền đồng chủ trì của ${r.username}?`}
+                                  okText="Xóa"
+                                  cancelText="Hủy"
+                                  onConfirm={() => void removeCoHostRow(r.hostUserId)}
+                                >
+                                  <Button
+                                    danger
+                                    size="small"
+                                    loading={removingCoHostUserId === r.hostUserId}
+                                  >
+                                    Xóa
+                                  </Button>
+                                </Popconfirm>
+                              ),
+                            },
+                          ]
+                        : []),
+                    ]}
+                  />
                 </div>
-                <span className="p-status-badge psb-invited">Đã mời</span>
+                <div className="section-title-sm" style={{ margin: '12px 16px 8px' }}>Người được mời</div>
+                {canManageMeetingInvitees(detailMeeting) && (
+                  <div className="p-invite-bar" style={{ borderTop: 'none' }}>
+                    <Input
+                      placeholder="Nhập username cần mời tham gia"
+                      value={inviteUsernameInput}
+                      onChange={(e) => setInviteUsernameInput(e.target.value)}
+                      onPressEnter={() => void submitAddInvitee()}
+                      style={{ flex: 1, minWidth: 200 }}
+                      allowClear
+                    />
+                    <Button type="primary" onClick={() => void submitAddInvitee()} loading={addingInvitee}>
+                      Thêm mời
+                    </Button>
+                  </div>
+                )}
+                <div style={{ padding: '0 12px 12px' }}>
+                  <Table<MeetingInvitee>
+                    loading={meetingInviteesLoading}
+                    rowKey={(r) => r.username.toLowerCase()}
+                    dataSource={meetingInvitees}
+                    pagination={false}
+                    scroll={{ x: ROLE_TABLE_LAYOUT.scrollX }}
+                    size="small"
+                    locale={{ emptyText: 'Chưa có người được mời' }}
+                    columns={[
+                      {
+                        title: 'STT',
+                        key: 'stt',
+                        width: ROLE_TABLE_LAYOUT.stt,
+                        align: 'center',
+                        render: (_v, _r, index) => index + 1,
+                      },
+                      {
+                        title: 'Username',
+                        dataIndex: 'username',
+                        key: 'username',
+                        width: ROLE_TABLE_LAYOUT.username,
+                        ellipsis: true,
+                      },
+                      {
+                        title: 'Họ và tên',
+                        dataIndex: 'fullName',
+                        key: 'fullName',
+                        width: ROLE_TABLE_LAYOUT.fullName,
+                        ellipsis: true,
+                      },
+                      ...(canManageMeetingInvitees(detailMeeting)
+                        ? [
+                            {
+                              title: 'Vai trò',
+                              key: 'role',
+                              width: ROLE_TABLE_LAYOUT.role,
+                              align: 'center' as const,
+                              render: (_v: unknown, r: MeetingInvitee) => (
+                                <Select
+                                  size="small"
+                                  style={{ width: ROLE_TABLE_LAYOUT.roleSelect }}
+                                  value="member"
+                                  loading={promotingInviteeUsername === r.username}
+                                  options={[
+                                    { value: 'host', label: 'Chủ trì' },
+                                    { value: 'member', label: 'Thành viên' },
+                                  ]}
+                                  onChange={(value) => {
+                                    if (value === 'host') void promoteInviteeToCoHost(r.username);
+                                  }}
+                                />
+                              ),
+                            },
+                            {
+                              title: 'Xóa',
+                              key: 'delete',
+                              width: ROLE_TABLE_LAYOUT.remove,
+                              align: 'center' as const,
+                              render: (_v: unknown, r: MeetingInvitee) => (
+                                <Popconfirm
+                                  title={`Xóa ${r.username} khỏi danh sách mời?`}
+                                  okText="Xóa"
+                                  cancelText="Hủy"
+                                  onConfirm={() => void removeInviteeRow(r.username)}
+                                >
+                                  <Button
+                                    danger
+                                    size="small"
+                                    loading={removingInviteeUsername === r.username}
+                                  >
+                                    Xóa
+                                  </Button>
+                                </Popconfirm>
+                              ),
+                            },
+                          ]
+                        : []),
+                    ]}
+                  />
+                </div>
               </div>
             </div>
 
             <div className="bottom-btns">
               <button className="btn-join" onClick={() => router.push(`/meeting/${detailMeeting.id}`)}>Tham gia cuộc họp →</button>
-              <button className="btn-edit" onClick={() => message.info('Chức năng chỉnh sửa cuộc họp')}>Chỉnh sửa</button>
+              {canEditMeeting(detailMeeting) && (
+                <button className="btn-edit" onClick={() => openEditMeetingModal(detailMeeting)}>Chỉnh sửa</button>
+              )}
               <button className="btn-delete" onClick={() => message.info('Chức năng xóa cuộc họp')}>Xóa</button>
             </div>
           </div>
         )}
       </div>
+
+      <Modal
+        title={editMeetingModal ? `Chỉnh sửa cuộc họp - ${editMeetingModal.title}` : 'Chỉnh sửa cuộc họp'}
+        open={Boolean(editMeetingModal)}
+        onCancel={() => {
+          setEditMeetingModal(null);
+          editMeetingForm.resetFields();
+        }}
+        onOk={() => void submitEditMeeting()}
+        okText="Lưu"
+        cancelText="Hủy"
+        confirmLoading={updatingMeeting}
+        destroyOnHidden
+      >
+        <Form
+          form={editMeetingForm}
+          layout="vertical"
+          initialValues={{
+            title: '',
+            startAt: null,
+            estimatedEndAt: null,
+          }}
+        >
+          <Form.Item
+            label="Tiêu đề cuộc họp"
+            name="title"
+            rules={[
+              { required: true, message: 'Vui lòng nhập tiêu đề cuộc họp' },
+              { max: 200, message: 'Tiêu đề không được quá 200 ký tự' },
+            ]}
+          >
+            <Input placeholder="Nhập tiêu đề cuộc họp" />
+          </Form.Item>
+          <Form.Item
+            label="Thời gian bắt đầu"
+            name="startAt"
+            rules={[{ required: true, message: 'Vui lòng chọn thời gian bắt đầu' }]}
+          >
+            <DatePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item
+            label="Kết thúc dự kiến"
+            name="estimatedEndAt"
+            rules={[
+              ({ getFieldValue }) => ({
+                validator(_rule: any, value: any) {
+                  const startAt = getFieldValue('startAt');
+                  if (!value || !startAt) return Promise.resolve();
+                  return value.valueOf() > startAt.valueOf()
+                    ? Promise.resolve()
+                    : Promise.reject(new Error('Thời gian kết thúc dự kiến phải sau thời gian bắt đầu'));
+                },
+              }),
+            ]}
+          >
+            <DatePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: '100%' }} allowClear />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* --- CÁC MODALS GIỮ NGUYÊN HOÀN TOÀN NHƯ CŨ --- */}
       <Modal

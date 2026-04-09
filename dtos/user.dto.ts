@@ -1,5 +1,12 @@
 // Frontend DTOs for User domain
 
+/** Kết quả tra cứu theo username (mời họp). */
+export interface UserLookupByUsername {
+  userId: string;
+  username: string;
+  fullName: string | null;
+}
+
 export interface UserProfile {
   id: string;
   username: string;

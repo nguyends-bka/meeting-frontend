@@ -29,9 +29,10 @@ interface SidebarProps {
   collapsed?: boolean;
   onCollapse?: (collapsed: boolean) => void;
   isMobile?: boolean;
+  compactMode?: boolean;
 }
 
-export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMobile }: SidebarProps) {
+export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMobile, compactMode }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAdmin, logout } = useAuth();
@@ -267,11 +268,11 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
 
   return (
     <Sider
-      className="app-sidebar"
+      className={`app-sidebar ${compactMode ? 'app-sidebar-compact' : ''}`}
       collapsible
       collapsed={collapsed}
       onCollapse={setCollapsed}
-      width={250}
+      width={compactMode ? 200 : 250}
       collapsedWidth={isMobile ? 0 : 80}
       style={{
         height: '100vh',
@@ -349,7 +350,11 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
             selectedKeys={getSelectedKeys()}
             items={menuItems}
             onClick={handleMenuClick}
-            style={{ borderRight: 0, backgroundColor: 'transparent' }}
+            style={{
+              borderRight: 0,
+              backgroundColor: 'transparent',
+              fontSize: compactMode ? 12 : 14,
+            }}
           />
         </ConfigProvider>
       </div>
@@ -380,6 +385,22 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
           .app-sidebar .ant-menu .ant-menu-item.ant-menu-item-selected .ant-menu-item-icon,
           .app-sidebar .ant-menu .ant-menu-item.ant-menu-item-selected .anticon {
             color: #ffffff !important;
+          }
+          .app-sidebar.app-sidebar-compact .ant-menu-item,
+          .app-sidebar.app-sidebar-compact .ant-menu-submenu-title {
+            height: 36px;
+            line-height: 36px;
+            margin-top: 2px;
+            margin-bottom: 2px;
+          }
+          .app-sidebar.app-sidebar-compact .ant-menu-title-content {
+            font-size: 12px;
+          }
+          .app-sidebar.app-sidebar-compact .sidebar-header {
+            padding: ${collapsed ? '12px 8px' : '12px'} !important;
+          }
+          .app-sidebar.app-sidebar-compact .sidebar-footer {
+            padding: 12px !important;
           }
           `,
         }}

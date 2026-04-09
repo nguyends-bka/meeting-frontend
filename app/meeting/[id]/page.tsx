@@ -396,6 +396,7 @@ export default function MeetingPage() {
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [currentMeetingId, setCurrentMeetingId] = useState<string | null>(null);
   const [meetingHostIdentity, setMeetingHostIdentity] = useState<string | null>(null);
+  const [isMeetingHostJoin, setIsMeetingHostJoin] = useState(false);
   const [isPollManager, setIsPollManager] = useState(false);
   const [preJoinDone, setPreJoinDone] = useState(false);
   const [userChoices, setUserChoices] = useState<LocalUserChoices | null>(null);
@@ -520,6 +521,7 @@ export default function MeetingPage() {
         setParticipantId(result.data.participantId);
         setCurrentMeetingId(result.data.meetingId);
         setMeetingHostIdentity(result.data.hostIdentity ?? null);
+        setIsMeetingHostJoin(Boolean(result.data.isMeetingHost));
         setPreJoinDone(true);
         setJoining(false);
       }
@@ -584,17 +586,13 @@ export default function MeetingPage() {
     };
   }, [preJoinDone, currentMeetingId, user?.username]);
 
-  const canCreatePoll = Boolean(
-    (normalizedHostIdentity &&
-      (normalizedHostIdentity === normalizedUserId ||
-        normalizedHostIdentity === normalizedUsername)) ||
-      isPollManager,
+  const isHost = Boolean(
+    isMeetingHostJoin ||
+      (normalizedHostIdentity &&
+        (normalizedHostIdentity === normalizedUserId || normalizedHostIdentity === normalizedUsername)),
   );
 
-  const isHost = Boolean(
-    normalizedHostIdentity &&
-      (normalizedHostIdentity === normalizedUserId || normalizedHostIdentity === normalizedUsername),
-  );
+  const canCreatePoll = Boolean(isHost || isPollManager);
 
   if (authLoading || (!isAuthenticated && !authLoading)) {
     return (

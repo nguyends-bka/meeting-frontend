@@ -26,15 +26,26 @@ export default function MainLayout({ children }: MainLayoutProps) {
     return viewportWidth < 768;
   }, [viewportWidth]);
 
+  const isCompactSidebar = useMemo(() => {
+    if (viewportWidth === null) return false;
+    return viewportWidth < 1024;
+  }, [viewportWidth]);
+
   useEffect(() => {
     if (isMobile) setCollapsed(true);
   }, [isMobile]);
 
-  const sidebarWidth = isMobile ? 0 : (collapsed ? 80 : 250);
+  const sidebarExpandedWidth = isCompactSidebar ? 200 : 250;
+  const sidebarWidth = isMobile ? 0 : (collapsed ? 80 : sidebarExpandedWidth);
 
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
-      <Sidebar collapsed={collapsed} onCollapse={setCollapsed} isMobile={isMobile} />
+      <Sidebar
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        isMobile={isMobile}
+        compactMode={isCompactSidebar}
+      />
       <Layout 
         style={{ 
           marginLeft: sidebarWidth,

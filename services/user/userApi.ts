@@ -1,6 +1,7 @@
 import { apiClient } from '../base/apiClient';
 import type {
   UserProfile,
+  UserLookupByUsername,
   UpdateProfileRequest,
   UpdateProfileResponse,
   ChangePasswordRequest,
@@ -10,6 +11,13 @@ import type {
 
 // User domain API - React Query compatible
 export const userApi = {
+  lookupByUsername: async (username: string) => {
+    const q = new URLSearchParams({ username: username.trim() });
+    return apiClient.request<UserLookupByUsername>(`/api/user/lookup?${q}`, {
+      method: 'GET',
+    });
+  },
+
   getProfile: async () => {
     return apiClient.request<UserProfile>('/api/user/profile', {
       method: 'GET',

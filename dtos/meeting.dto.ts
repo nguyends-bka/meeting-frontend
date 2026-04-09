@@ -28,6 +28,8 @@ export interface JoinMeetingResponse {
   participantId: string;
   title?: string;
   hostIdentity: string;
+  /** Chủ trì gốc hoặc đồng chủ trì — dùng cho quyền trong phòng. */
+  isMeetingHost?: boolean;
 }
 
 export interface LeaveMeetingRequest {
@@ -46,6 +48,8 @@ export interface MeetingListItem {
   hostName: string;
   hostIdentity: string;
   canManagePoll: boolean;
+  /** Chủ trì gốc hoặc đồng chủ trì (theo user đang đăng nhập). */
+  isMeetingHost?: boolean;
   meetingCode: string;
   passcode: string;
   createdAt: string;
@@ -54,9 +58,28 @@ export interface MeetingListItem {
   activeParticipantCount?: number;
 }
 
+/** Người được host mời — cùng cấu trúc PollManagerItem (bảng + API). */
+export interface MeetingInvitee {
+  username: string;
+  fullName: string;
+}
+
+/** Đồng chủ trì (nâng từ danh sách mời). */
+export interface MeetingCoHostItem {
+  hostUserId: string;
+  username: string;
+  fullName: string;
+}
+
 export interface EndMeetingResponse {
   message: string;
   endedAt?: string | null;
+}
+
+export interface UpdateMeetingRequest {
+  title: string;
+  startAt: number;
+  estimatedEndAt?: number | null;
 }
 
 export interface MeetingDocumentDto {

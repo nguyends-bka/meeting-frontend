@@ -22,6 +22,9 @@ import type {
   RoomChatCreateRequest,
   RoomTranscriptCreateRequest,
   EndMeetingResponse,
+  UpdateMeetingRequest,
+  MeetingInvitee,
+  MeetingCoHostItem,
 } from '@/dtos/meeting.dto';
 
 // Meeting domain API - React Query compatible
@@ -227,6 +230,71 @@ export const meetingApi = {
     return apiClient.request<EndMeetingResponse>(`/api/meeting/${encodeURIComponent(meetingId)}/end`, {
       method: 'POST',
     });
+  },
+
+  updateMeeting: async (meetingId: string, request: UpdateMeetingRequest) => {
+    return apiClient.request<MeetingListItem>(`/api/meeting/${encodeURIComponent(meetingId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  listInvitees: async (meetingId: string) => {
+    return apiClient.request<MeetingInvitee[]>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/invitees`,
+      { method: 'GET' },
+    );
+  },
+
+  addInvitee: async (meetingId: string, username: string) => {
+    return apiClient.request<MeetingInvitee>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/invitees`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ username: username.trim() }),
+      },
+    );
+  },
+
+  removeInvitee: async (meetingId: string, username: string) => {
+    return apiClient.request<{ message: string }>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/invitees/${encodeURIComponent(username)}`,
+      { method: 'DELETE' },
+    );
+  },
+
+  listCoHosts: async (meetingId: string) => {
+    return apiClient.request<MeetingCoHostItem[]>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/co-hosts`,
+      { method: 'GET' },
+    );
+  },
+
+  promoteInviteeToCoHost: async (meetingId: string, username: string) => {
+    return apiClient.request<MeetingCoHostItem>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/co-hosts/promote`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ username: username.trim() }),
+      },
+    );
+  },
+
+  demoteCoHostToInvitee: async (meetingId: string, username: string) => {
+    return apiClient.request<{ message: string }>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/co-hosts/demote`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ username: username.trim() }),
+      },
+    );
+  },
+
+  removeCoHost: async (meetingId: string, hostUserId: string) => {
+    return apiClient.request<{ message: string }>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/co-hosts/${encodeURIComponent(hostUserId)}`,
+      { method: 'DELETE' },
+    );
   },
 
   listMeetingDocuments: async (meetingId: string) => {

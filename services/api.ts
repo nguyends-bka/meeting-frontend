@@ -56,6 +56,10 @@ class ApiService {
     return meetingApi.getList();
   }
 
+  async updateMeeting(meetingId: string, request: { title: string; startAt: number; estimatedEndAt?: number | null }) {
+    return meetingApi.updateMeeting(meetingId, request);
+  }
+
   async getAllUsers() {
     return adminApi.getAllUsers();
   }
