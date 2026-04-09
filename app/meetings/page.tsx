@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { apiService, meetingApi } from '@/services/api';
 import type { MeetingMinutes, PollResponse, PollManagerItem, MeetingDocumentDto, MeetingInvitee, MeetingCoHostItem } from '@/dtos/meeting.dto';
@@ -10,6 +10,8 @@ import { buildMinutesText } from '@/lib/meetingMinutesFormat';
 import { exportMeetingMinutesWord } from '@/lib/exportMeetingMinutesWord';
 import MainLayout from '@/components/MainLayout';
 import dayjs from 'dayjs';
+import type { HistoryEntry, Meeting } from './_shared/types';
+import { formatHistoryParticipationDuration, participantInitials } from './_shared/helpers';
 import {
   App,
   Avatar,
@@ -67,75 +69,6 @@ import {
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 
-type Meeting = {
-  id: string;
-  title: string;
-  hostName: string;
-  hostIdentity: string;
-  canManagePoll: boolean;
-  isMeetingHost?: boolean;
-  meetingCode: string;
-  passcode: string;
-  createdAt: string;
-  startedAt?: string | null;
-  endedAt?: string | null;
-  activeParticipantCount?: number;
-};
-
-type HistoryEntry = {
-  id: string;
-  username: string;
-  fullName?: string | null;
-  userId: string;
-  joinedAt: string;
-  leftAt: string | null;
-  duration: number | null;
-};
-
-/** Đổi tổng giây sang chuỗi: giờ / phút / giây (chỉ hiện phần cần thiết). */
-function formatSecondsToDurationVietnamese(totalSec: number): string {
-  const sec = Math.max(0, Math.floor(totalSec));
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-
-  if (h > 0) {
-    if (m > 0 && s > 0) return `${h} giờ ${m} phút ${s} giây`;
-    if (m > 0 && s === 0) return `${h} giờ ${m} phút`;
-    if (m === 0 && s > 0) return `${h} giờ ${s} giây`;
-    return `${h} giờ`;
-  }
-  if (m > 0) {
-    return s > 0 ? `${m} phút ${s} giây` : `${m} phút`;
-  }
-  return `${s} giây`;
-}
-
-/** Thời lượng: ưu tiên chênh lệch Vào/Rời; fallback `duration` (phút, có thể lẻ). */
-function formatHistoryParticipationDuration(r: HistoryEntry): string {
-  if (!r.leftAt) return 'Đang tham gia';
-  const start = dayjs(r.joinedAt);
-  const end = dayjs(r.leftAt);
-  if (start.isValid() && end.isValid()) {
-    const totalSec = Math.max(0, end.diff(start, 'second'));
-    return formatSecondsToDurationVietnamese(totalSec);
-  }
-  if (r.duration != null && r.duration !== undefined) {
-    const totalSec = Math.max(0, Math.round(Number(r.duration) * 60));
-    return formatSecondsToDurationVietnamese(totalSec);
-  }
-  return '—';
-}
-
-function participantInitials(displayName: string, username: string): string {
-  const s = (displayName || username || '?').trim();
-  const parts = s.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-  }
-  return (s.slice(0, 2) || '?').toUpperCase();
-}
-
 export default function MeetingsPage() {
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
@@ -147,7 +80,11 @@ export default function MeetingsPage() {
 
   const router = useRouter();
   const params = useParams<{ id?: string }>();
-  const forcedDetailMeetingId = typeof params?.id === 'string' ? params.id : undefined;
+  const searchParams = useSearchParams();
+  const forcedDetailMeetingId =
+    typeof params?.id === 'string'
+      ? params.id
+      : (searchParams.get('detailId') || undefined);
   const { user, isAuthenticated, loading, isAdmin } = useAuth();
   const { message } = App.useApp();
 
@@ -850,6 +787,27 @@ export default function MeetingsPage() {
         .detail-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
         .detail-title { font-size: 20px; font-weight: 600; color: #1e293b; }
         .detail-sub { font-size: 12px; color: #94a3b8; margin-top: 3px; }
+        .detail-header-modern { padding: 18px 20px 16px; }
+        .detail-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+        .detail-meta-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 5px; color: #64748b; font-size: 13px; }
+        .dot-sep { color: #cbd5e1; }
+        .status-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; border: 1px solid transparent; white-space: nowrap; }
+        .status-pill-upcoming { background: #fff7ed; color: #b45309; border-color: #fde68a; }
+        .status-pill-live { background: #ecfeff; color: #0f766e; border-color: #99f6e4; }
+        .status-pill-done { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+        .detail-modern-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .time-range-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
+        .host-modern-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+        .range-arrow { color: #94a3b8; font-size: 18px; }
+        .section-mini-title { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; font-weight: 600; }
+        .section-mini-value { font-size: 30px; font-weight: 700; color: #1e293b; line-height: 1.1; }
+        .section-mini-sub { font-size: 13px; color: #64748b; margin-top: 2px; font-weight: 500; }
+        .host-row { display: flex; align-items: center; gap: 10px; }
+        .host-avatar-mini { width: 38px; height: 38px; border-radius: 50%; background: #dbeafe; color: #1d4ed8; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+        .host-name-main { font-size: 28px; font-weight: 700; color: #1e293b; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .join-info-wrap { margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+        .join-info-title { font-size: 22px; color: #1e293b; margin: 0 0 10px; font-weight: 700; }
+        .access-card-modern { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; }
         
         .info-block { background: #f8fafc; border-radius: 6px; padding: 12px 14px; height: 100%; }
         .ib-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; font-weight: 600; }
@@ -896,6 +854,10 @@ export default function MeetingsPage() {
         .btn-delete:hover { background: #fef2f2; }
 
         @media (max-width: 992px) {
+          .detail-modern-grid { grid-template-columns: 1fr; }
+          .section-mini-value { font-size: 24px; }
+          .host-name-main { font-size: 24px; }
+          .join-info-title { font-size: 18px; }
           .participants-card .ant-table { font-size: 12px; }
           .participants-card .ant-table-thead > tr > th,
           .participants-card .ant-table-tbody > tr > td {
@@ -931,6 +893,11 @@ export default function MeetingsPage() {
         }
 
         @media (max-width: 768px) {
+          .detail-header-modern { padding: 14px 12px; }
+          .detail-top { flex-direction: column; align-items: stretch; }
+          .status-pill { align-self: flex-start; font-size: 12px; padding: 5px 10px; }
+          .time-range-card { grid-template-columns: 1fr; }
+          .range-arrow { display: none; }
           .search-input-wrapper { min-width: 100%; }
           .filter-chip-row {
             width: 100%;
@@ -1200,92 +1167,92 @@ export default function MeetingsPage() {
               <ArrowLeftOutlined /> Quay lại danh sách
             </button>
 
-            <div className="detail-header">
-              <div className="detail-title-row">
+            <div className="detail-header detail-header-modern">
+              <div className="detail-top">
                 <div>
                   <div className="detail-title">{detailMeeting.title}</div>
-                  <div className="detail-sub">Tạo bởi {detailMeeting.hostName} · {dayjs(detailMeeting.createdAt).format('DD/MM/YYYY')}</div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                  {(() => {
-                    const isEnded = Boolean(detailMeeting.endedAt);
-                    const isLive = !isEnded && (detailMeeting.activeParticipantCount ?? 0) > 0;
-                    if (isLive) return <span className="status-badge status-live"><span className="dot dot-blink"></span> Đang diễn ra</span>;
-                    if (isEnded) return <span className="status-badge status-done">Đã kết thúc</span>;
-                    return <span className="status-badge status-upcoming">Chưa diễn ra</span>;
-                  })()}
-                  {detailMeeting.endedAt && (
-                    <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
-                      {dayjs(detailMeeting.endedAt).format('HH:mm - DD/MM/YYYY')}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <Row gutter={[10, 10]} style={{ marginBottom: 16 }}>
-                <Col xs={24} md={8}>
-                  <div className="info-block">
-                    <div className="ib-label">Thời gian bắt đầu</div>
-                    <div className="ib-value">{dayjs(detailMeeting.createdAt).format('HH:mm')}</div>
-                    <div className="ib-sub">{dayjs(detailMeeting.createdAt).format('DD/MM/YYYY')}</div>
+                  <div className="detail-meta-line">
+                    <span><UserOutlined /> Tạo bởi <b>{detailMeeting.hostName}</b></span>
+                    <span className="dot-sep">•</span>
+                    <span><CalendarOutlined /> {dayjs(detailMeeting.createdAt).format('DD/MM/YYYY')}</span>
                   </div>
-                </Col>
-                <Col xs={24} md={8}>
-                  <div className="info-block">
-                    <div className="ib-label">Kết thúc dự kiến</div>
+                </div>
+                {(() => {
+                  const isEnded = Boolean(detailMeeting.endedAt);
+                  const isLive = !isEnded && (detailMeeting.activeParticipantCount ?? 0) > 0;
+                  if (isLive) return <span className="status-pill status-pill-live"><span className="dot dot-blink"></span> Đang diễn ra</span>;
+                  if (isEnded) return <span className="status-pill status-pill-done">Đã kết thúc</span>;
+                  return <span className="status-pill status-pill-upcoming">Chưa diễn ra</span>;
+                })()}
+              </div>
+
+              <div className="detail-modern-grid">
+                <div className="time-range-card">
+                  <div>
+                    <div className="section-mini-title">Bắt đầu dự kiến</div>
+                    <div className="section-mini-value">{dayjs(detailMeeting.createdAt).format('HH:mm')}</div>
+                    <div className="section-mini-sub">{dayjs(detailMeeting.createdAt).format('DD/MM/YYYY')}</div>
+                  </div>
+                  <div className="range-arrow">→</div>
+                  <div>
+                    <div className="section-mini-title">Kết thúc dự kiến</div>
                     {detailMeeting.startedAt ? (
                       <>
-                        <div className="ib-value">{dayjs(detailMeeting.startedAt).format('HH:mm')}</div>
-                        <div className="ib-sub">{dayjs(detailMeeting.startedAt).format('DD/MM/YYYY')}</div>
+                        <div className="section-mini-value">{dayjs(detailMeeting.startedAt).format('HH:mm')}</div>
+                        <div className="section-mini-sub">{dayjs(detailMeeting.startedAt).format('DD/MM/YYYY')}</div>
                       </>
                     ) : (
                       <>
-                        <div className="ib-value">—</div>
-                        <div className="ib-sub">Chưa đặt thời gian</div>
+                        <div className="section-mini-value">—</div>
+                        <div className="section-mini-sub">Chưa đặt thời gian</div>
                       </>
                     )}
                   </div>
-                </Col>
-                <Col xs={24} md={8}>
-                  <div className="info-block">
-                    <div className="ib-label">Host</div>
-                    <div className="ib-value">{detailMeeting.hostName}</div>
-                    <div className="ib-sub">Quản trị viên</div>
-                  </div>
-                </Col>
-              </Row>
-              
-              <hr className="detail-divider" />
-              
-              <Row gutter={[10, 10]}>
-                <Col xs={24} sm={12} lg={6}>
-                  <div className="access-card">
-                    <div className="ac-label">Mã phòng</div>
-                    <div className="ac-val-row">
-                      <span className="ac-val">{detailMeeting.meetingCode}</span>
-                      <button className="btn-copy" onClick={() => copyText(detailMeeting.meetingCode, 'Mã phòng')}>Sao chép</button>
+                </div>
+                <div className="host-modern-card">
+                  <div className="section-mini-title">Người chủ trì (Host)</div>
+                  <div className="host-row">
+                    <span className="host-avatar-mini">{participantInitials(detailMeeting.hostName, detailMeeting.hostName)}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="host-name-main">{detailMeeting.hostName}</div>
+                      <div className="section-mini-sub">Quản trị viên</div>
                     </div>
                   </div>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                  <div className="access-card">
-                    <div className="ac-label">Mật khẩu</div>
-                    <div className="ac-val-row">
-                      <span className="ac-val">{detailMeeting.passcode}</span>
-                      <button className="btn-copy" onClick={() => copyText(detailMeeting.passcode, 'Mật khẩu')}>Sao chép</button>
+                </div>
+              </div>
+
+              <div className="join-info-wrap">
+                <div className="join-info-title">Thông tin tham gia</div>
+                <Row gutter={[10, 10]}>
+                  <Col xs={24}>
+                    <div className="access-card-modern">
+                      <div className="ac-label">Đường dẫn tham gia</div>
+                      <div className="ac-val-row">
+                        <span className="ac-val" style={{ fontSize: 13, letterSpacing: 0 }}>{buildMeetingLink(detailMeeting.id)}</span>
+                        <button className="btn-copy" onClick={() => copyText(buildMeetingLink(detailMeeting.id), 'Đường dẫn')}>Sao chép</button>
+                      </div>
                     </div>
-                  </div>
-                </Col>
-                <Col xs={24} lg={12}>
-                  <div className="access-card">
-                    <div className="ac-label">Đường dẫn tham gia</div>
-                    <div className="ac-val-row">
-                      <span className="ac-val" style={{ fontSize: 13, letterSpacing: 0 }}>{buildMeetingLink(detailMeeting.id)}</span>
-                      <button className="btn-copy" onClick={() => copyText(buildMeetingLink(detailMeeting.id), 'Đường dẫn')}>Sao chép</button>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <div className="access-card-modern">
+                      <div className="ac-label">Mã phòng</div>
+                      <div className="ac-val-row">
+                        <span className="ac-val">{detailMeeting.meetingCode}</span>
+                        <button className="btn-copy" onClick={() => copyText(detailMeeting.meetingCode, 'Mã phòng')}>Sao chép</button>
+                      </div>
                     </div>
-                  </div>
-                </Col>
-              </Row>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <div className="access-card-modern">
+                      <div className="ac-label">Mật khẩu</div>
+                      <div className="ac-val-row">
+                        <span className="ac-val">{detailMeeting.passcode}</span>
+                        <button className="btn-copy" onClick={() => copyText(detailMeeting.passcode, 'Mật khẩu')}>Sao chép</button>
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+              </div>
             </div>
 
             <div className="section-title-sm">Thao tác nhanh</div>
@@ -1336,21 +1303,21 @@ export default function MeetingsPage() {
                     locale={{ emptyText: 'Chưa có đồng chủ trì' }}
                     columns={[
                       {
-                        title: 'STT',
+                        title: <span style={{ display: 'block', textAlign: 'center' }}>STT</span>,
                         key: 'stt',
                         width: ROLE_TABLE_LAYOUT.stt,
                         align: 'center',
                         render: (_v, _r, index) => index + 1,
                       },
                       {
-                        title: 'Username',
+                        title: <span style={{ display: 'block', textAlign: 'center' }}>Username</span>,
                         dataIndex: 'username',
                         key: 'username',
                         width: ROLE_TABLE_LAYOUT.username,
                         ellipsis: true,
                       },
                       {
-                        title: 'Họ và tên',
+                        title: <span style={{ display: 'block', textAlign: 'center' }}>Họ và tên</span>,
                         dataIndex: 'fullName',
                         key: 'fullName',
                         width: ROLE_TABLE_LAYOUT.fullName,
@@ -1359,7 +1326,7 @@ export default function MeetingsPage() {
                       ...(canManageMeetingInvitees(detailMeeting)
                         ? [
                             {
-                              title: 'Vai trò',
+                              title: <span style={{ display: 'block', textAlign: 'center' }}>Vai trò</span>,
                               key: 'role',
                               width: ROLE_TABLE_LAYOUT.role,
                               align: 'center' as const,
@@ -1384,7 +1351,7 @@ export default function MeetingsPage() {
                       ...(canManageMeetingInvitees(detailMeeting)
                         ? [
                             {
-                              title: 'Xóa',
+                              title: <span style={{ display: 'block', textAlign: 'center' }}>Xóa</span>,
                               key: 'delCo',
                               width: ROLE_TABLE_LAYOUT.remove,
                               align: 'center' as const,
@@ -1418,11 +1385,16 @@ export default function MeetingsPage() {
                       value={inviteUsernameInput}
                       onChange={(e) => setInviteUsernameInput(e.target.value)}
                       onPressEnter={() => void submitAddInvitee()}
-                      style={{ flex: 1, minWidth: 200 }}
+                      style={{ flex: 1, minWidth: 200, height: 36 }}
                       allowClear
                     />
-                    <Button type="primary" onClick={() => void submitAddInvitee()} loading={addingInvitee}>
-                      Thêm mời
+                    <Button
+                      type="primary"
+                      onClick={() => void submitAddInvitee()}
+                      loading={addingInvitee}
+                      style={{ height: 36 }}
+                    >
+                      Thêm
                     </Button>
                   </div>
                 )}
@@ -1437,21 +1409,21 @@ export default function MeetingsPage() {
                     locale={{ emptyText: 'Chưa có người được mời' }}
                     columns={[
                       {
-                        title: 'STT',
+                        title: <span style={{ display: 'block', textAlign: 'center' }}>STT</span>,
                         key: 'stt',
                         width: ROLE_TABLE_LAYOUT.stt,
                         align: 'center',
                         render: (_v, _r, index) => index + 1,
                       },
                       {
-                        title: 'Username',
+                        title: <span style={{ display: 'block', textAlign: 'center' }}>Username</span>,
                         dataIndex: 'username',
                         key: 'username',
                         width: ROLE_TABLE_LAYOUT.username,
                         ellipsis: true,
                       },
                       {
-                        title: 'Họ và tên',
+                        title: <span style={{ display: 'block', textAlign: 'center' }}>Họ và tên</span>,
                         dataIndex: 'fullName',
                         key: 'fullName',
                         width: ROLE_TABLE_LAYOUT.fullName,
@@ -1460,7 +1432,7 @@ export default function MeetingsPage() {
                       ...(canManageMeetingInvitees(detailMeeting)
                         ? [
                             {
-                              title: 'Vai trò',
+                              title: <span style={{ display: 'block', textAlign: 'center' }}>Vai trò</span>,
                               key: 'role',
                               width: ROLE_TABLE_LAYOUT.role,
                               align: 'center' as const,
@@ -1481,7 +1453,7 @@ export default function MeetingsPage() {
                               ),
                             },
                             {
-                              title: 'Xóa',
+                              title: <span style={{ display: 'block', textAlign: 'center' }}>Xóa</span>,
                               key: 'delete',
                               width: ROLE_TABLE_LAYOUT.remove,
                               align: 'center' as const,
