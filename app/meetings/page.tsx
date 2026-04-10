@@ -771,140 +771,151 @@ function MeetingsPageContent() {
     <MainLayout>
       {/* CSS Tuỳ chỉnh: Đã lược bỏ toàn bộ Media Queries của Grid vì chúng ta dùng Row/Col */}
       <style dangerouslySetInnerHTML={{__html: `
-        .dashboard-container { padding: 24px; width: 100%; animation: fadeIn 0.2s ease-out;}
+        /* === TOKEN HỆ THỐNG === */
+        /* font-size scale: 11 / 12 / 13 / 14 / 16 / 20 */
+        /* font-weight: 400 / 500 / 600 / 700 */
+        /* color: #1e293b(body) / #64748b(secondary) / #94a3b8(muted) / #2563eb(primary) */
+
+        .dashboard-container { padding: 24px; width: 100%; animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-        
+
+        /* === FILTER BAR === */
         .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .search-input-wrapper { flex: 1; min-width: 250px; }
-        .filter-chip-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .filter-chip { height: 38px; padding: 0 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #64748b; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; flex: 0 0 auto; }
+        .filter-chip-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .filter-chip { height: 36px; padding: 0 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex: 0 0 auto; }
         .filter-chip:hover { border-color: #2563eb; color: #2563eb; }
         .filter-chip.active { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; font-weight: 600; }
-        
+
+        /* === TABLE === */
         .table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: visible; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
         .meetings-pagination { display: flex; align-items: center; flex-wrap: nowrap; white-space: nowrap; margin: 0; }
         .meetings-pagination .ant-pagination-options { margin-inline-start: 6px; }
         .meetings-pagination .ant-select-selector { min-width: 72px; }
-        
+
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
+        /* === DETAIL PAGE === */
         .page-detail { animation: fadeIn 0.2s ease-out; }
-        .detail-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #64748b; cursor: pointer; margin-bottom: 18px; background: none; border: none; padding: 6px 10px; border-radius: 6px; transition: all 0.15s; font-weight: 500;}
+        .detail-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #64748b; cursor: pointer; margin-bottom: 16px; background: none; border: none; padding: 5px 10px; border-radius: 6px; transition: all 0.15s; font-weight: 500; }
         .detail-back:hover { background: #fff; color: #2563eb; }
         .detail-header { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
         .detail-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-        .detail-title { font-size: 20px; font-weight: 600; color: #1e293b; }
+        /* Tiêu đề cuộc họp: 18px, đồng bộ với heading level của trang */
+        .detail-title { font-size: 18px; font-weight: 700; color: #1e293b; line-height: 1.3; }
         .detail-sub { font-size: 12px; color: #94a3b8; margin-top: 3px; }
         .detail-header-modern { padding: 18px 20px 16px; }
         .detail-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
-        .detail-meta-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 5px; color: #64748b; font-size: 13px; }
+        .detail-meta-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; color: #64748b; font-size: 13px; }
         .dot-sep { color: #cbd5e1; }
-        .status-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; border: 1px solid transparent; white-space: nowrap; }
+
+        /* Status pill: thống nhất 12px để khớp với badge trong bảng danh sách */
+        .status-pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid transparent; white-space: nowrap; }
         .status-pill-upcoming { background: #fff7ed; color: #b45309; border-color: #fde68a; }
-        .status-pill-live { background: #ecfeff; color: #0f766e; border-color: #99f6e4; }
+        .status-pill-live { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
         .status-pill-done { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+
+        /* Grid thông tin giờ + host */
         .detail-modern-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; margin-bottom: 12px; }
-        .time-range-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
-        .host-modern-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
-        .range-arrow { color: #94a3b8; font-size: 18px; }
-        .section-mini-title { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; font-weight: 600; }
-        .section-mini-value { font-size: 30px; font-weight: 700; color: #1e293b; line-height: 1.1; }
-        .section-mini-sub { font-size: 13px; color: #64748b; margin-top: 2px; font-weight: 500; }
-        .host-row { display: flex; align-items: center; gap: 10px; }
-        .host-avatar-mini { width: 38px; height: 38px; border-radius: 50%; background: #dbeafe; color: #1d4ed8; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
-        .host-name-main { font-size: 28px; font-weight: 700; color: #1e293b; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-        .join-info-wrap { margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 12px; }
-        .join-info-title { font-size: 22px; color: #1e293b; margin: 0 0 10px; font-weight: 700; }
-        .access-card-modern { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; }
-        
+        .time-range-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
+        .host-modern-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; }
+        .range-arrow { color: #94a3b8; font-size: 16px; }
+
+        /* Label tiêu đề nhỏ: nhất quán 11px uppercase */
+        .section-mini-title { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+        /* Giá trị thời gian: giảm từ 30px → 22px, đủ nổi bật không quá to */
+        .section-mini-value { font-size: 22px; font-weight: 700; color: #1e293b; line-height: 1.2; }
+        /* Ngày phụ: 12px, nhẹ hơn value */
+        .section-mini-sub { font-size: 12px; color: #64748b; margin-top: 2px; font-weight: 400; }
+
+        /* Host card: đồng bộ font với phần còn lại */
+        .host-row { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+        .host-avatar-mini { width: 36px; height: 36px; border-radius: 50%; background: #dbeafe; color: #1d4ed8; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+        /* Tên host: giảm từ 28px → 16px, đồng nhất với detail-title */
+        .host-name-main { font-size: 16px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .host-role-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+        /* Join info section */
+        .join-info-wrap { margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 14px; }
+        /* Tiêu đề section: giảm từ 22px → 15px, dùng font-weight 600 */
+        .join-info-title { font-size: 15px; color: #1e293b; margin: 0 0 12px; font-weight: 600; }
+        .access-card-modern { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; }
+
         .info-block { background: #f8fafc; border-radius: 6px; padding: 12px 14px; height: 100%; }
         .ib-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; font-weight: 600; }
-        .ib-value { font-size: 15px; font-weight: 600; color: #1e293b; }
+        .ib-value { font-size: 14px; font-weight: 600; color: #1e293b; }
         .ib-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
-        
+
         .detail-divider { border: none; border-top: 1px solid #e2e8f0; margin: 14px 0; }
-        
+
+        /* Access cards (mã phòng, mật khẩu, link) */
         .access-card { background: #f8fafc; border-radius: 6px; padding: 10px 14px; height: 100%; }
         .ac-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
         .ac-val-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
-        .ac-val { font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; color: #1e293b; letter-spacing: 0.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
-        .btn-copy { font-size: 11px; padding: 3px 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #64748b; cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0;}
+        /* Giá trị mã: 14px monospace thay vì 16px, đọc dễ hơn */
+        .ac-val { font-family: 'Courier New', monospace; font-size: 14px; font-weight: 700; color: #1e293b; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+        .btn-copy { font-size: 11px; padding: 3px 10px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #64748b; cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; }
         .btn-copy:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
-        
-        .section-title-sm { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 10px; }
-        
-        .qa-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column; gap: 6px; height: 100%; }
+
+        /* Section labels trên trang detail */
+        .section-title-sm { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 8px; }
+
+        /* Quick action cards */
+        .qa-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column; gap: 5px; height: 100%; }
         .qa-card:hover { border-color: #2563eb; box-shadow: 0 0 0 3px #eff6ff; }
-        .qa-icon { width: 34px; height: 34px; background: #eff6ff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-bottom: 2px; }
+        .qa-icon { width: 32px; height: 32px; background: #eff6ff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; margin-bottom: 4px; }
         .qa-name { font-size: 13px; font-weight: 600; color: #1e293b; }
-        .qa-desc { font-size: 11px; color: #94a3b8; }
-        
+        .qa-desc { font-size: 12px; color: #94a3b8; }
+
+        /* Participants card */
         .participants-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-        .p-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; }
+        .p-row { display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-bottom: 1px solid #e2e8f0; }
         .p-row:last-child { border-bottom: none; }
-        .p-avatar { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+        .p-avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
         .av-blue { background: #dbeafe; color: #1d4ed8; }
         .av-amber { background: #fef3c7; color: #92400e; }
         .p-name-col { flex: 1; min-width: 0; }
         .p-name { font-size: 13px; font-weight: 500; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .p-role { font-size: 11px; color: #94a3b8; }
+        .p-role { font-size: 11px; color: #94a3b8; margin-top: 1px; }
         .p-status-badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; font-weight: 500; white-space: nowrap; }
         .psb-host { background: #dbeafe; color: #1d4ed8; }
         .psb-invited { background: #f1f5f9; color: #64748b; }
         .p-invite-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid #e2e8f0; background: #f8fafc; }
-        
+
+        /* Bottom action buttons */
         .bottom-btns { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
-        .btn-join { flex: 1; padding: 10px; border-radius: 6px; background: #2563eb; color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; white-space: nowrap; min-width: 150px; }
+        .btn-join { flex: 1; padding: 9px 16px; border-radius: 6px; background: #2563eb; color: white; border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; white-space: nowrap; min-width: 150px; }
         .btn-join:hover { background: #1d4ed8; }
-        .btn-edit { padding: 10px 18px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; color: #1e293b; font-size: 13px; cursor: pointer; transition: background 0.15s; font-weight: 500; white-space: nowrap;}
+        .btn-edit { padding: 9px 18px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; color: #1e293b; font-size: 13px; cursor: pointer; transition: background 0.15s; font-weight: 500; white-space: nowrap; }
         .btn-edit:hover { background: #f8fafc; }
-        .btn-delete { padding: 10px 18px; border-radius: 6px; border: 1px solid #fecaca; background: white; color: #ef4444; font-size: 13px; cursor: pointer; transition: background 0.15s; font-weight: 500; white-space: nowrap;}
+        .btn-delete { padding: 9px 18px; border-radius: 6px; border: 1px solid #fecaca; background: white; color: #ef4444; font-size: 13px; cursor: pointer; transition: background 0.15s; font-weight: 500; white-space: nowrap; }
         .btn-delete:hover { background: #fef2f2; }
 
         @media (max-width: 992px) {
           .detail-modern-grid { grid-template-columns: 1fr; }
-          .section-mini-value { font-size: 24px; }
-          .host-name-main { font-size: 24px; }
-          .join-info-title { font-size: 18px; }
+          .section-mini-value { font-size: 20px; }
+          .host-name-main { font-size: 15px; }
+          .join-info-title { font-size: 14px; }
           .participants-card .ant-table { font-size: 12px; }
           .participants-card .ant-table-thead > tr > th,
           .participants-card .ant-table-tbody > tr > td {
             padding: 6px 4px !important;
             white-space: nowrap;
           }
-          .participants-card .ant-btn-sm {
-            height: 26px;
-            padding: 0 8px;
-            font-size: 12px;
-          }
-          .participants-card .ant-select-selector {
-            height: 28px !important;
-            font-size: 12px;
-            padding-inline: 2px !important;
-          }
-          .participants-card .ant-select-selection-item {
-            line-height: 26px !important;
-          }
-          .p-invite-bar {
-            padding: 8px 10px;
-            gap: 6px;
-          }
-          .p-invite-bar .ant-input {
-            height: 32px;
-            font-size: 13px;
-          }
-          .p-invite-bar .ant-btn {
-            height: 32px;
-            font-size: 12px;
-            padding: 0 10px;
-          }
+          .participants-card .ant-btn-sm { height: 26px; padding: 0 8px; font-size: 12px; }
+          .participants-card .ant-select-selector { height: 28px !important; font-size: 12px; padding-inline: 2px !important; }
+          .participants-card .ant-select-selection-item { line-height: 26px !important; }
+          .p-invite-bar { padding: 8px 10px; gap: 6px; }
+          .p-invite-bar .ant-input { height: 32px; font-size: 13px; }
+          .p-invite-bar .ant-btn { height: 32px; font-size: 12px; padding: 0 10px; }
         }
 
         @media (max-width: 768px) {
+          .dashboard-container { padding: 16px; }
           .detail-header-modern { padding: 14px 12px; }
           .detail-top { flex-direction: column; align-items: stretch; }
-          .status-pill { align-self: flex-start; font-size: 12px; padding: 5px 10px; }
-          .time-range-card { grid-template-columns: 1fr; }
+          .status-pill { align-self: flex-start; }
+          .time-range-card { grid-template-columns: 1fr; gap: 12px; }
           .range-arrow { display: none; }
           .search-input-wrapper { min-width: 100%; }
           .filter-chip-row {
@@ -916,7 +927,7 @@ function MeetingsPageContent() {
             padding-bottom: 2px;
           }
           .filter-chip-row::-webkit-scrollbar { display: none; }
-          .section-title-sm { font-size: 11px; margin: 12px 0 8px; }
+          .section-title-sm { margin: 12px 0 6px; }
         }
       `}}/>
 
@@ -941,11 +952,11 @@ function MeetingsPageContent() {
                 <VideoCameraOutlined />
               </div>
               <div>
-                <Typography.Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1e293b' }}>
+                <Typography.Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1e293b', fontSize: 18 }}>
                   {isAdmin ? 'Quản lý tất cả cuộc họp' : 'Quản lý cuộc họp'}
                 </Typography.Title>
-                <Typography.Text style={{ color: '#64748b', fontSize: 13, fontWeight: 500 }}>
-                  <>Tổng cộng <span style={{ color: '#2563eb', fontWeight: 700 }}>{meetings.length}</span> cuộc họp đã tạo</>
+                <Typography.Text style={{ color: '#64748b', fontSize: 13, fontWeight: 400 }}>
+                  <>Tổng cộng <span style={{ color: '#2563eb', fontWeight: 600 }}>{meetings.length}</span> cuộc họp đã tạo</>
                 </Typography.Text>
               </div>
             </Space>
@@ -962,26 +973,26 @@ function MeetingsPageContent() {
             {/* Stats Section sử dụng Row Col với 2 thông số */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }} align="stretch">
               <Col xs={24} sm={12} md={6}>
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500, minHeight: 38 }}>Tổng cuộc họp</div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Tổng cuộc họp</div>
                   <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b', lineHeight: 1 }}>{statTotal}</div>
                 </div>
               </Col>
               <Col xs={24} sm={12} md={6}>
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500, minHeight: 38 }}>Chưa diễn ra</div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Chưa diễn ra</div>
                   <div style={{ fontSize: 28, fontWeight: 700, color: '#2563eb', lineHeight: 1 }}>{statUpcoming}</div>
                 </div>
               </Col>
               <Col xs={24} sm={12} md={6}>
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500, minHeight: 38 }}>Đang diễn ra</div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Đang diễn ra</div>
                   <div style={{ fontSize: 28, fontWeight: 700, color: '#16a34a', lineHeight: 1 }}>{statLive}</div>
                 </div>
               </Col>
               <Col xs={24} sm={12} md={6}>
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8, fontWeight: 500, minHeight: 38 }}>Đã kết thúc</div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Đã kết thúc</div>
                   <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b', lineHeight: 1 }}>{statDone}</div>
                 </div>
               </Col>
@@ -1223,7 +1234,7 @@ function MeetingsPageContent() {
                     <span className="host-avatar-mini">{participantInitials(detailMeeting.hostName, detailMeeting.hostName)}</span>
                     <div style={{ minWidth: 0 }}>
                       <div className="host-name-main">{detailMeeting.hostName}</div>
-                      <div className="section-mini-sub">Quản trị viên</div>
+                      <div className="host-role-sub">Quản trị viên</div>
                     </div>
                   </div>
                 </div>
