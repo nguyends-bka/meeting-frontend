@@ -5,6 +5,8 @@ import { App, Modal } from 'antd';
 import { useAuth } from '@/lib/auth';
 import { apiService } from '@/services/api';
 import {
+  type FaceAngle,
+  type FaceEmbeddingMessage,
   addRegisterFaceEmbeddingListener,
   FACE_FRAME_SEND_INTERVAL_MS,
   removeRegisterFaceEmbeddingListener,
@@ -16,6 +18,13 @@ import './face-registration-modal.css';
 
 const SESSION_SKIP_KEY = 'bk_face_reg_skipped';
 const SESSION_FORCE_OPEN_KEY = 'bk_face_reg_force_open';
+const FACE_ANGLE_ORDER: FaceAngle[] = ['straight', 'right', 'left', 'up'];
+const FACE_ANGLE_PROMPT: Record<FaceAngle, string> = {
+  straight: 'Vui lòng nhìn thẳng',
+  right: 'Vui lòng nhìn sang phải',
+  left: 'Vui lòng nhìn sang trái',
+  up: 'Vui lòng ngẩng lên',
+};
 
 export function FaceRegistrationGate() {
   const { user, loading, isAuthenticated, updateUser } = useAuth();
@@ -37,6 +46,8 @@ export function FaceRegistrationGate() {
   const updateUserRef = useRef(updateUser);
   const userHadFaceEmbeddingRef = useRef(false);
   const faceGuideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const angleEmbeddingsRef = useRef<Partial<Record<FaceAngle, number[]>>>({});
+  const [currentPrompt, setCurrentPrompt] = useState(FACE_ANGLE_PROMPT.straight);
   messageRef.current = message;
   updateUserRef.current = updateUser;
   userHadFaceEmbeddingRef.current = Boolean(user?.hasFaceEmbedding);
@@ -104,6 +115,8 @@ export function FaceRegistrationGate() {
     setRegistering(false);
     setCameraFlowStarted(false);
     setFaceGuideDetected(false);
+    angleEmbeddingsRef.current = {};
+    setCurrentPrompt(FACE_ANGLE_PROMPT.straight);
     stopCamera();
     stopRegisterFaceDeviceConnection();
   }, [stopCamera]);
@@ -217,11 +230,32 @@ export function FaceRegistrationGate() {
 
     let regInFlight = false;
 
-    const onEmbedding = async (embedding: number[]) => {
+    const onEmbedding = async (payload: FaceEmbeddingMessage) => {
       if (!flowActiveRef.current || cancelled || regInFlight) return;
+      if (!payload.angle || !FACE_ANGLE_ORDER.includes(payload.angle)) return;
+      const expectedAngle =
+        FACE_ANGLE_ORDER.find((x) => angleEmbeddingsRef.current[x] == null) ?? null;
+      if (!expectedAngle) return;
+      if (payload.angle !== expectedAngle) return;
+
+      angleEmbeddingsRef.current[payload.angle] = payload.embedding;
+      const nextExpected =
+        FACE_ANGLE_ORDER.find((x) => angleEmbeddingsRef.current[x] == null) ?? null;
+      if (nextExpected) {
+        setCurrentPrompt(FACE_ANGLE_PROMPT[nextExpected]);
+        return;
+      }
+
       regInFlight = true;
       try {
-        const res = await apiService.registerFaceEmbedding(embedding);
+        const straight = angleEmbeddingsRef.current.straight;
+        const right = angleEmbeddingsRef.current.right;
+        const left = angleEmbeddingsRef.current.left;
+        const up = angleEmbeddingsRef.current.up;
+        if (!straight || !right || !left || !up) return;
+
+        messageRef.current.info('Đã nhận đủ 4 góc, đang lưu dữ liệu sinh trắc học...');
+        const res = await apiService.registerFaceEmbedding({ straight, right, left, up });
         if (res.error) {
           messageRef.current.error(res.error);
           return;
@@ -229,8 +263,8 @@ export function FaceRegistrationGate() {
         updateUserRef.current({ hasFaceEmbedding: true });
         messageRef.current.success(
           userHadFaceEmbeddingRef.current
-            ? 'Cập nhật sinh trắc học thành công'
-            : 'Đăng ký sinh trắc học thành công',
+            ? 'Người dùng đã cập nhật sinh trắc học thành công'
+            : 'Người dùng đã đăng ký sinh trắc học thành công',
         );
         setForcedBiometricOpen(false);
         flowActiveRef.current = false;
@@ -353,6 +387,13 @@ export function FaceRegistrationGate() {
             <div className={`fc-face-guide${faceGuideDetected ? ' detected' : ''}`} />
           </div>
 
+          <div className="fc-prompt-row">
+            {cameraOn ? (
+              <div className="fc-prompt-text">{currentPrompt}</div>
+            ) : (
+              <div className="fc-prompt-placeholder" aria-hidden />
+            )}
+          </div>
           <div className="fc-btn-row">
             <button
               type="button"

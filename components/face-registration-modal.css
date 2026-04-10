@@ -178,6 +178,36 @@
   gap: 10px;
 }
 
+.fr-modal-shell .fc-prompt-row {
+  min-height: 42px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fr-modal-shell .fc-prompt-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  width: 100%;
+  text-align: center;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 212, 255, 0.5);
+  background: linear-gradient(180deg, rgba(0, 212, 255, 0.2), rgba(0, 212, 255, 0.08));
+  color: #d8f5ff;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.55);
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.2);
+}
+
+.fr-modal-shell .fc-prompt-placeholder {
+  min-height: 36px;
+}
+
 .fr-modal-shell .fc-btn {
   flex: 1;
   padding: 12px;

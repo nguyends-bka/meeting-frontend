@@ -112,8 +112,13 @@ class ApiService {
     return userApi.changePassword({ oldPassword, newPassword });
   }
 
-  async registerFaceEmbedding(embedding: number[]) {
-    return userApi.registerFaceEmbedding(embedding);
+  async registerFaceEmbedding(request: {
+    straight: number[];
+    right: number[];
+    left: number[];
+    up: number[];
+  }) {
+    return userApi.registerFaceEmbedding(request);
   }
 }
 

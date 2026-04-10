@@ -44,10 +44,15 @@ export const userApi = {
     });
   },
 
-  registerFaceEmbedding: async (embedding: number[]) => {
+  registerFaceEmbedding: async (request: {
+    straight: number[];
+    right: number[];
+    left: number[];
+    up: number[];
+  }) => {
     return apiClient.request<{ message: string; hasFaceEmbedding?: boolean }>('/api/user/profile/face-embedding', {
       method: 'PUT',
-      body: JSON.stringify({ embedding }),
+      body: JSON.stringify(request),
     });
   },
 };

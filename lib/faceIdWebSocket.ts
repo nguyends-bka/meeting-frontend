@@ -1,6 +1,19 @@
 export interface FaceEmbeddingResponse {
   embedding: number[];
 }
+export type FaceAngle = 'straight' | 'right' | 'left' | 'up';
+
+export interface RegisterFaceEmbeddingResponse {
+  straight?: number[];
+  right?: number[];
+  left?: number[];
+  up?: number[];
+}
+
+export interface FaceEmbeddingMessage {
+  embedding: number[];
+  angle?: FaceAngle;
+}
 
 const DEFAULT_FACE_WS_URL = 'ws://127.0.0.1:9001/faceId';
 
@@ -25,7 +38,7 @@ class FaceIdDeviceWebSocketManager {
         timeoutTimer: number | null;
       }
     | null = null;
-  private embeddingListeners = new Set<(embedding: number[]) => void>();
+  private embeddingListeners = new Set<(message: FaceEmbeddingMessage) => void>();
 
   constructor(wsUrl: string) {
     this.wsUrl = wsUrl;
@@ -63,11 +76,11 @@ class FaceIdDeviceWebSocketManager {
     return this.status;
   }
 
-  addEmbeddingListener(listener: (embedding: number[]) => void) {
+  addEmbeddingListener(listener: (message: FaceEmbeddingMessage) => void) {
     this.embeddingListeners.add(listener);
   }
 
-  removeEmbeddingListener(listener: (embedding: number[]) => void) {
+  removeEmbeddingListener(listener: (message: FaceEmbeddingMessage) => void) {
     this.embeddingListeners.delete(listener);
   }
 
@@ -92,18 +105,32 @@ class FaceIdDeviceWebSocketManager {
     this.ws.onmessage = (event) => {
       const raw = typeof event.data === 'string' ? event.data : '';
       try {
-        const parsed = JSON.parse(raw) as Partial<FaceEmbeddingResponse>;
-        if (!parsed.embedding || !Array.isArray(parsed.embedding)) {
+        const parsed = JSON.parse(raw) as Partial<FaceEmbeddingResponse & RegisterFaceEmbeddingResponse>;
+        let angle: FaceAngle | undefined;
+        let rawEmbedding: unknown = parsed.embedding;
+        if (!Array.isArray(rawEmbedding)) {
+          const orderedAngles: FaceAngle[] = ['straight', 'right', 'left', 'up'];
+          for (const key of orderedAngles) {
+            const candidate = parsed[key];
+            if (Array.isArray(candidate)) {
+              angle = key;
+              rawEmbedding = candidate;
+              break;
+            }
+          }
+        }
+        if (!Array.isArray(rawEmbedding)) {
           if (this.pending) this.rejectPending(new Error('Invalid embedding response from device'));
           return;
         }
 
-        const embedding = parsed.embedding.map((x) => Number(x));
+        const embedding = rawEmbedding.map((x) => Number(x));
+        const message: FaceEmbeddingMessage = { embedding, angle };
 
         // Notify stream listeners (fire-and-forget mode).
         for (const cb of this.embeddingListeners) {
           try {
-            cb(embedding);
+            cb(message);
           } catch {
             // ignore listener error
           }
@@ -249,12 +276,12 @@ export async function requestFaceEmbeddingFromDevice(
   return faceIdManager.requestEmbedding(imageBase64);
 }
 
-export function addFaceEmbeddingListener(listener: (embedding: number[]) => void) {
+export function addFaceEmbeddingListener(listener: (message: FaceEmbeddingMessage) => void) {
   if (!faceIdManager) return;
   faceIdManager.addEmbeddingListener(listener);
 }
 
-export function removeFaceEmbeddingListener(listener: (embedding: number[]) => void) {
+export function removeFaceEmbeddingListener(listener: (message: FaceEmbeddingMessage) => void) {
   if (!faceIdManager) return;
   faceIdManager.removeEmbeddingListener(listener);
 }
@@ -304,12 +331,12 @@ export async function sendRegisterFaceImageToDevice(
   await registerFaceManager.sendImage(imageBase64);
 }
 
-export function addRegisterFaceEmbeddingListener(listener: (embedding: number[]) => void) {
+export function addRegisterFaceEmbeddingListener(listener: (message: FaceEmbeddingMessage) => void) {
   if (!registerFaceManager) return;
   registerFaceManager.addEmbeddingListener(listener);
 }
 
-export function removeRegisterFaceEmbeddingListener(listener: (embedding: number[]) => void) {
+export function removeRegisterFaceEmbeddingListener(listener: (message: FaceEmbeddingMessage) => void) {
   if (!registerFaceManager) return;
   registerFaceManager.removeEmbeddingListener(listener);
 }

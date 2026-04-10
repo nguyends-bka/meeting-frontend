@@ -48,7 +48,7 @@ export default function FaceLoginPage() {
   }, []);
 
   useEffect(() => {
-    const onEmbedding = async (embedding: number[]) => {
+    const onEmbedding = async ({ embedding }: { embedding: number[] }) => {
       if (!faceAutoFlowRunningRef.current) return;
       if (faceLoginInProgressRef.current) return;
 
