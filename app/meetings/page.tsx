@@ -937,7 +937,7 @@ function MeetingsPageContent() {
         {!detailMeeting && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
             <Space align="center" size="middle">
-              <div style={{
+            <div style={{
                 background: '#2563eb',
                 color: 'white',
                 width: 44,
@@ -950,21 +950,21 @@ function MeetingsPageContent() {
                 boxShadow: '0 4px 10px rgba(37, 99, 235, 0.2)'
               }}>
                 <VideoCameraOutlined />
-              </div>
+            </div>
               <div>
                 <Typography.Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1e293b', fontSize: 18 }}>
                   {isAdmin ? 'Quản lý tất cả cuộc họp' : 'Quản lý cuộc họp'}
                 </Typography.Title>
                 <Typography.Text style={{ color: '#64748b', fontSize: 13, fontWeight: 400 }}>
                   <>Tổng cộng <span style={{ color: '#2563eb', fontWeight: 600 }}>{meetings.length}</span> cuộc họp đã tạo</>
-                </Typography.Text>
+              </Typography.Text>
               </div>
-            </Space>
+              </Space>
 
             <Button icon={<ReloadOutlined />} onClick={() => void loadMeetings()} loading={loadingMeetings} size="large" style={{ borderRadius: 8, fontWeight: 500 }}>
               {isMobile ? '' : 'Làm mới'}
             </Button>
-          </div>
+            </div>
         )}
 
         {/* --- VIEW: DANH SÁCH CUỘC HỌP --- */}
@@ -976,7 +976,7 @@ function MeetingsPageContent() {
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                   <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Tổng cuộc họp</div>
                   <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b', lineHeight: 1 }}>{statTotal}</div>
-                </div>
+              </div>
               </Col>
               <Col xs={24} sm={12} md={6}>
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -988,13 +988,13 @@ function MeetingsPageContent() {
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                   <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Đang diễn ra</div>
                   <div style={{ fontSize: 28, fontWeight: 700, color: '#16a34a', lineHeight: 1 }}>{statLive}</div>
-                </div>
+              </div>
               </Col>
               <Col xs={24} sm={12} md={6}>
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                   <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Đã kết thúc</div>
                   <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b', lineHeight: 1 }}>{statDone}</div>
-                </div>
+            </div>
               </Col>
             </Row>
 
@@ -1033,7 +1033,7 @@ function MeetingsPageContent() {
               {/* TABLE HEADER - Dùng thẻ Row/Col */}
               <Row 
                 align="stretch" 
-                style={{ 
+            style={{
                   borderBottom: '1px solid #e2e8f0', 
                   background: '#f8fafc', 
                   flexWrap: 'nowrap',
@@ -1065,7 +1065,7 @@ function MeetingsPageContent() {
                       <Row 
                         key={m.id}
                         align="stretch" 
-                        style={{ 
+              style={{
                           borderBottom: '1px solid #e2e8f0', 
                           cursor: 'pointer', 
                           flexWrap: 'nowrap', 
@@ -1121,8 +1121,8 @@ function MeetingsPageContent() {
                            ) : (
                               <button 
                                 style={{ padding: isMobile ? '2px 6px' : '4px 10px', borderRadius: 99, border: '1px solid #bfdbfe', background: '#fff', color: '#1d4ed8', fontSize: isMobile ? 9 : 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', width: 'auto', textAlign: 'center', minWidth: 0, margin: '0 auto', lineHeight: 1.3 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
+                  onClick={(e) => {
+                    e.stopPropagation();
                                   if (isDone) openHistoryModal(m);
                                   else openDetailModal(m);
                                 }}
@@ -1136,7 +1136,7 @@ function MeetingsPageContent() {
                   })
                 )}
               </div>
-              
+
               <div
                 style={{
                   padding: isMobile ? '10px 12px' : '16px 24px',
@@ -1165,7 +1165,7 @@ function MeetingsPageContent() {
                       const isEdgePage = page <= 2 || page > totalPages - 2;
                       const isCurrentPage = page === tablePage;
                       return isEdgePage || isCurrentPage ? originalElement : null;
-                    }}
+                  }}
                 />
               </div>
             </div>
@@ -1394,8 +1394,8 @@ function MeetingsPageContent() {
                           ]
                         : []),
                     ]}
-                  />
-                </div>
+              />
+            </div>
                 <div className="section-title-sm" style={{ margin: '12px 16px 8px' }}>Người được mời</div>
                 {canManageMeetingInvitees(detailMeeting) && (
                   <div className="p-invite-bar" style={{ borderTop: 'none' }}>
@@ -1415,7 +1415,7 @@ function MeetingsPageContent() {
                     >
                       Thêm
                     </Button>
-                  </div>
+          </div>
                 )}
                 <div style={{ padding: '0 12px 12px' }}>
                   <Table<MeetingInvitee>
@@ -1469,9 +1469,9 @@ function MeetingsPageContent() {
                                     if (value === 'host') void promoteInviteeToCoHost(r.username);
                                   }}
                                 />
-                              ),
-                            },
-                            {
+        ),
+      },
+      {
                               title: <span style={{ display: 'block', textAlign: 'center' }}>Xóa</span>,
                               key: 'delete',
                               width: ROLE_TABLE_LAYOUT.remove,
@@ -1483,13 +1483,13 @@ function MeetingsPageContent() {
                                   cancelText="Hủy"
                                   onConfirm={() => void removeInviteeRow(r.username)}
                                 >
-                                  <Button
+              <Button
                                     danger
                                     size="small"
                                     loading={removingInviteeUsername === r.username}
                                   >
                                     Xóa
-                                  </Button>
+              </Button>
                                 </Popconfirm>
                               ),
                             },
@@ -1508,9 +1508,9 @@ function MeetingsPageContent() {
               )}
               <button className="btn-delete" onClick={() => message.info('Chức năng xóa cuộc họp')}>Xóa</button>
             </div>
-          </div>
+            </div>
         )}
-      </div>
+        </div>
 
       <Modal
         title={editMeetingModal ? `Chỉnh sửa cuộc họp - ${editMeetingModal.title}` : 'Chỉnh sửa cuộc họp'}
@@ -2333,7 +2333,7 @@ function MeetingsPageContent() {
                     width: 794,
                   }}
                 >
-                  <MeetingMinutesPreview minutes={reportMinutes} reportRef={reportRef} />
+              <MeetingMinutesPreview minutes={reportMinutes} reportRef={reportRef} />
                 </div>
               </div>
             </div>

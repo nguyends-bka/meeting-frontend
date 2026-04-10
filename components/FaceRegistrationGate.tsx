@@ -254,18 +254,12 @@ export function FaceRegistrationGate() {
         const up = angleEmbeddingsRef.current.up;
         if (!straight || !right || !left || !up) return;
 
-        messageRef.current.info('Đã nhận đủ 4 góc, đang lưu dữ liệu sinh trắc học...');
         const res = await apiService.registerFaceEmbedding({ straight, right, left, up });
         if (res.error) {
           messageRef.current.error(res.error);
           return;
         }
         updateUserRef.current({ hasFaceEmbedding: true });
-        messageRef.current.success(
-          userHadFaceEmbeddingRef.current
-            ? 'Người dùng đã cập nhật sinh trắc học thành công'
-            : 'Người dùng đã đăng ký sinh trắc học thành công',
-        );
         setForcedBiometricOpen(false);
         flowActiveRef.current = false;
       } catch {
