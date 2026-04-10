@@ -151,18 +151,28 @@ export default function ProfilePage() {
     }
   };
 
+  const trimOrNull = (v: unknown): string | null => {
+    const s = typeof v === 'string' ? v.trim() : '';
+    return s ? s : null;
+  };
+
   const handleUpdateProfile = async () => {
     const values = await profileForm.validateFields();
     setUpdatingProfile(true);
 
+    const faceRaw = values.faceTemplate;
+    const faceTemplate =
+      faceRaw != null && String(faceRaw).trim() !== '' ? String(faceRaw).trim() : null;
+    const emailVal = trimOrNull(values.email);
+
     const result = await apiService.updateProfileExtended({
-      fullName: values.fullName || undefined,
-      email: values.email || undefined,
-      position: values.position || null,
-      academicRank: values.academicRank || null,
-      academicDegree: values.academicDegree || null,
-      organizationUnitId: values.organizationUnitId || null,
-      faceTemplate: values.faceTemplate || null,
+      fullName: trimOrNull(values.fullName),
+      email: emailVal ? emailVal.toLowerCase() : null,
+      position: trimOrNull(values.position),
+      academicRank: values.academicRank ?? null,
+      academicDegree: values.academicDegree ?? null,
+      organizationUnitId: values.organizationUnitId ?? null,
+      faceTemplate,
     });
 
     setUpdatingProfile(false);
@@ -174,12 +184,12 @@ export default function ProfilePage() {
 
     messageApi.success('Cập nhật thông tin thành công');
     updateUser({
-      fullName: values.fullName || null,
-      position: values.position || null,
-      academicRank: values.academicRank || null,
-      academicDegree: values.academicDegree || null,
-      organizationUnitId: values.organizationUnitId || null,
-      faceTemplate: values.faceTemplate || null,
+      fullName: trimOrNull(values.fullName),
+      position: trimOrNull(values.position),
+      academicRank: values.academicRank ?? null,
+      academicDegree: values.academicDegree ?? null,
+      organizationUnitId: values.organizationUnitId ?? null,
+      faceTemplate,
     });
     setShowUpdateForm(false);
     await loadProfile();
@@ -358,7 +368,9 @@ export default function ProfilePage() {
                         <Form.Item
                           name="fullName"
                           style={{ margin: 0 }}
+                          required
                           rules={[
+                            { required: true, whitespace: true, message: 'Vui lòng nhập họ và tên' },
                             { max: 100, message: 'Họ và tên không được quá 100 ký tự' },
                           ]}
                         >
@@ -380,8 +392,18 @@ export default function ProfilePage() {
                         <Form.Item
                           name="email"
                           style={{ margin: 0 }}
+                          required
                           rules={[
-                            { type: 'email', message: 'Email không hợp lệ' },
+                            { required: true, whitespace: true, message: 'Vui lòng nhập email' },
+                            {
+                              validator: async (_, v) => {
+                                const s = String(v ?? '').trim();
+                                if (!s) return;
+                                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) {
+                                  throw new Error('Email không hợp lệ');
+                                }
+                              },
+                            },
                             { max: 100, message: 'Email không được quá 100 ký tự' },
                           ]}
                         >

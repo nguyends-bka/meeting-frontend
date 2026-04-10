@@ -93,8 +93,8 @@ class ApiService {
   }
 
   async updateProfileExtended(request: {
-    fullName?: string;
-    email?: string;
+    fullName?: string | null;
+    email?: string | null;
     position?: string | null;
     academicRank?: 'GS' | 'PGS' | null;
     academicDegree?: 'TS' | 'ThS' | 'CN' | 'KS' | null;

@@ -70,6 +70,14 @@ import {
 import * as XLSX from 'xlsx';
 
 export default function MeetingsPage() {
+  return (
+    <React.Suspense fallback={<div style={{ minHeight: '50vh' }} />}>
+      <MeetingsPageContent />
+    </React.Suspense>
+  );
+}
+
+function MeetingsPageContent() {
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
   
