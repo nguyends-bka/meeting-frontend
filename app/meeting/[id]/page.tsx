@@ -343,41 +343,69 @@ function PhysicalMicForwarder({
 function LatestTranscriptStrip() {
   const { finalized, draftText } = useTranscriptRoom();
   const [hidden, setHidden] = useState(false);
-  const MAX_TAIL_CHARS = 180;
+  const bodyRef = useRef<HTMLDivElement | null>(null);
   const lastFinal = finalized.length > 0 ? finalized[finalized.length - 1] : null;
   const latest = (draftText && draftText.trim()) || lastFinal?.text || '';
-  const latestTail =
-    latest.length > MAX_TAIL_CHARS
-      ? `...${latest.slice(latest.length - MAX_TAIL_CHARS)}`
-      : latest;
+  const latestTail = latest;
   const speaker = lastFinal?.speaker?.trim() || '';
-  if (hidden || !latestTail) {
-    return (
-      <button
-        type="button"
-        className="meeting-latest-transcript-toggle"
-        onClick={() => setHidden(false)}
-      >
-        Transcript
-      </button>
+
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+
+    const syncToBottom = () => {
+      el.scrollTop = el.scrollHeight;
+    };
+
+    syncToBottom();
+    const raf = window.requestAnimationFrame(syncToBottom);
+    const ro = new ResizeObserver(syncToBottom);
+    ro.observe(el);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [latestTail, speaker]);
+
+  useEffect(() => {
+    const onHide = () => setHidden(true);
+    window.addEventListener('bkmt-hide-latest-transcript', onHide);
+    return () => {
+      window.removeEventListener('bkmt-hide-latest-transcript', onHide);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onToggle = () => setHidden((prev) => !prev);
+    window.addEventListener('bkmt-toggle-latest-transcript', onToggle);
+    return () => {
+      window.removeEventListener('bkmt-toggle-latest-transcript', onToggle);
+    };
+  }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('bkmt-latest-transcript-state', {
+        detail: {
+          hidden,
+          hasContent: Boolean(latestTail),
+        },
+      }),
     );
+  }, [hidden, latestTail]);
+
+  if (hidden || !latestTail) {
+    return null;
   }
   return (
     <div className="meeting-latest-transcript-strip">
       <div className="meeting-latest-transcript-content">
-        <>
-          {speaker ? <strong>{speaker}: </strong> : null}
-          <span>{latestTail}</span>
-        </>
+        {speaker ? <span className="meeting-latest-transcript-speaker">{speaker}:</span> : null}
+        <div ref={bodyRef} className="meeting-latest-transcript-body">
+          {latestTail}
+        </div>
       </div>
-      <button
-        type="button"
-        className="meeting-latest-transcript-hide"
-        onClick={() => setHidden(true)}
-        aria-label="Ẩn transcript mới nhất"
-      >
-        Ẩn transcript
-      </button>
     </div>
   );
 }

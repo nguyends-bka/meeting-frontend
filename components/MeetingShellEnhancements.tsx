@@ -53,6 +53,11 @@ function placeToolsButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
   parent.insertBefore(btn, anchor);
 }
 
+function placeTranscriptButtonRight(bar: HTMLElement, btn: HTMLButtonElement) {
+  if (btn.parentNode === bar) return;
+  bar.appendChild(btn);
+}
+
 const TOOLS_BUTTON_INNER =
   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' +
   '<span class="lk-button-text">Công cụ</span>';
@@ -273,7 +278,10 @@ export default function MeetingShellEnhancements({
 
     let cancelled = false;
     let toolsBtnEl: HTMLButtonElement | null = null;
+    let transcriptToggleBtnEl: HTMLButtonElement | null = null;
     let resizeObserver: ResizeObserver | null = null;
+    let transcriptHidden = false;
+    let transcriptHasContent = false;
 
     const toolsSideOpen = () =>
       transcriptOpenRef.current || voteOpenRef.current || documentsOpenRef.current || chatOpenRef.current;
@@ -344,6 +352,25 @@ export default function MeetingShellEnhancements({
       }
       placeToolsButtonInBar(bar, btn);
       toolsBtnEl = btn;
+
+      let transcriptBtn = bar.querySelector('.meeting-transcript-toggle-inbar') as HTMLButtonElement | null;
+      if (!transcriptBtn) {
+        transcriptBtn = document.createElement('button');
+        transcriptBtn.type = 'button';
+        transcriptBtn.className = 'meeting-transcript-toggle-inbar';
+        transcriptBtn.addEventListener('click', () => {
+          window.dispatchEvent(new Event('bkmt-toggle-latest-transcript'));
+        });
+      }
+      placeTranscriptButtonRight(bar, transcriptBtn);
+      transcriptToggleBtnEl = transcriptBtn;
+      transcriptBtn.style.display = transcriptHasContent ? 'inline-flex' : 'none';
+      transcriptBtn.textContent = transcriptHidden ? 'Transcript' : 'Ẩn transcript';
+      transcriptBtn.setAttribute(
+        'aria-label',
+        transcriptHidden ? 'Hiện transcript mới nhất' : 'Ẩn transcript mới nhất',
+      );
+
       syncButtonUI();
 
       if (!resizeObserver) {
@@ -356,14 +383,29 @@ export default function MeetingShellEnhancements({
 
     attach();
     const t = window.setInterval(attach, 350);
+    const onTranscriptState = (event: Event) => {
+      const detail = (event as CustomEvent<{ hidden?: boolean; hasContent?: boolean }>).detail;
+      transcriptHidden = Boolean(detail?.hidden);
+      transcriptHasContent = Boolean(detail?.hasContent);
+      if (!transcriptToggleBtnEl) return;
+      transcriptToggleBtnEl.style.display = transcriptHasContent ? 'inline-flex' : 'none';
+      transcriptToggleBtnEl.textContent = transcriptHidden ? 'Transcript' : 'Ẩn transcript';
+      transcriptToggleBtnEl.setAttribute(
+        'aria-label',
+        transcriptHidden ? 'Hiện transcript mới nhất' : 'Ẩn transcript mới nhất',
+      );
+    };
+    window.addEventListener('bkmt-latest-transcript-state', onTranscriptState as EventListener);
 
     return () => {
       cancelled = true;
       window.clearInterval(t);
+      window.removeEventListener('bkmt-latest-transcript-state', onTranscriptState as EventListener);
       if (resizeObserver) resizeObserver.disconnect();
       const bar = findControlBar(shell);
       if (bar) delete bar.dataset.meetingBarCompact;
       toolsBtnEl?.remove();
+      transcriptToggleBtnEl?.remove();
     };
   }, [shellRef, setTranscriptOpen, setVoteOpen, setDocumentsOpen, setActiveToolsTab, onChatUnreadChange]);
 
@@ -385,6 +427,7 @@ export default function MeetingShellEnhancements({
 
   return null;
 }
+
 
 
 
