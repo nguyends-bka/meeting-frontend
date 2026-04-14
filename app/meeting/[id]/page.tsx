@@ -344,10 +344,55 @@ function LatestTranscriptStrip() {
   const { finalized, draftText } = useTranscriptRoom();
   const [hidden, setHidden] = useState(false);
   const bodyRef = useRef<HTMLDivElement | null>(null);
+  const autoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestTranscriptAtRef = useRef<number>(0);
   const lastFinal = finalized.length > 0 ? finalized[finalized.length - 1] : null;
   const latest = (draftText && draftText.trim()) || lastFinal?.text || '';
   const latestTail = latest;
   const speaker = lastFinal?.speaker?.trim() || '';
+
+  useEffect(() => {
+    if (!lastFinal?.receivedAt) return;
+    const ts = new Date(lastFinal.receivedAt).getTime();
+    latestTranscriptAtRef.current = Number.isFinite(ts) ? ts : Date.now();
+  }, [lastFinal?.receivedAt]);
+
+  useEffect(() => {
+    if (draftText?.trim()) {
+      latestTranscriptAtRef.current = Date.now();
+    }
+  }, [draftText]);
+
+  useEffect(() => {
+    if (!latestTail) {
+      setHidden(true);
+      return;
+    }
+
+    if (autoHideTimerRef.current) {
+      clearTimeout(autoHideTimerRef.current);
+      autoHideTimerRef.current = null;
+    }
+
+    const now = Date.now();
+    const ageMs = latestTranscriptAtRef.current ? now - latestTranscriptAtRef.current : 0;
+    const remainingMs = Math.max(0, 10000 - ageMs);
+
+    setHidden(remainingMs === 0);
+    if (remainingMs > 0) {
+      autoHideTimerRef.current = setTimeout(() => {
+        setHidden(true);
+        autoHideTimerRef.current = null;
+      }, remainingMs);
+    }
+
+    return () => {
+      if (autoHideTimerRef.current) {
+        clearTimeout(autoHideTimerRef.current);
+        autoHideTimerRef.current = null;
+      }
+    };
+  }, [latestTail, lastFinal?.receivedAt, draftText]);
 
   useEffect(() => {
     const el = bodyRef.current;
