@@ -4,6 +4,8 @@ export interface CreateMeetingRequest {
   title: string;
   hostName: string;
   passcode?: string;
+  startAt?: number;
+  estimatedEndAt?: number | null;
 }
 
 export interface CreateMeetingResponse {

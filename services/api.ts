@@ -24,8 +24,14 @@ class ApiService {
     return authApi.loginWithFaceEmbedding({ embedding });
   }
 
-  async createMeeting(title: string, hostName: string, passcode?: string) {
-    return meetingApi.create({ title, hostName, passcode });
+  async createMeeting(
+    title: string,
+    hostName: string,
+    passcode?: string,
+    startAt?: number,
+    estimatedEndAt?: number | null,
+  ) {
+    return meetingApi.create({ title, hostName, passcode, startAt, estimatedEndAt });
   }
 
   async joinMeetingByLink(meetingId: string) {

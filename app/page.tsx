@@ -327,9 +327,18 @@ export default function HomePage() {
     const values = await createForm.validateFields();
     const title = String(values.title || '').trim();
     const finalHostName = String(values.hostName || '').trim() || user?.username || 'Host';
+    const scheduleRange = values.scheduleRange as [dayjs.Dayjs, dayjs.Dayjs] | undefined;
+    const startAt = scheduleRange?.[0]?.valueOf();
+    const estimatedEndAt = scheduleRange?.[1]?.valueOf();
 
     setCreating(true);
-    const result = await apiService.createMeeting(title, finalHostName);
+    const result = await apiService.createMeeting(
+      title,
+      finalHostName,
+      undefined,
+      typeof startAt === 'number' ? startAt : undefined,
+      typeof estimatedEndAt === 'number' ? estimatedEndAt : null,
+    );
     setCreating(false);
 
     if (result.error) {
