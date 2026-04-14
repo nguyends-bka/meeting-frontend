@@ -6,17 +6,20 @@ import { useAuth } from '@/lib/auth';
 import { adminApi, apiService } from '@/services/api';
 import MainLayout from '@/components/MainLayout';
 import dayjs from 'dayjs';
+import 'dayjs/locale/vi';
 import {
   App,
   Avatar,
   Button,
   Card,
   Checkbox,
+  Col,
   DatePicker,
   Divider,
   Form,
   Input,
   Modal,
+  Row,
   Space,
   Tag,
   Table,
@@ -36,7 +39,11 @@ import {
   CaretRightOutlined,
   ReloadOutlined,
   FileExcelOutlined,
+  HomeOutlined,
+  BellOutlined,
 } from '@ant-design/icons';
+
+dayjs.locale('vi');
 import * as XLSX from 'xlsx';
 
 const { Title, Text } = Typography;
@@ -63,6 +70,16 @@ type HistoryEntry = {
   leftAt: string | null;
   duration: number | null;
 };
+
+function isMeetingLive(r: HomeMeetingRow): boolean {
+  return !r.endedAt && (r.activeParticipantCount ?? 0) > 0;
+}
+
+function meetingRowStatus(r: HomeMeetingRow): 'live' | 'ended' | 'upcoming' {
+  if (isMeetingLive(r)) return 'live';
+  if (r.endedAt) return 'ended';
+  return 'upcoming';
+}
 
 /** Thời lượng = kết thúc − bắt đầu (chỉ hiển thị, không có nút gợi ý). */
 function formatDurationFromScheduleRange(
@@ -149,6 +166,21 @@ export default function HomePage() {
     [scheduleRangeWatch],
   );
   const [joinForm] = Form.useForm();
+  const [joinQuickCode, setJoinQuickCode] = useState('');
+
+  const openJoinModal = useCallback(
+    (presetMeetingCode?: string) => {
+      setJoinOpen(true);
+      queueMicrotask(() => {
+        const patch: { meetingIdOrCode?: string; passcode: string } = { passcode: '' };
+        if (presetMeetingCode !== undefined) {
+          patch.meetingIdOrCode = presetMeetingCode;
+        }
+        joinForm.setFieldsValue(patch);
+      });
+    },
+    [joinForm],
+  );
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -188,15 +220,15 @@ export default function HomePage() {
         rows.sort((a, b) => {
           const aEnded = Boolean(a.endedAt);
           const bEnded = Boolean(b.endedAt);
-          const aLive = !aEnded && (a.activeParticipantCount ?? 0) > 0;
-          const bLive = !bEnded && (b.activeParticipantCount ?? 0) > 0;
+          const aLive = isMeetingLive(a);
+          const bLive = isMeetingLive(b);
           if (aLive !== bLive) return aLive ? -1 : 1;
           if (aEnded !== bEnded) return aEnded ? 1 : -1;
           return +new Date(b.createdAt) - +new Date(a.createdAt);
         });
         setRecentMeetings(rows.slice(0, 5));
 
-        const active = rows.filter((r) => (r.activeParticipantCount ?? 0) > 0).length;
+        const active = rows.filter((r) => isMeetingLive(r)).length;
         const todayCount = rows.filter((r) => {
           const d = new Date(r.createdAt);
           const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(
@@ -226,8 +258,8 @@ export default function HomePage() {
       rows.sort((a, b) => {
         const aEnded = Boolean(a.endedAt);
         const bEnded = Boolean(b.endedAt);
-        const aLive = !aEnded && (a.activeParticipantCount ?? 0) > 0;
-        const bLive = !bEnded && (b.activeParticipantCount ?? 0) > 0;
+        const aLive = isMeetingLive(a);
+        const bLive = isMeetingLive(b);
         if (aLive !== bLive) return aLive ? -1 : 1;
         if (aEnded !== bEnded) return aEnded ? 1 : -1;
         return +new Date(b.createdAt) - +new Date(a.createdAt);
@@ -242,9 +274,10 @@ export default function HomePage() {
         )}`;
         return key === todayKey;
       }).length;
+      const activeUser = rows.filter((r) => isMeetingLive(r)).length;
       setStats({
         totalMeetings: rows.length,
-        activeMeetings: 0,
+        activeMeetings: activeUser,
         todayMeetings: todayCount,
       });
     } finally {
@@ -407,7 +440,7 @@ export default function HomePage() {
         responsive: ['md'] as const,
         render: (_: unknown, record: HomeMeetingRow) => {
           const isEnded = Boolean(record.endedAt);
-          const isLive = !isEnded && (record.activeParticipantCount ?? 0) > 0;
+          const isLive = isMeetingLive(record);
           const when = dayjs(record.createdAt);
           const timeDateLine = (
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
@@ -570,7 +603,7 @@ export default function HomePage() {
         fixed: 'right' as const,
         render: (_: unknown, record: HomeMeetingRow) => {
           const isEnded = Boolean(record.endedAt);
-          const isLive = !isEnded && (record.activeParticipantCount ?? 0) > 0;
+          const isLive = isMeetingLive(record);
           const actionLabel = isLive ? 'Tham gia' : isEnded ? 'Xem lịch sử' : 'Chi tiết';
           return (
             <Button
@@ -630,9 +663,129 @@ export default function HomePage() {
     if (result.data) {
       setJoinOpen(false);
       joinForm.resetFields();
+      setJoinQuickCode('');
       router.push(`/meeting/${result.data.meetingId}`);
     }
   };
+
+  const heroMeeting = useMemo(
+    () => recentMeetings.find((r) => isMeetingLive(r)),
+    [recentMeetings],
+  );
+
+  const todayMeetingsList = useMemo(() => {
+    const start = dayjs().startOf('day');
+    return [...recentMeetings]
+      .filter((r) => dayjs(r.createdAt).isSame(start, 'day'))
+      .sort((a, b) => +dayjs(a.createdAt) - +dayjs(b.createdAt));
+  }, [recentMeetings]);
+
+  const pendingForYou = useMemo(() => {
+    if (!stats) return 0;
+    const today = dayjs().startOf('day');
+    let extra = 0;
+    for (const r of recentMeetings) {
+      if (!dayjs(r.createdAt).isSame(today, 'day')) continue;
+      if (r.endedAt) continue;
+      if (isMeetingLive(r)) continue;
+      extra += 1;
+    }
+    return (stats.activeMeetings ?? 0) + extra;
+  }, [recentMeetings, stats]);
+
+  const homeNotifications = useMemo(() => {
+    const items: { key: string; title: string; desc: string; time: string }[] = [];
+    for (const r of recentMeetings) {
+      const st = meetingRowStatus(r);
+      const t = dayjs(r.createdAt);
+      if (st === 'live') {
+        items.push({
+          key: `live-${r.id}`,
+          title: 'Cuộc họp đang diễn ra',
+          desc: `"${r.title}" có người trong phòng.`,
+          time: t.format('HH:mm'),
+        });
+      } else if (st === 'ended') {
+        items.push({
+          key: `end-${r.id}`,
+          title: 'Đã kết thúc',
+          desc: `"${r.title}" đã hoàn tất.`,
+          time: t.format('DD/MM HH:mm'),
+        });
+      } else if (t.isSame(dayjs(), 'day')) {
+        items.push({
+          key: `up-${r.id}`,
+          title: 'Sắp diễn ra',
+          desc: `"${r.title}" — dự kiến ${t.format('HH:mm')}.`,
+          time: t.format('HH:mm'),
+        });
+      }
+    }
+    if (items.length === 0) {
+      items.push({
+        key: 'empty',
+        title: 'Chưa có hoạt động gần đây',
+        desc: 'Khi có cuộc họp trong danh sách gần đây, thông báo sẽ hiển thị tại đây.',
+        time: '',
+      });
+    }
+    return items.slice(0, 6);
+  }, [recentMeetings]);
+
+  const greetingWord = (() => {
+    const h = dayjs().hour();
+    if (h < 12) return 'Chào buổi sáng';
+    if (h < 18) return 'Chào buổi chiều';
+    return 'Chào buổi tối';
+  })();
+
+  const heroSection = useMemo(() => {
+    if (!heroMeeting) return null;
+    const start = dayjs(heroMeeting.startedAt || heroMeeting.createdAt);
+    const end = heroMeeting.endedAt ? dayjs(heroMeeting.endedAt) : start.add(1, 'hour');
+    return (
+      <div
+        style={{
+          borderRadius: 16,
+          padding: isNarrow ? 18 : 24,
+          marginBottom: 16,
+          background: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 42%, #0f172a 100%)',
+          color: '#fff',
+          boxShadow: '0 12px 40px rgba(15, 23, 42, 0.25)',
+        }}
+      >
+        <Tag color="cyan" style={{ marginBottom: 12, fontWeight: 700 }}>
+          ĐANG DIỄN RA
+        </Tag>
+        <Title level={3} style={{ margin: 0, color: '#fff' }}>
+          {heroMeeting.title}
+        </Title>
+        <div style={{ marginTop: 12, opacity: 0.92, fontSize: 14 }}>
+          <div>
+            {start.format('HH:mm')} – {end.format('HH:mm')}
+          </div>
+          <div style={{ marginTop: 4 }}>Host: {heroMeeting.hostName}</div>
+          <div style={{ marginTop: 4 }}>
+            Mã phòng: <strong>{heroMeeting.meetingCode}</strong>
+            {' · '}
+            Passcode: <strong>{heroMeeting.passcode || '—'}</strong>
+          </div>
+        </div>
+        <Space style={{ marginTop: 18 }} wrap>
+          <Button
+            size="large"
+            onClick={() => router.push(`/meeting/${heroMeeting.id}`)}
+            style={{ fontWeight: 600 }}
+          >
+            Tham gia ngay
+          </Button>
+          <Button size="large" ghost onClick={() => setDetailMeeting(heroMeeting)}>
+            Chi tiết
+          </Button>
+        </Space>
+      </div>
+    );
+  }, [heroMeeting, isNarrow, router]);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Đang tải...</div>;
   if (!isAuthenticated) return null;
@@ -648,201 +801,271 @@ export default function HomePage() {
           boxSizing: 'border-box',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 20,
-            marginBottom: 18,
-            flexWrap: 'wrap',
-          }}
-        >
-          <div style={{ minWidth: 260, flex: '1 1 280px' }}>
-            <Title level={3} style={{ margin: 0 }}>
-              Chào mừng trở lại, {user?.fullName}
-            </Title>
-            <Text type="secondary">
-              Hôm nay bạn có {stats?.activeMeetings ?? 0} cuộc họp đang diễn ra. Chúc một ngày làm việc hiệu quả!
+        <div style={{ marginBottom: 16 }}>
+          <Space size={10}>
+            <HomeOutlined style={{ color: '#1677ff', fontSize: 18 }} />
+            <Text strong style={{ fontSize: 15 }}>
+              Tổng quan (Dashboard)
             </Text>
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'row',     // luôn nằm ngang
-              gap: 12,
-              flexWrap: 'nowrap',       // ❌ không cho xuống dòng
-              width: '100%',
-              maxWidth: 520,            // giới hạn để không bị tràn
-            }}
-          >
-            <Button
-              size="large"
-              onClick={() => setJoinOpen(true)}
-              icon={<RightCircleOutlined />}
-              style={{
-                flex: isNarrow ? undefined : 1,
-                width: isNarrow ? '40%' : undefined,
-                minWidth: isNarrow ? undefined : 0,
-                height: isWideHome ? 48 : isNarrow ? 42 : 44,
-                fontSize: isWideHome ? 16 : 14,
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              Nhập mã tham gia
-            </Button>
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => setCreateOpen(true)}
-              icon={<PlusOutlined />}
-              style={{
-                flex: isNarrow ? undefined : 1,
-                width: isNarrow ? '40%' : undefined,
-                minWidth: isNarrow ? undefined : 0,
-                height: isWideHome ? 48 : isNarrow ? 42 : 44,
-                fontSize: isWideHome ? 16 : 14,
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              Tạo cuộc họp mới
-            </Button>
-          </div>
+          </Space>
         </div>
 
-        {stats && (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: isNarrow ? '1fr' : 'repeat(3, minmax(0, 1fr))',
-              justifyContent: 'stretch',
-              gap: isCompactStats ? ss(16) : isWideHome ? 20 : 16,
-              marginBottom: isCompactStats ? ss(18) : isWideHome ? 22 : 18,
-              alignItems: 'stretch',
-            }}
-          >
-            <Card bordered={false} style={{ borderRadius: ss(12), height: '100%', minHeight: ss(92) }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: ss(14) }}>
-                <div
-                  style={{
-                    width: ss(42),
-                    height: ss(42),
-                    borderRadius: ss(12),
-                    background: '#e6f4ff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#1677ff',
-                    fontSize: ss(18),
-                  }}
-                >
-                  <VideoCameraOutlined />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
-                  Tổng cuộc họp đã tạo
-                </Text>
-                  <div style={{ fontSize: ss(24), fontWeight: 700, lineHeight: `${ss(28)}px` }}>
-                    {stats.totalMeetings}
-                  </div>
-                </div>
-              </div>
-            </Card>
-            <Card bordered={false} style={{ borderRadius: ss(12), height: '100%', minHeight: ss(92) }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: ss(14) }}>
-                <div
-                  style={{
-                    width: ss(42),
-                    height: ss(42),
-                    borderRadius: ss(12),
-                    background: '#eafff2',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#22c55e',
-                    fontSize: ss(18),
-                  }}
-                >
-                  <span style={{ fontWeight: 800 }}>👥</span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
-                    Đang diễn ra
+        <Row gutter={[24, 24]}>
+          <Col xs={24} lg={16}>
+            <Card
+              bordered={false}
+              style={{
+                borderRadius: 12,
+                marginBottom: 16,
+                background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 55%, #eef6ff 100%)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 16,
+                }}
+              >
+                <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+                  <Title level={3} style={{ margin: 0 }}>
+                    {greetingWord}, {user?.fullName}!
+                  </Title>
+                  <Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
+                    {dayjs().format('dddd, DD/MM/YYYY')}
                   </Text>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: ss(8) }}>
-                    <div style={{ fontSize: ss(24), fontWeight: 700, lineHeight: `${ss(28)}px` }}>
-                      {stats.activeMeetings}
-                    </div>
-                    {stats.activeMeetings > 0 && (
-                      <Tag color="green" style={{ fontSize: ss(12), lineHeight: `${ss(20)}px`, paddingInline: ss(7) }}>
-                        Live
-                      </Tag>
-                    )}
-                  </div>
+                  <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+                    Bạn có <Text strong>{pendingForYou}</Text> cuộc họp cần quan tâm (đang diễn ra + chưa bắt đầu trong
+                    ngày, theo danh sách gần đây).
+                  </Text>
                 </div>
-              </div>
-            </Card>
-            <Card bordered={false} style={{ borderRadius: ss(12), height: '100%', minHeight: ss(92) }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: ss(14) }}>
                 <div
                   style={{
-                    width: ss(42),
-                    height: ss(42),
-                    borderRadius: ss(12),
-                    background: '#f3f4f6',
                     display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 10,
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#6b7280',
-                    fontSize: ss(18),
+                    justifyContent: 'flex-end',
+                    flex: '1 1 280px',
                   }}
                 >
-                  <CalendarOutlined />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <Text type="secondary" style={{ fontSize: ss(14) }}>Sắp diễn ra hôm nay</Text>
-                  <div style={{ fontSize: ss(24), fontWeight: 700, lineHeight: `${ss(28)}px` }}>
-                    {stats.todayMeetings}
-                  </div>
+                  <Space.Compact style={{ minWidth: 0, maxWidth: 360, width: '100%' }}>
+                    <Input
+                      size="large"
+                      placeholder="Nhập mã tham gia"
+                      value={joinQuickCode}
+                      onChange={(e) => setJoinQuickCode(e.target.value)}
+                      onPressEnter={() => openJoinModal(joinQuickCode.trim())}
+                      style={{ minWidth: 0 }}
+                    />
+                    <Button
+                      size="large"
+                      icon={<RightCircleOutlined />}
+                      onClick={() => openJoinModal(joinQuickCode.trim())}
+                    >
+                      Tham gia
+                    </Button>
+                  </Space.Compact>
+                  <Button
+                    type="primary"
+                    size="large"
+                    onClick={() => setCreateOpen(true)}
+                    icon={<PlusOutlined />}
+                    style={{ fontWeight: 600 }}
+                  >
+                    Tạo cuộc họp mới
+                  </Button>
                 </div>
               </div>
             </Card>
-          </div>
-        )}
 
-        <Card
-          bodyStyle={{ padding: 0 }}
-          bordered={false}
-          style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)' }}
-          title={<span style={{ fontWeight: 700 }}>Lịch trình &amp; Gần đây</span>}
-          extra={
-            <Button type="link" onClick={() => router.push('/meetings')} style={{ padding: 0 }}>
-              Xem tất cả →
-            </Button>
-          }
-        >
-          <Table<HomeMeetingRow>
-            rowKey="id"
-            loading={loadingHome}
-            dataSource={recentMeetings}
-            pagination={false}
-            tableLayout="fixed"
-            scroll={{
-              x: isNarrow ? 860 : isWideHome ? 1520 : 1360,
-            }}
-            columns={homeScheduleColumns as any}
-            locale={{
-              emptyText: <div style={{ padding: 16 }}><Text type="secondary">Chưa có dữ liệu.</Text></div>,
-            }}
-          />
-        </Card>
+            {heroSection}
+
+            <Card
+              bordered={false}
+              style={{ borderRadius: 12, marginBottom: 16 }}
+              title={<span style={{ fontWeight: 700 }}>Lịch trình hôm nay</span>}
+            >
+              {todayMeetingsList.length === 0 ? (
+                <Text type="secondary">Không có cuộc họp nào trong danh sách gần đây được tạo hôm nay.</Text>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {todayMeetingsList.map((m) => {
+                    const st = meetingRowStatus(m);
+                    const when = dayjs(m.createdAt);
+                    const tag =
+                      st === 'live' ? (
+                        <Tag color="success">Đang diễn ra</Tag>
+                      ) : st === 'ended' ? (
+                        <Tag>Đã kết thúc</Tag>
+                      ) : (
+                        <Tag color="processing">Sắp diễn ra</Tag>
+                      );
+                    return (
+                      <div
+                        key={m.id}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: isNarrow ? '1fr' : '72px 1fr',
+                          gap: 12,
+                          padding: '12px 0',
+                          borderBottom: '1px solid #f0f0f0',
+                        }}
+                      >
+                        <Text strong style={{ fontSize: 16 }}>
+                          {when.format('HH:mm')}
+                        </Text>
+                        <div>
+                          <Space wrap size={[8, 4]}>
+                            <Text strong>{m.title}</Text>
+                            {tag}
+                          </Space>
+                          <div style={{ marginTop: 4 }}>
+                            <Text type="secondary" style={{ fontSize: 13 }}>
+                              Host: {m.hostName}
+                            </Text>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+
+            <Card
+              bodyStyle={{ padding: 0 }}
+              bordered={false}
+              style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)' }}
+              title={<span style={{ fontWeight: 700 }}>Lịch trình &amp; Gần đây</span>}
+              extra={
+                <Button type="link" onClick={() => router.push('/meetings')} style={{ padding: 0 }}>
+                  Xem tất cả →
+                </Button>
+              }
+            >
+              <Table<HomeMeetingRow>
+                rowKey="id"
+                loading={loadingHome}
+                dataSource={recentMeetings}
+                pagination={false}
+                tableLayout="fixed"
+                scroll={{
+                  x: isNarrow ? 860 : isWideHome ? 1520 : 1360,
+                }}
+                columns={homeScheduleColumns as any}
+                locale={{
+                  emptyText: (
+                    <div style={{ padding: 16 }}>
+                      <Text type="secondary">Chưa có dữ liệu.</Text>
+                    </div>
+                  ),
+                }}
+              />
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={8}>
+            {stats && (
+              <Card
+                bordered={false}
+                style={{ borderRadius: 12, marginBottom: 16 }}
+                title={<span style={{ fontWeight: 700 }}>Tổng quan cá nhân</span>}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: ss(12) }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: ss(12),
+                      padding: ss(12),
+                      borderRadius: ss(10),
+                      background: '#f8fafc',
+                    }}
+                  >
+                    <VideoCameraOutlined style={{ fontSize: ss(20), color: '#1677ff' }} />
+                    <div>
+                      <Text type="secondary" style={{ fontSize: ss(12) }}>
+                        Tổng cuộc họp
+                      </Text>
+                      <div style={{ fontSize: ss(22), fontWeight: 700 }}>{stats.totalMeetings}</div>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: ss(12),
+                      padding: ss(12),
+                      borderRadius: ss(10),
+                      background: '#ecfdf5',
+                    }}
+                  >
+                    <span style={{ fontSize: ss(20) }}>👥</span>
+                    <div>
+                      <Text type="secondary" style={{ fontSize: ss(12) }}>
+                        Đang diễn ra
+                      </Text>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: ss(22), fontWeight: 700 }}>{stats.activeMeetings}</span>
+                        {stats.activeMeetings > 0 && <Tag color="green">Live</Tag>}
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: ss(12),
+                      padding: ss(12),
+                      borderRadius: ss(10),
+                      background: '#f3f4f6',
+                    }}
+                  >
+                    <CalendarOutlined style={{ fontSize: ss(20), color: '#6b7280' }} />
+                    <div>
+                      <Text type="secondary" style={{ fontSize: ss(12) }}>
+                        Cuộc họp tạo trong ngày
+                      </Text>
+                      <div style={{ fontSize: ss(22), fontWeight: 700 }}>{stats.todayMeetings}</div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            <Card
+              bordered={false}
+              style={{ borderRadius: 12 }}
+              title={
+                <Space>
+                  <BellOutlined />
+                  <span style={{ fontWeight: 700 }}>Thông báo mới</span>
+                </Space>
+              }
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {homeNotifications.map((n) => (
+                  <div key={n.key}>
+                    <Text strong style={{ display: 'block' }}>
+                      {n.title}
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 2 }}>
+                      {n.desc}
+                    </Text>
+                    {n.time ? (
+                      <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+                        {n.time}
+                      </Text>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </Col>
+        </Row>
       </div>
 
       <Modal
@@ -1211,6 +1434,7 @@ export default function HomePage() {
         onCancel={() => {
           setJoinOpen(false);
           joinForm.resetFields();
+          setJoinQuickCode('');
         }}
         footer={null}
         destroyOnHidden

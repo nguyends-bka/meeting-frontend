@@ -21,7 +21,7 @@ const DEFAULT_FACE_WS_URL = 'ws://127.0.0.1:9001/faceId';
 export const DEFAULT_REGISTER_FACE_WS_URL = 'ws://127.0.0.1:9001/registerface';
 
 /** Gửi 1 ảnh (JPEG base64) lên thiết bị mỗi N ms — dùng chung login face + đăng ký sinh trắc học. */
-export const FACE_FRAME_SEND_INTERVAL_MS = 50;
+export const FACE_FRAME_SEND_INTERVAL_MS = 500;
 
 type FaceIdConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
