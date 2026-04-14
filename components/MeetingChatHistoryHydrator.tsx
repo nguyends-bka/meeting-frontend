@@ -5,6 +5,10 @@ import { useRoomContext } from '@livekit/components-react';
 import { useTranscriptRoom } from '@/components/TranscriptRoomProvider';
 import { useAuth } from '@/lib/auth';
 
+function isNearBottom(el: HTMLElement, threshold = 80): boolean {
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+}
+
 function toDomId(senderIdentity: string, at: number, clientMessageId?: string | null): string {
   if (clientMessageId && clientMessageId.trim()) {
     return `history-${clientMessageId.trim()}`;
@@ -47,6 +51,8 @@ export default function MeetingChatHistoryHydrator() {
   const { user } = useAuth();
 
   useEffect(() => {
+    const pinState = new WeakMap<HTMLElement, boolean>();
+
     const localIdentity = room.localParticipant.identity;
     const preferredLocalName =
       user?.fullName?.trim() ||
@@ -59,6 +65,22 @@ export default function MeetingChatHistoryHydrator() {
       if (!lists.length) return;
 
       lists.forEach((list) => {
+        const listEl = list as HTMLElement;
+        const isFirstBind = !listEl.dataset.bkmtChatScrollBound;
+        if (!listEl.dataset.bkmtChatScrollBound) {
+          const onScroll = () => {
+            pinState.set(listEl, isNearBottom(listEl));
+          };
+          listEl.addEventListener('scroll', onScroll);
+          listEl.dataset.bkmtChatScrollBound = '1';
+          pinState.set(listEl, true);
+        }
+
+        const shouldPinToBottom = pinState.get(listEl) ?? isNearBottom(listEl);
+        const prevScrollTop = listEl.scrollTop;
+        const prevScrollHeight = listEl.scrollHeight;
+        let insertedCount = 0;
+
         for (let i = chatHistory.length - 1; i >= 0; i -= 1) {
           const item = chatHistory[i];
           const domId = toDomId(item.senderIdentity, item.at, item.clientMessageId);
@@ -94,6 +116,7 @@ export default function MeetingChatHistoryHydrator() {
           li.appendChild(body);
 
           list.prepend(li);
+          insertedCount += 1;
         }
 
         const rows = list.querySelectorAll('.lk-chat-entry');
@@ -148,6 +171,18 @@ export default function MeetingChatHistoryHydrator() {
           }
           timeEl.textContent = normalizeTimestampText(current);
         });
+
+        // Giống transcript/chat chuẩn: nếu user đang ở gần đáy thì giữ auto-scroll xuống tin mới.
+        // Nếu user đã kéo lên để xem cũ thì không ép kéo xuống.
+        if ((insertedCount > 0 && shouldPinToBottom) || (isFirstBind && shouldPinToBottom)) {
+          requestAnimationFrame(() => {
+            listEl.scrollTop = listEl.scrollHeight;
+          });
+        } else if (insertedCount > 0 && !shouldPinToBottom) {
+          // Giữ nguyên "điểm nhìn" khi user đang đọc lịch sử cũ, tránh bị nhảy/đẩy.
+          const delta = listEl.scrollHeight - prevScrollHeight;
+          listEl.scrollTop = prevScrollTop + Math.max(0, delta);
+        }
       });
     };
 

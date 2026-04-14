@@ -280,7 +280,7 @@ export default function MeetingShellEnhancements({
     let toolsBtnEl: HTMLButtonElement | null = null;
     let transcriptToggleBtnEl: HTMLButtonElement | null = null;
     let resizeObserver: ResizeObserver | null = null;
-    let transcriptHidden = false;
+    let transcriptEnabled = true;
     let transcriptHasContent = false;
 
     const toolsSideOpen = () =>
@@ -365,10 +365,10 @@ export default function MeetingShellEnhancements({
       placeTranscriptButtonRight(bar, transcriptBtn);
       transcriptToggleBtnEl = transcriptBtn;
       transcriptBtn.style.display = transcriptHasContent ? 'inline-flex' : 'none';
-      transcriptBtn.textContent = transcriptHidden ? 'Transcript' : 'Ẩn transcript';
+      transcriptBtn.textContent = transcriptEnabled ? 'Tắt transcript' : 'Bật transcript';
       transcriptBtn.setAttribute(
         'aria-label',
-        transcriptHidden ? 'Hiện transcript mới nhất' : 'Ẩn transcript mới nhất',
+        transcriptEnabled ? 'Tắt hiển thị transcript' : 'Bật hiển thị transcript',
       );
 
       syncButtonUI();
@@ -384,15 +384,15 @@ export default function MeetingShellEnhancements({
     attach();
     const t = window.setInterval(attach, 350);
     const onTranscriptState = (event: Event) => {
-      const detail = (event as CustomEvent<{ hidden?: boolean; hasContent?: boolean }>).detail;
-      transcriptHidden = Boolean(detail?.hidden);
+      const detail = (event as CustomEvent<{ enabled?: boolean; hasContent?: boolean }>).detail;
+      transcriptEnabled = detail?.enabled !== false;
       transcriptHasContent = Boolean(detail?.hasContent);
       if (!transcriptToggleBtnEl) return;
       transcriptToggleBtnEl.style.display = transcriptHasContent ? 'inline-flex' : 'none';
-      transcriptToggleBtnEl.textContent = transcriptHidden ? 'Transcript' : 'Ẩn transcript';
+      transcriptToggleBtnEl.textContent = transcriptEnabled ? 'Tắt transcript' : 'Bật transcript';
       transcriptToggleBtnEl.setAttribute(
         'aria-label',
-        transcriptHidden ? 'Hiện transcript mới nhất' : 'Ẩn transcript mới nhất',
+        transcriptEnabled ? 'Tắt hiển thị transcript' : 'Bật hiển thị transcript',
       );
     };
     window.addEventListener('bkmt-latest-transcript-state', onTranscriptState as EventListener);

@@ -342,7 +342,8 @@ function PhysicalMicForwarder({
 
 function LatestTranscriptStrip() {
   const { finalized, draftText } = useTranscriptRoom();
-  const [hidden, setHidden] = useState(false);
+  const [transcriptEnabled, setTranscriptEnabled] = useState(true);
+  const [overlayVisible, setOverlayVisible] = useState(false);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const autoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestTranscriptAtRef = useRef<number>(0);
@@ -364,24 +365,24 @@ function LatestTranscriptStrip() {
   }, [draftText]);
 
   useEffect(() => {
-    if (!latestTail) {
-      setHidden(true);
-      return;
-    }
-
     if (autoHideTimerRef.current) {
       clearTimeout(autoHideTimerRef.current);
       autoHideTimerRef.current = null;
+    }
+
+    if (!transcriptEnabled || !latestTail) {
+      setOverlayVisible(false);
+      return;
     }
 
     const now = Date.now();
     const ageMs = latestTranscriptAtRef.current ? now - latestTranscriptAtRef.current : 0;
     const remainingMs = Math.max(0, 10000 - ageMs);
 
-    setHidden(remainingMs === 0);
+    setOverlayVisible(remainingMs > 0);
     if (remainingMs > 0) {
       autoHideTimerRef.current = setTimeout(() => {
-        setHidden(true);
+        setOverlayVisible(false);
         autoHideTimerRef.current = null;
       }, remainingMs);
     }
@@ -392,7 +393,7 @@ function LatestTranscriptStrip() {
         autoHideTimerRef.current = null;
       }
     };
-  }, [latestTail, lastFinal?.receivedAt, draftText]);
+  }, [latestTail, lastFinal?.receivedAt, draftText, transcriptEnabled]);
 
   useEffect(() => {
     const el = bodyRef.current;
@@ -414,7 +415,10 @@ function LatestTranscriptStrip() {
   }, [latestTail, speaker]);
 
   useEffect(() => {
-    const onHide = () => setHidden(true);
+    const onHide = () => {
+      setTranscriptEnabled(false);
+      setOverlayVisible(false);
+    };
     window.addEventListener('bkmt-hide-latest-transcript', onHide);
     return () => {
       window.removeEventListener('bkmt-hide-latest-transcript', onHide);
@@ -422,7 +426,7 @@ function LatestTranscriptStrip() {
   }, []);
 
   useEffect(() => {
-    const onToggle = () => setHidden((prev) => !prev);
+    const onToggle = () => setTranscriptEnabled((prev) => !prev);
     window.addEventListener('bkmt-toggle-latest-transcript', onToggle);
     return () => {
       window.removeEventListener('bkmt-toggle-latest-transcript', onToggle);
@@ -433,14 +437,14 @@ function LatestTranscriptStrip() {
     window.dispatchEvent(
       new CustomEvent('bkmt-latest-transcript-state', {
         detail: {
-          hidden,
+          enabled: transcriptEnabled,
           hasContent: Boolean(latestTail),
         },
       }),
     );
-  }, [hidden, latestTail]);
+  }, [transcriptEnabled, latestTail]);
 
-  if (hidden || !latestTail) {
+  if (!transcriptEnabled || !overlayVisible || !latestTail) {
     return null;
   }
   return (

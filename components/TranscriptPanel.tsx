@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { useTranscriptRoom } from '@/components/TranscriptRoomProvider';
 
 function formatReceivedTime(ts: number): string {
@@ -31,15 +31,55 @@ export default function TranscriptPanel({
   } = useTranscriptRoom();
 
   const listRef = useRef<HTMLDivElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  /** Giống chat: chỉ auto-scroll xuống đáy nếu user đang ở gần đáy (hoặc đang có draft). */
+  const pinToBottomRef = useRef(true);
 
-  const scrollDeps = finalized.length + (draftText ?? '').length;
+  const sortedFinalized = useMemo(
+    () => [...finalized].sort((a, b) => a.receivedAt - b.receivedAt),
+    [finalized],
+  );
+
+  const scrollToBottom = useCallback((force: boolean) => {
+    const el = listRef.current;
+    const bottom = bottomRef.current;
+    if (!el) return;
+    if (force) {
+      el.scrollTop = el.scrollHeight;
+      bottom?.scrollIntoView({ block: 'end', behavior: 'auto' });
+      return;
+    }
+    if (!pinToBottomRef.current) return;
+    window.requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+      bottom?.scrollIntoView({ block: 'end', behavior: 'auto' });
+    });
+  }, []);
+
+  const onMessagesScroll = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const threshold = 80;
+    pinToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+  }, []);
+
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [scrollDeps, draftText]);
+    const ro = new ResizeObserver(() => {
+      if (pinToBottomRef.current) scrollToBottom(true);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [scrollToBottom]);
 
-  const hasContent = finalized.length > 0 || (draftText != null && draftText !== '');
+  const scrollDeps = sortedFinalized.length + (draftText ?? '').length;
+  useEffect(() => {
+    const isDraft = draftText != null && draftText !== '';
+    scrollToBottom(isDraft);
+  }, [scrollDeps, draftText, scrollToBottom]);
+
+  const hasContent = sortedFinalized.length > 0 || (draftText != null && draftText !== '');
   const showEmpty = !hasContent;
 
   return (
@@ -60,12 +100,16 @@ export default function TranscriptPanel({
         )}
       </div>
 
-      <div ref={listRef} className="meeting-transcript-messages">
+      <div
+        ref={listRef}
+        className="meeting-transcript-messages"
+        onScroll={onMessagesScroll}
+      >
         {showEmpty ? (
           <div className="meeting-transcript-empty">Chưa có transcript...</div>
         ) : (
           <>
-            {finalized.map((item) => (
+            {sortedFinalized.map((item) => (
               <div key={item.id} className="meeting-transcript-entry">
                 <div className="meeting-transcript-meta">
                   <span className="meeting-transcript-speaker">
@@ -87,6 +131,7 @@ export default function TranscriptPanel({
                 <div className="meeting-transcript-body">{draftText}</div>
               </div>
             )}
+            <div ref={bottomRef} aria-hidden="true" className="meeting-transcript-scroll-anchor" />
           </>
         )}
       </div>

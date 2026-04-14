@@ -220,6 +220,13 @@ export default function MeetingUnifiedSidePanel({
     if (!visible || activeTab !== 'chat') return;
     const shell = shellRef.current;
     if (!shell) return;
+    let didInitialScroll = false;
+
+    const scrollChatToBottom = () => {
+      const list = shell.querySelector('.lk-chat .lk-chat-messages') as HTMLElement | null;
+      if (!list) return;
+      list.scrollTop = list.scrollHeight;
+    };
 
     const ensureChatVisible = () => {
       const chat = shell.querySelector('.lk-chat') as HTMLElement | null;
@@ -229,11 +236,24 @@ export default function MeetingUnifiedSidePanel({
         return;
       }
       mountChatInSlot();
+      if (!didInitialScroll) {
+        scrollChatToBottom();
+        didInitialScroll = true;
+      }
     };
 
     ensureChatVisible();
+    const raf = window.requestAnimationFrame(() => {
+      if (!didInitialScroll) {
+        scrollChatToBottom();
+        didInitialScroll = true;
+      }
+    });
     const timer = window.setInterval(ensureChatVisible, 350);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearInterval(timer);
+    };
   }, [visible, activeTab, shellRef, mountChatInSlot]);
 
   useEffect(() => {
