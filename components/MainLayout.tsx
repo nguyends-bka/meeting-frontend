@@ -61,7 +61,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             padding: 0,
             height: '100%',
             overflow: 'auto',
-            backgroundColor: '#f5f5f5',
+            backgroundColor: '#f3f4f6',
             minWidth: 0,
           }}
         >

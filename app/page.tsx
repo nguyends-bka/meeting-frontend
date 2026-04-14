@@ -6,7 +6,9 @@ import { useAuth } from '@/lib/auth';
 import { adminApi, apiService } from '@/services/api';
 import MainLayout from '@/components/MainLayout';
 import dayjs from 'dayjs';
+import isoWeek from 'dayjs/plugin/isoWeek';
 import 'dayjs/locale/vi';
+import * as XLSX from 'xlsx';
 import {
   App,
   Avatar,
@@ -39,12 +41,15 @@ import {
   CaretRightOutlined,
   ReloadOutlined,
   FileExcelOutlined,
-  HomeOutlined,
   BellOutlined,
+  CheckCircleOutlined,
+  FolderOpenOutlined,
+  InfoCircleOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 
+dayjs.extend(isoWeek);
 dayjs.locale('vi');
-import * as XLSX from 'xlsx';
 
 const { Title, Text } = Typography;
 
@@ -149,8 +154,12 @@ export default function HomePage() {
     totalMeetings: number;
     activeMeetings: number;
     todayMeetings: number;
+    createdThisWeek: number;
+    joinedSessionsTotal: number;
   } | null>(null);
   const [recentMeetings, setRecentMeetings] = useState<HomeMeetingRow[]>([]);
+  const [liveHighlight, setLiveHighlight] = useState<HomeMeetingRow | null>(null);
+  const [todaySchedule, setTodaySchedule] = useState<HomeMeetingRow[]>([]);
   const [detailMeeting, setDetailMeeting] = useState<HomeMeetingRow | null>(null);
   const [historyMeeting, setHistoryMeeting] = useState<HomeMeetingRow | null>(null);
   const [historyItems, setHistoryItems] = useState<HistoryEntry[]>([]);
@@ -166,17 +175,12 @@ export default function HomePage() {
     [scheduleRangeWatch],
   );
   const [joinForm] = Form.useForm();
-  const [joinQuickCode, setJoinQuickCode] = useState('');
 
   const openJoinModal = useCallback(
-    (presetMeetingCode?: string) => {
+    () => {
       setJoinOpen(true);
       queueMicrotask(() => {
-        const patch: { meetingIdOrCode?: string; passcode: string } = { passcode: '' };
-        if (presetMeetingCode !== undefined) {
-          patch.meetingIdOrCode = presetMeetingCode;
-        }
-        joinForm.setFieldsValue(patch);
+        joinForm.setFieldsValue({ passcode: '' });
       });
     },
     [joinForm],
@@ -226,7 +230,15 @@ export default function HomePage() {
           if (aEnded !== bEnded) return aEnded ? 1 : -1;
           return +new Date(b.createdAt) - +new Date(a.createdAt);
         });
-        setRecentMeetings(rows.slice(0, 5));
+        setRecentMeetings(rows.slice(0, 15));
+        const weekStart = dayjs().startOf('isoWeek');
+        const createdThisWeek = rows.filter((r) => !dayjs(r.createdAt).isBefore(weekStart)).length;
+        setTodaySchedule(
+          rows
+            .filter((r) => dayjs(r.createdAt).isSame(dayjs(), 'day'))
+            .sort((a, b) => +dayjs(a.createdAt) - +dayjs(b.createdAt)),
+        );
+        setLiveHighlight(rows.find((r) => isMeetingLive(r)) ?? null);
 
         const active = rows.filter((r) => isMeetingLive(r)).length;
         const todayCount = rows.filter((r) => {
@@ -237,7 +249,18 @@ export default function HomePage() {
           )}`;
           return key === todayKey;
         }).length;
-        setStats({ totalMeetings: rows.length, activeMeetings: active, todayMeetings: todayCount });
+        let joinedSessionsTotal = 0;
+        const histRes = await apiService.getMyHistory();
+        if (histRes.data && Array.isArray(histRes.data)) {
+          joinedSessionsTotal = histRes.data.length;
+        }
+        setStats({
+          totalMeetings: rows.length,
+          activeMeetings: active,
+          todayMeetings: todayCount,
+          createdThisWeek,
+          joinedSessionsTotal,
+        });
         return;
       }
 
@@ -264,7 +287,15 @@ export default function HomePage() {
         if (aEnded !== bEnded) return aEnded ? 1 : -1;
         return +new Date(b.createdAt) - +new Date(a.createdAt);
       });
-      setRecentMeetings(rows.slice(0, 5));
+      setRecentMeetings(rows.slice(0, 15));
+      const weekStart = dayjs().startOf('isoWeek');
+      const createdThisWeek = rows.filter((r) => !dayjs(r.createdAt).isBefore(weekStart)).length;
+      setTodaySchedule(
+        rows
+          .filter((r) => dayjs(r.createdAt).isSame(dayjs(), 'day'))
+          .sort((a, b) => +dayjs(a.createdAt) - +dayjs(b.createdAt)),
+      );
+      setLiveHighlight(rows.find((r) => isMeetingLive(r)) ?? null);
 
       const todayCount = rows.filter((r) => {
         const d = new Date(r.createdAt);
@@ -275,10 +306,17 @@ export default function HomePage() {
         return key === todayKey;
       }).length;
       const activeUser = rows.filter((r) => isMeetingLive(r)).length;
+      let joinedSessionsTotal = 0;
+      const histRes = await apiService.getMyHistory();
+      if (histRes.data && Array.isArray(histRes.data)) {
+        joinedSessionsTotal = histRes.data.length;
+      }
       setStats({
         totalMeetings: rows.length,
         activeMeetings: activeUser,
         todayMeetings: todayCount,
+        createdThisWeek,
+        joinedSessionsTotal,
       });
     } finally {
       setLoadingHome(false);
@@ -388,260 +426,6 @@ export default function HomePage() {
     }
   }, [historyItems, historyMeeting, message]);
 
-  const homeScheduleColumns = useMemo(
-    () => [
-      {
-        title: 'STT',
-        key: 'stt',
-        width: isWideHome ? 80 : 50,
-        align: 'center' as const,
-        render: (_: unknown, __: HomeMeetingRow, index: number) => (
-          <Text type="secondary">{index + 1}</Text>
-        ),
-      },
-      {
-        title: 'THÔNG TIN CUỘC HỌP',
-        key: 'info',
-        width: isWideHome ? 560 : 100,
-        render: (_: unknown, record: HomeMeetingRow) => (
-          <Space align="start" size="middle">
-            <div
-              style={{
-                fontSize: '20px',
-                color: '#1677ff',
-                padding: '8px 12px',
-                border: '1px solid #e6f4ff',
-                borderRadius: '8px',
-              }}
-            >
-              <CalendarOutlined />
-            </div>
-            <Space direction="vertical" size={0}>
-              <Text strong style={{ fontSize: '15px' }}>
-                {record.title}
-              </Text>
-              <Text type="secondary" style={{ fontSize: '13px' }}>
-                {dayjs(record.createdAt).format('DD/MM/YYYY HH:mm')}
-              </Text>
-              <Space style={{ marginTop: 4 }}>
-                <UserOutlined style={{ color: '#8c8c8c' }} />
-                <Text type="secondary" style={{ fontSize: '13px' }}>
-                  Host: {record.hostName}
-                </Text>
-              </Space>
-            </Space>
-          </Space>
-        ),
-      },
-      {
-        title: 'TRẠNG THÁI',
-        key: 'status',
-        width: isWideHome ? 200 : 50,
-        responsive: ['md'] as const,
-        render: (_: unknown, record: HomeMeetingRow) => {
-          const isEnded = Boolean(record.endedAt);
-          const isLive = isMeetingLive(record);
-          const when = dayjs(record.createdAt);
-          const timeDateLine = (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-              <Text strong>{when.format('HH:mm')}</Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                {when.format('DD/MM/YYYY')}
-              </Text>
-            </div>
-          );
-          if (isLive) {
-            return (
-              <div>
-                <Tag color="success">Đang diễn ra</Tag>
-                {timeDateLine}
-              </div>
-            );
-          }
-          if (isEnded) {
-            const endWhen = record.endedAt ? dayjs(record.endedAt) : when;
-            return (
-              <div>
-                <Tag>Đã kết thúc</Tag>
-                <div style={{ marginTop: 6 }}>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    Kết thúc: {endWhen.format('HH:mm DD/MM/YYYY')}
-                  </Text>
-                </div>
-              </div>
-            );
-          }
-          return (
-            <div>
-              <Tag color="processing">Chưa diễn ra</Tag>
-              {timeDateLine}
-            </div>
-          );
-        },
-      },
-      {
-        title: 'TRUY CẬP',
-        key: 'access',
-        width: isWideHome ? 520 : 450,
-        align: 'left' as const,
-        responsive: ['lg'] as const,
-        render: (_: unknown, record: HomeMeetingRow) => (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '44px 1fr',
-              rowGap: 8,
-              columnGap: 8,
-              width: 'fit-content',
-              maxWidth: '100%',
-              minWidth: 0,
-              alignItems: 'center',
-            }}
-          >
-            <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
-              Mã:
-            </Text>
-            <div
-              style={{
-                display: 'inline-grid',
-                gridTemplateColumns: '110px 12px 44px 8px 110px',
-                alignItems: 'center',
-                minWidth: 0,
-              }}
-            >
-              <div
-                style={{
-                  gridColumn: 1,
-                  background: '#f5f5f5',
-                  padding: '4px 12px',
-                  borderRadius: 4,
-                  width: 110,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  minWidth: 0,
-                }}
-              >
-                <Typography.Text strong style={{ flex: 1, minWidth: 0 }} ellipsis>
-                  {record.meetingCode}
-                </Typography.Text>
-                <CopyOutlined
-                  style={{ color: '#8c8c8c', cursor: 'pointer', flex: '0 0 auto' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void copyText(record.meetingCode);
-                  }}
-                />
-              </div>
-
-              <Text type="secondary" style={{ gridColumn: 3, whiteSpace: 'nowrap', width: 44 }}>
-                Pass:
-              </Text>
-
-              <div
-                style={{
-                  gridColumn: 5,
-                  background: '#f5f5f5',
-                  padding: '4px 12px',
-                  borderRadius: 4,
-                  width: 110,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  minWidth: 0,
-                }}
-              >
-                <Typography.Text strong style={{ flex: 1, minWidth: 0 }}>
-                  {record.passcode}
-                </Typography.Text>
-                <CopyOutlined
-                  style={{ color: '#8c8c8c', cursor: 'pointer', flex: '0 0 auto' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void copyText(record.passcode);
-                  }}
-                />
-              </div>
-            </div>
-
-            <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
-              Link:
-            </Text>
-            <div
-              style={{
-                background: '#f5f5f5',
-                padding: '4px 12px',
-                borderRadius: 4,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                minWidth: 0,
-                width: 110 + 12 + 44 + 8 + 110,
-              }}
-            >
-              <Typography.Text
-                style={{ color: '#1677ff', flex: 1, minWidth: 0 }}
-                ellipsis={{ tooltip: buildMeetingLink(record.id) }}
-              >
-                {buildMeetingLink(record.id)}
-              </Typography.Text>
-              <CopyOutlined
-                style={{ color: '#8c8c8c', cursor: 'pointer', flex: '0 0 auto' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void copyText(buildMeetingLink(record.id));
-                }}
-              />
-            </div>
-          </div>
-        ),
-      },
-      {
-        title: 'THAO TÁC',
-        key: 'actions',
-        width: isWideHome ? 160 : 50,
-        fixed: 'right' as const,
-        render: (_: unknown, record: HomeMeetingRow) => {
-          const isEnded = Boolean(record.endedAt);
-          const isLive = isMeetingLive(record);
-          const actionLabel = isLive ? 'Tham gia' : isEnded ? 'Xem lịch sử' : 'Chi tiết';
-          return (
-            <Button
-              type={isLive ? 'primary' : 'default'}
-              icon={isLive ? <CaretRightOutlined /> : undefined}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isLive) {
-                  router.push(`/meeting/${record.id}`);
-                  return;
-                }
-                if (isEnded) {
-                  void openHistoryModal(record);
-                  return;
-                }
-                setDetailMeeting(record);
-              }}
-              style={{
-                fontWeight: 500,
-                width: 112,
-                minWidth: 112,
-                height: 36,
-                paddingInline: 8,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              className="meeting-action-main-btn"
-            >
-              {actionLabel}
-            </Button>
-          );
-        },
-      },
-    ],
-    [router, copyText, buildMeetingLink, openHistoryModal, isWideHome]
-  );
-
   const onJoinMeeting = async () => {
     const values = await joinForm.validateFields();
     const meetingIdOrCode = String(values.meetingIdOrCode || '').trim();
@@ -663,38 +447,24 @@ export default function HomePage() {
     if (result.data) {
       setJoinOpen(false);
       joinForm.resetFields();
-      setJoinQuickCode('');
       router.push(`/meeting/${result.data.meetingId}`);
     }
   };
 
-  const heroMeeting = useMemo(
-    () => recentMeetings.find((r) => isMeetingLive(r)),
-    [recentMeetings],
-  );
-
-  const todayMeetingsList = useMemo(() => {
-    const start = dayjs().startOf('day');
-    return [...recentMeetings]
-      .filter((r) => dayjs(r.createdAt).isSame(start, 'day'))
-      .sort((a, b) => +dayjs(a.createdAt) - +dayjs(b.createdAt));
-  }, [recentMeetings]);
-
   const pendingForYou = useMemo(() => {
     if (!stats) return 0;
-    const today = dayjs().startOf('day');
-    let extra = 0;
-    for (const r of recentMeetings) {
-      if (!dayjs(r.createdAt).isSame(today, 'day')) continue;
-      if (r.endedAt) continue;
-      if (isMeetingLive(r)) continue;
-      extra += 1;
-    }
+    const extra = todaySchedule.filter((r) => !r.endedAt && !isMeetingLive(r)).length;
     return (stats.activeMeetings ?? 0) + extra;
-  }, [recentMeetings, stats]);
+  }, [todaySchedule, stats]);
 
   const homeNotifications = useMemo(() => {
-    const items: { key: string; title: string; desc: string; time: string }[] = [];
+    const items: {
+      key: string;
+      title: string;
+      desc: string;
+      time: string;
+      kind: 'info' | 'success' | 'warn';
+    }[] = [];
     for (const r of recentMeetings) {
       const st = meetingRowStatus(r);
       const t = dayjs(r.createdAt);
@@ -704,6 +474,7 @@ export default function HomePage() {
           title: 'Cuộc họp đang diễn ra',
           desc: `"${r.title}" có người trong phòng.`,
           time: t.format('HH:mm'),
+          kind: 'info',
         });
       } else if (st === 'ended') {
         items.push({
@@ -711,6 +482,7 @@ export default function HomePage() {
           title: 'Đã kết thúc',
           desc: `"${r.title}" đã hoàn tất.`,
           time: t.format('DD/MM HH:mm'),
+          kind: 'success',
         });
       } else if (t.isSame(dayjs(), 'day')) {
         items.push({
@@ -718,6 +490,7 @@ export default function HomePage() {
           title: 'Sắp diễn ra',
           desc: `"${r.title}" — dự kiến ${t.format('HH:mm')}.`,
           time: t.format('HH:mm'),
+          kind: 'warn',
         });
       }
     }
@@ -725,8 +498,9 @@ export default function HomePage() {
       items.push({
         key: 'empty',
         title: 'Chưa có hoạt động gần đây',
-        desc: 'Khi có cuộc họp trong danh sách gần đây, thông báo sẽ hiển thị tại đây.',
+        desc: 'Khi có cuộc họp mới, thông báo sẽ hiển thị tại đây.',
         time: '',
+        kind: 'info',
       });
     }
     return items.slice(0, 6);
@@ -740,52 +514,81 @@ export default function HomePage() {
   })();
 
   const heroSection = useMemo(() => {
-    if (!heroMeeting) return null;
-    const start = dayjs(heroMeeting.startedAt || heroMeeting.createdAt);
-    const end = heroMeeting.endedAt ? dayjs(heroMeeting.endedAt) : start.add(1, 'hour');
+    if (!liveHighlight) return null;
+    const start = dayjs(liveHighlight.startedAt || liveHighlight.createdAt);
+    const end = liveHighlight.endedAt ? dayjs(liveHighlight.endedAt) : start.add(1, 'hour');
     return (
       <div
         style={{
           borderRadius: 16,
           padding: isNarrow ? 18 : 24,
           marginBottom: 16,
-          background: 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 42%, #0f172a 100%)',
-          color: '#fff',
-          boxShadow: '0 12px 40px rgba(15, 23, 42, 0.25)',
+          background: '#ffffff',
+          color: '#0f172a',
+          boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+          border: '1px solid #e5e7eb',
         }}
       >
-        <Tag color="cyan" style={{ marginBottom: 12, fontWeight: 700 }}>
-          ĐANG DIỄN RA
-        </Tag>
-        <Title level={3} style={{ margin: 0, color: '#fff' }}>
-          {heroMeeting.title}
+        <Space style={{ marginBottom: 10 }} wrap size={[8, 8]}>
+          <Tag color="success" style={{ margin: 0, fontWeight: 700, border: 'none' }}>
+            ĐANG DIỄN RA
+          </Tag>
+          <Text style={{ color: '#64748b', fontSize: 13 }}>
+            Hôm nay, {dayjs().format('DD/MM/YYYY')}
+          </Text>
+        </Space>
+        <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
+          {liveHighlight.title}
         </Title>
-        <div style={{ marginTop: 12, opacity: 0.92, fontSize: 14 }}>
+        <div style={{ marginTop: 12, opacity: 0.95, fontSize: 14 }}>
           <div>
             {start.format('HH:mm')} – {end.format('HH:mm')}
           </div>
-          <div style={{ marginTop: 4 }}>Host: {heroMeeting.hostName}</div>
-          <div style={{ marginTop: 4 }}>
-            Mã phòng: <strong>{heroMeeting.meetingCode}</strong>
-            {' · '}
-            Passcode: <strong>{heroMeeting.passcode || '—'}</strong>
+          <div style={{ marginTop: 4 }}>Host: {liveHighlight.hostName}</div>
+        </div>
+        <div
+          style={{
+            marginTop: 16,
+            padding: 14,
+            borderRadius: 12,
+            background: '#ffffff',
+            border: '1px solid #dbe2ea',
+          }}
+        >
+          <div style={{ fontSize: 13 }}>
+            <Text style={{ color: '#64748b' }}>Mã phòng: </Text>
+            <Text strong style={{ color: '#0f172a' }}>
+              {liveHighlight.meetingCode}
+            </Text>
+          </div>
+          <div style={{ fontSize: 13, marginTop: 8 }}>
+            <Text style={{ color: '#64748b' }}>Passcode: </Text>
+            <Text strong style={{ color: '#0f172a' }}>
+              {liveHighlight.passcode || '—'}
+            </Text>
           </div>
         </div>
         <Space style={{ marginTop: 18 }} wrap>
           <Button
+            type="default"
             size="large"
-            onClick={() => router.push(`/meeting/${heroMeeting.id}`)}
-            style={{ fontWeight: 600 }}
+            icon={<CaretRightOutlined />}
+            onClick={() => router.push(`/meeting/${liveHighlight.id}`)}
+            style={{ fontWeight: 600, color: '#1e3a8a' }}
           >
             Tham gia ngay
           </Button>
-          <Button size="large" ghost onClick={() => setDetailMeeting(heroMeeting)}>
+          <Button
+            size="large"
+            onClick={() => setDetailMeeting(liveHighlight)}
+            style={{ borderColor: '#cbd5e1', color: '#334155' }}
+          >
             Chi tiết
           </Button>
         </Space>
       </div>
     );
-  }, [heroMeeting, isNarrow, router]);
+  }, [liveHighlight, isNarrow, router]);
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Đang tải...</div>;
   if (!isAuthenticated) return null;
@@ -801,15 +604,6 @@ export default function HomePage() {
           boxSizing: 'border-box',
         }}
       >
-        <div style={{ marginBottom: 16 }}>
-          <Space size={10}>
-            <HomeOutlined style={{ color: '#1677ff', fontSize: 18 }} />
-            <Text strong style={{ fontSize: 15 }}>
-              Tổng quan (Dashboard)
-            </Text>
-          </Space>
-        </div>
-
         <Row gutter={[24, 24]}>
           <Col xs={24} lg={16}>
             <Card
@@ -817,7 +611,8 @@ export default function HomePage() {
               style={{
                 borderRadius: 12,
                 marginBottom: 16,
-                background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 55%, #eef6ff 100%)',
+                background: '#ffffff',
+                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
               }}
             >
               <div
@@ -831,49 +626,32 @@ export default function HomePage() {
               >
                 <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                   <Title level={3} style={{ margin: 0 }}>
-                    {greetingWord}, {user?.fullName}!
+                    {greetingWord}, {user?.fullName}! 👋
                   </Title>
-                  <Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
-                    {dayjs().format('dddd, DD/MM/YYYY')}
-                  </Text>
-                  <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                    Bạn có <Text strong>{pendingForYou}</Text> cuộc họp cần quan tâm (đang diễn ra + chưa bắt đầu trong
-                    ngày, theo danh sách gần đây).
+                  <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 15 }}>
+                    Hôm nay là {dayjs().format('dddd')}, {dayjs().format('D')} tháng {dayjs().format('MM')} năm{' '}
+                    {dayjs().format('YYYY')}. Bạn có <Text strong>{pendingForYou}</Text> cuộc họp đang chờ.
                   </Text>
                 </div>
                 <div
                   style={{
                     display: 'flex',
-                    flexWrap: 'wrap',
+                    flexWrap: 'nowrap',
                     gap: 10,
                     alignItems: 'center',
                     justifyContent: 'flex-end',
-                    flex: '1 1 280px',
+                    flex: '0 0 auto',
                   }}
                 >
-                  <Space.Compact style={{ minWidth: 0, maxWidth: 360, width: '100%' }}>
-                    <Input
-                      size="large"
-                      placeholder="Nhập mã tham gia"
-                      value={joinQuickCode}
-                      onChange={(e) => setJoinQuickCode(e.target.value)}
-                      onPressEnter={() => openJoinModal(joinQuickCode.trim())}
-                      style={{ minWidth: 0 }}
-                    />
-                    <Button
-                      size="large"
-                      icon={<RightCircleOutlined />}
-                      onClick={() => openJoinModal(joinQuickCode.trim())}
-                    >
-                      Tham gia
-                    </Button>
-                  </Space.Compact>
+                  <Button size="large" icon={<RightCircleOutlined />} onClick={openJoinModal}>
+                    Tham gia
+                  </Button>
                   <Button
                     type="primary"
                     size="large"
                     onClick={() => setCreateOpen(true)}
                     icon={<PlusOutlined />}
-                    style={{ fontWeight: 600 }}
+                    style={{ fontWeight: 600, background: '#2563eb', borderColor: '#2563eb' }}
                   >
                     Tạo cuộc họp mới
                   </Button>
@@ -885,16 +663,25 @@ export default function HomePage() {
 
             <Card
               bordered={false}
-              style={{ borderRadius: 12, marginBottom: 16 }}
+              style={{ borderRadius: 12, marginBottom: 16, boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)' }}
               title={<span style={{ fontWeight: 700 }}>Lịch trình hôm nay</span>}
+              extra={
+                <Button type="link" onClick={() => router.push('/meetings')} style={{ padding: 0 }}>
+                  Xem lịch đầy đủ →
+                </Button>
+              }
             >
-              {todayMeetingsList.length === 0 ? (
-                <Text type="secondary">Không có cuộc họp nào trong danh sách gần đây được tạo hôm nay.</Text>
+              {loadingHome ? (
+                <Text type="secondary">Đang tải…</Text>
+              ) : todaySchedule.length === 0 ? (
+                <Text type="secondary">Chưa có cuộc họp nào được tạo hôm nay.</Text>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {todayMeetingsList.map((m) => {
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {todaySchedule.map((m, index) => {
                     const st = meetingRowStatus(m);
                     const when = dayjs(m.createdAt);
+                    const dot =
+                      st === 'live' ? '#22c55e' : st === 'ended' ? '#94a3b8' : '#2563eb';
                     const tag =
                       st === 'live' ? (
                         <Tag color="success">Đang diễn ra</Tag>
@@ -907,22 +694,61 @@ export default function HomePage() {
                       <div
                         key={m.id}
                         style={{
-                          display: 'grid',
-                          gridTemplateColumns: isNarrow ? '1fr' : '72px 1fr',
-                          gap: 12,
-                          padding: '12px 0',
-                          borderBottom: '1px solid #f0f0f0',
+                          display: 'flex',
+                          gap: 14,
+                          alignItems: 'stretch',
+                          padding: '14px 0',
+                          borderBottom: index < todaySchedule.length - 1 ? '1px solid #f1f5f9' : undefined,
                         }}
                       >
-                        <Text strong style={{ fontSize: 16 }}>
+                        <Text strong style={{ width: 52, flexShrink: 0, fontSize: 15, lineHeight: '24px' }}>
                           {when.format('HH:mm')}
                         </Text>
-                        <div>
+                        <div
+                          style={{
+                            position: 'relative',
+                            width: 20,
+                            flexShrink: 0,
+                            display: 'flex',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {index < todaySchedule.length - 1 ? (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: 18,
+                                bottom: -14,
+                                left: '50%',
+                                width: 2,
+                                marginLeft: -1,
+                                background: '#e2e8f0',
+                                borderRadius: 1,
+                              }}
+                            />
+                          ) : null}
+                          <div
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: '50%',
+                              background: dot,
+                              marginTop: 6,
+                              zIndex: 1,
+                              border: '2px solid #fff',
+                              boxShadow: `0 0 0 1px ${dot}`,
+                              flexShrink: 0,
+                            }}
+                          />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           <Space wrap size={[8, 4]}>
-                            <Text strong>{m.title}</Text>
+                            <Text strong style={{ fontSize: 15 }}>
+                              {m.title}
+                            </Text>
                             {tag}
                           </Space>
-                          <div style={{ marginTop: 4 }}>
+                          <div style={{ marginTop: 6 }}>
                             <Text type="secondary" style={{ fontSize: 13 }}>
                               Host: {m.hostName}
                             </Text>
@@ -934,134 +760,109 @@ export default function HomePage() {
                 </div>
               )}
             </Card>
-
-            <Card
-              bodyStyle={{ padding: 0 }}
-              bordered={false}
-              style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.03)' }}
-              title={<span style={{ fontWeight: 700 }}>Lịch trình &amp; Gần đây</span>}
-              extra={
-                <Button type="link" onClick={() => router.push('/meetings')} style={{ padding: 0 }}>
-                  Xem tất cả →
-                </Button>
-              }
-            >
-              <Table<HomeMeetingRow>
-                rowKey="id"
-                loading={loadingHome}
-                dataSource={recentMeetings}
-                pagination={false}
-                tableLayout="fixed"
-                scroll={{
-                  x: isNarrow ? 860 : isWideHome ? 1520 : 1360,
-                }}
-                columns={homeScheduleColumns as any}
-                locale={{
-                  emptyText: (
-                    <div style={{ padding: 16 }}>
-                      <Text type="secondary">Chưa có dữ liệu.</Text>
-                    </div>
-                  ),
-                }}
-              />
-            </Card>
           </Col>
 
           <Col xs={24} lg={8}>
             {stats && (
               <Card
                 bordered={false}
-                style={{ borderRadius: 12, marginBottom: 16 }}
+                style={{ borderRadius: 12, marginBottom: 16, boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)' }}
                 title={<span style={{ fontWeight: 700 }}>Tổng quan cá nhân</span>}
               >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: ss(12) }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: ss(12),
-                      padding: ss(12),
-                      borderRadius: ss(10),
-                      background: '#f8fafc',
-                    }}
-                  >
-                    <VideoCameraOutlined style={{ fontSize: ss(20), color: '#1677ff' }} />
-                    <div>
-                      <Text type="secondary" style={{ fontSize: ss(12) }}>
-                        Tổng cuộc họp
-                      </Text>
-                      <div style={{ fontSize: ss(22), fontWeight: 700 }}>{stats.totalMeetings}</div>
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: ss(12),
-                      padding: ss(12),
-                      borderRadius: ss(10),
-                      background: '#ecfdf5',
-                    }}
-                  >
-                    <span style={{ fontSize: ss(20) }}>👥</span>
-                    <div>
-                      <Text type="secondary" style={{ fontSize: ss(12) }}>
-                        Đang diễn ra
-                      </Text>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: ss(22), fontWeight: 700 }}>{stats.activeMeetings}</span>
-                        {stats.activeMeetings > 0 && <Tag color="green">Live</Tag>}
+                <Row gutter={[12, 12]}>
+                  <Col xs={24} sm={12}>
+                    <div
+                      style={{
+                        padding: ss(14),
+                        borderRadius: ss(12),
+                        background: '#f0f7ff',
+                        border: '1px solid #dbeafe',
+                        height: '100%',
+                      }}
+                    >
+                      <VideoCameraOutlined style={{ fontSize: ss(22), color: '#2563eb' }} />
+                      <div style={{ fontSize: ss(26), fontWeight: 800, marginTop: ss(8), color: '#0f172a' }}>
+                        {stats.createdThisWeek}
                       </div>
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: ss(12),
-                      padding: ss(12),
-                      borderRadius: ss(10),
-                      background: '#f3f4f6',
-                    }}
-                  >
-                    <CalendarOutlined style={{ fontSize: ss(20), color: '#6b7280' }} />
-                    <div>
-                      <Text type="secondary" style={{ fontSize: ss(12) }}>
-                        Cuộc họp tạo trong ngày
+                      <Text type="secondary" style={{ fontSize: ss(12), display: 'block', marginTop: 4 }}>
+                        Đã tạo tuần này
                       </Text>
-                      <div style={{ fontSize: ss(22), fontWeight: 700 }}>{stats.todayMeetings}</div>
                     </div>
-                  </div>
-                </div>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <div
+                      style={{
+                        padding: ss(14),
+                        borderRadius: ss(12),
+                        background: '#ecfdf5',
+                        border: '1px solid #bbf7d0',
+                        height: '100%',
+                        cursor: 'pointer',
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push('/history')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') router.push('/history');
+                      }}
+                    >
+                      <CheckCircleOutlined style={{ fontSize: ss(22), color: '#16a34a' }} />
+                      <div style={{ fontSize: ss(26), fontWeight: 800, marginTop: ss(8), color: '#0f172a' }}>
+                        {stats.joinedSessionsTotal}
+                      </div>
+                      <Text type="secondary" style={{ fontSize: ss(12), display: 'block', marginTop: 4 }}>
+                        Đã tham gia (lượt)
+                      </Text>
+                    </div>
+                  </Col>
+                </Row>
               </Card>
             )}
 
             <Card
               bordered={false}
-              style={{ borderRadius: 12 }}
+              style={{ borderRadius: 12, boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)' }}
               title={
                 <Space>
                   <BellOutlined />
                   <span style={{ fontWeight: 700 }}>Thông báo mới</span>
                 </Space>
               }
+              extra={
+                <Button type="link" onClick={() => router.push('/history')} style={{ padding: 0 }}>
+                  Xem tất cả
+                </Button>
+              }
             >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {homeNotifications.map((n) => (
-                  <div key={n.key}>
-                    <Text strong style={{ display: 'block' }}>
-                      {n.title}
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 2 }}>
-                      {n.desc}
-                    </Text>
-                    {n.time ? (
-                      <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
-                        {n.time}
-                      </Text>
-                    ) : null}
-                  </div>
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {homeNotifications.map((n) => {
+                  const icon =
+                    n.kind === 'success' ? (
+                      <FolderOpenOutlined style={{ color: '#16a34a', fontSize: 18 }} />
+                    ) : n.kind === 'warn' ? (
+                      <ExclamationCircleOutlined style={{ color: '#dc2626', fontSize: 18 }} />
+                    ) : (
+                      <InfoCircleOutlined style={{ color: '#2563eb', fontSize: 18 }} />
+                    );
+                  return (
+                    <div key={n.key} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div style={{ flexShrink: 0, marginTop: 2 }}>{icon}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Text strong style={{ display: 'block', fontSize: 14 }}>
+                          {n.title}
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 4 }}>
+                          {n.desc}
+                        </Text>
+                        {n.time ? (
+                          <Text type="secondary" style={{ fontSize: 12, marginTop: 6, display: 'block' }}>
+                            {n.time}
+                          </Text>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </Card>
           </Col>
@@ -1434,7 +1235,6 @@ export default function HomePage() {
         onCancel={() => {
           setJoinOpen(false);
           joinForm.resetFields();
-          setJoinQuickCode('');
         }}
         footer={null}
         destroyOnHidden

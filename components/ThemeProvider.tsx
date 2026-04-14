@@ -50,7 +50,7 @@ function applyTheme(actualTheme: string) {
       html.classList.add('light-theme');
       html.setAttribute('data-theme', 'light');
       body.classList.add('light-theme');
-      body.style.backgroundColor = '#f5f5f5';
+      body.style.backgroundColor = '#f3f4f6';
       body.style.color = '#000';
     }
   } else {
