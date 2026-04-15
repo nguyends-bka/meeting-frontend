@@ -25,6 +25,7 @@ import type {
   UpdateMeetingRequest,
   MeetingInvitee,
   MeetingCoHostItem,
+  MeetingNotificationItem,
 } from '@/dtos/meeting.dto';
 
 // Meeting domain API - React Query compatible
@@ -294,6 +295,19 @@ export const meetingApi = {
     return apiClient.request<{ message: string }>(
       `/api/meeting/${encodeURIComponent(meetingId)}/co-hosts/${encodeURIComponent(hostUserId)}`,
       { method: 'DELETE' },
+    );
+  },
+
+  getMyNotifications: async () => {
+    return apiClient.request<MeetingNotificationItem[]>('/api/meeting/my-notifications', {
+      method: 'GET',
+    });
+  },
+
+  openNotification: async (notificationId: string) => {
+    return apiClient.request<{ openedAt?: string | null }>(
+      `/api/meeting/notifications/${encodeURIComponent(notificationId)}/open`,
+      { method: 'POST' },
     );
   },
 

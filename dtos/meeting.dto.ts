@@ -73,6 +73,17 @@ export interface MeetingCoHostItem {
   fullName: string;
 }
 
+export interface MeetingNotificationItem {
+  id: string;
+  meetingId: string;
+  meetingTitle: string;
+  type: 'invite_added' | 'cohost_granted' | string;
+  message: string;
+  actorUsername: string;
+  createdAt: string;
+  openedAt?: string | null;
+}
+
 export interface EndMeetingResponse {
   message: string;
   endedAt?: string | null;

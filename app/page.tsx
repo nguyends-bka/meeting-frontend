@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
-import { adminApi, apiService } from '@/services/api';
+import { adminApi, apiService, meetingApi } from '@/services/api';
 import MainLayout from '@/components/MainLayout';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -52,12 +52,14 @@ dayjs.extend(isoWeek);
 dayjs.locale('vi');
 
 const { Title, Text } = Typography;
+const ENABLE_HOME_NOTIFICATIONS = process.env.NEXT_PUBLIC_ENABLE_MEETING_NOTIFICATIONS === 'true';
 
 type HomeMeetingRow = {
   id: string;
   title: string;
   hostName: string;
   hostIdentity: string;
+  isMeetingHost?: boolean;
   meetingCode: string;
   passcode: string;
   createdAt: string;
@@ -76,14 +78,52 @@ type HistoryEntry = {
   duration: number | null;
 };
 
+type HomeNotificationItem = {
+  id: string;
+  meetingId: string;
+  title: string;
+  desc: string;
+  time: string;
+  kind: 'info' | 'success' | 'warn';
+  openedAt?: string | null;
+};
+
 function isMeetingLive(r: HomeMeetingRow): boolean {
-  return !r.endedAt && (r.activeParticipantCount ?? 0) > 0;
+  if (r.endedAt) return false;
+  const now = dayjs();
+  const start = dayjs(r.createdAt);
+  if (!start.isValid()) return false;
+  if (now.isBefore(start)) return false;
+  const estimatedEnd = r.startedAt ? dayjs(r.startedAt) : null;
+  if (estimatedEnd && estimatedEnd.isValid()) {
+    return now.isBefore(estimatedEnd) || now.isSame(estimatedEnd);
+  }
+  return true;
 }
 
-function meetingRowStatus(r: HomeMeetingRow): 'live' | 'ended' | 'upcoming' {
-  if (isMeetingLive(r)) return 'live';
+function meetingRowStatus(r: HomeMeetingRow): 'live' | 'ended' | 'upcoming' | 'no_show' {
   if (r.endedAt) return 'ended';
+  const now = dayjs();
+  const estimatedEnd = r.startedAt ? dayjs(r.startedAt) : null;
+  if (
+    estimatedEnd &&
+    estimatedEnd.isValid() &&
+    now.isAfter(estimatedEnd) &&
+    (r.activeParticipantCount ?? 0) === 0
+  ) {
+    return 'no_show';
+  }
+  if (isMeetingLive(r)) return 'live';
   return 'upcoming';
+}
+
+function pickHeroMeeting(rows: HomeMeetingRow[]): HomeMeetingRow | null {
+  const live = rows.find((r) => meetingRowStatus(r) === 'live');
+  if (live) return live;
+  const upcoming = rows
+    .filter((r) => meetingRowStatus(r) === 'upcoming')
+    .sort((a, b) => +dayjs(a.createdAt) - +dayjs(b.createdAt));
+  return upcoming[0] ?? null;
 }
 
 /** Thời lượng = kết thúc − bắt đầu (chỉ hiển thị, không có nút gợi ý). */
@@ -167,6 +207,8 @@ export default function HomePage() {
   const [historyTablePage, setHistoryTablePage] = useState(1);
   const [historyTablePageSize, setHistoryTablePageSize] = useState(10);
   const [exportingHistoryExcel, setExportingHistoryExcel] = useState(false);
+  const [homeNotifications, setHomeNotifications] = useState<HomeNotificationItem[]>([]);
+  const [openedNotification, setOpenedNotification] = useState<HomeNotificationItem | null>(null);
 
   const [createForm] = Form.useForm();
   const scheduleRangeWatch = Form.useWatch('scheduleRange', createForm);
@@ -195,8 +237,31 @@ export default function HomePage() {
   useEffect(() => {
     if (isAuthenticated) {
       void loadStats();
+      if (ENABLE_HOME_NOTIFICATIONS) {
+        void loadNotifications();
+      } else {
+        setHomeNotifications([]);
+      }
     }
   }, [isAuthenticated]);
+
+  const loadNotifications = async () => {
+    const res = await meetingApi.getMyNotifications();
+    if (res.error || !Array.isArray(res.data)) {
+      setHomeNotifications([]);
+      return;
+    }
+    const mapped: HomeNotificationItem[] = res.data.map((n) => ({
+      id: n.id,
+      meetingId: n.meetingId,
+      title: n.type === 'cohost_granted' ? 'Bạn được cấp quyền chủ trì' : 'Bạn được thêm vào cuộc họp',
+      desc: n.message,
+      time: dayjs(n.createdAt).format('DD/MM/YYYY HH:mm:ss'),
+      kind: n.type === 'cohost_granted' ? 'success' : 'info',
+      openedAt: n.openedAt ?? null,
+    }));
+    setHomeNotifications(mapped.slice(0, 10));
+  };
 
   const loadStats = async () => {
     setLoadingHome(true);
@@ -214,6 +279,7 @@ export default function HomePage() {
           title: m.title,
           hostName: m.hostName,
           hostIdentity: m.hostIdentity ?? '',
+          isMeetingHost: Boolean(m.isMeetingHost),
           meetingCode: m.meetingCode,
           passcode: m.passcode ?? '',
           createdAt: m.createdAt,
@@ -238,7 +304,7 @@ export default function HomePage() {
             .filter((r) => dayjs(r.createdAt).isSame(dayjs(), 'day'))
             .sort((a, b) => +dayjs(a.createdAt) - +dayjs(b.createdAt)),
         );
-        setLiveHighlight(rows.find((r) => isMeetingLive(r)) ?? null);
+        setLiveHighlight(pickHeroMeeting(rows));
 
         const active = rows.filter((r) => isMeetingLive(r)).length;
         const todayCount = rows.filter((r) => {
@@ -271,6 +337,7 @@ export default function HomePage() {
         title: m.title,
         hostName: m.hostName,
         hostIdentity: m.hostIdentity ?? '',
+        isMeetingHost: Boolean(m.isMeetingHost),
         meetingCode: m.meetingCode,
         passcode: m.passcode ?? '',
         createdAt: m.createdAt,
@@ -295,7 +362,7 @@ export default function HomePage() {
           .filter((r) => dayjs(r.createdAt).isSame(dayjs(), 'day'))
           .sort((a, b) => +dayjs(a.createdAt) - +dayjs(b.createdAt)),
       );
-      setLiveHighlight(rows.find((r) => isMeetingLive(r)) ?? null);
+      setLiveHighlight(pickHeroMeeting(rows));
 
       const todayCount = rows.filter((r) => {
         const d = new Date(r.createdAt);
@@ -466,54 +533,21 @@ export default function HomePage() {
     return (stats.activeMeetings ?? 0) + extra;
   }, [todaySchedule, stats]);
 
-  const homeNotifications = useMemo(() => {
-    const items: {
-      key: string;
-      title: string;
-      desc: string;
-      time: string;
-      kind: 'info' | 'success' | 'warn';
-    }[] = [];
-    for (const r of recentMeetings) {
-      const st = meetingRowStatus(r);
-      const t = dayjs(r.createdAt);
-      if (st === 'live') {
-        items.push({
-          key: `live-${r.id}`,
-          title: 'Cuộc họp đang diễn ra',
-          desc: `"${r.title}" có người trong phòng.`,
-          time: t.format('HH:mm'),
-          kind: 'info',
-        });
-      } else if (st === 'ended') {
-        items.push({
-          key: `end-${r.id}`,
-          title: 'Đã kết thúc',
-          desc: `"${r.title}" đã hoàn tất.`,
-          time: t.format('DD/MM HH:mm'),
-          kind: 'success',
-        });
-      } else if (t.isSame(dayjs(), 'day')) {
-        items.push({
-          key: `up-${r.id}`,
-          title: 'Sắp diễn ra',
-          desc: `"${r.title}" — dự kiến ${t.format('HH:mm')}.`,
-          time: t.format('HH:mm'),
-          kind: 'warn',
-        });
+  const openHomeNotification = useCallback(
+    async (item: HomeNotificationItem) => {
+      if (!item.openedAt) {
+        await meetingApi.openNotification(item.id);
       }
-    }
-    if (items.length === 0) {
-      items.push({
-        key: 'empty',
-        title: 'Chưa có hoạt động gần đây',
-        desc: 'Khi có cuộc họp mới, thông báo sẽ hiển thị tại đây.',
-        time: '',
-        kind: 'info',
+      setHomeNotifications((prev) =>
+        prev.map((n) => (n.id === item.id ? { ...n, openedAt: n.openedAt ?? new Date().toISOString() } : n)),
+      );
+      setOpenedNotification({
+        ...item,
+        openedAt: item.openedAt ?? new Date().toISOString(),
       });
-    }
-    return items.slice(0, 6);
-  }, [recentMeetings]);
+    },
+    [],
+  );
 
   const greetingWord = (() => {
     const h = dayjs().hour();
@@ -524,8 +558,15 @@ export default function HomePage() {
 
   const heroSection = useMemo(() => {
     if (!liveHighlight) return null;
-    const start = dayjs(liveHighlight.startedAt || liveHighlight.createdAt);
-    const end = liveHighlight.endedAt ? dayjs(liveHighlight.endedAt) : start.add(1, 'hour');
+    const heroStatus = meetingRowStatus(liveHighlight);
+    const isHeroLive = heroStatus === 'live';
+    const start = dayjs(liveHighlight.createdAt);
+    const plannedEnd = liveHighlight.startedAt ? dayjs(liveHighlight.startedAt) : null;
+    const end = liveHighlight.endedAt
+      ? dayjs(liveHighlight.endedAt)
+      : plannedEnd && plannedEnd.isValid()
+        ? plannedEnd
+        : start.add(1, 'hour');
     return (
       <div
         style={{
@@ -539,11 +580,11 @@ export default function HomePage() {
         }}
       >
         <Space style={{ marginBottom: 10 }} wrap size={[8, 8]}>
-          <Tag color="success" style={{ margin: 0, fontWeight: 700, border: 'none' }}>
-            ĐANG DIỄN RA
+          <Tag color={isHeroLive ? 'success' : 'processing'} style={{ margin: 0, fontWeight: 700, border: 'none' }}>
+            {isHeroLive ? 'ĐANG DIỄN RA' : 'SẮP DIỄN RA'}
           </Tag>
           <Text style={{ color: '#64748b', fontSize: 13 }}>
-            Hôm nay, {dayjs().format('DD/MM/YYYY')}
+            {isHeroLive ? 'Hôm nay' : 'Dự kiến'}, {start.format('DD/MM/YYYY')}
           </Text>
         </Space>
         <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
@@ -694,6 +735,8 @@ export default function HomePage() {
                     const tag =
                       st === 'live' ? (
                         <Tag color="success">Đang diễn ra</Tag>
+                      ) : st === 'no_show' ? (
+                        <Tag color="default">Không diễn ra</Tag>
                       ) : st === 'ended' ? (
                         <Tag>Đã kết thúc</Tag>
                       ) : (
@@ -844,7 +887,19 @@ export default function HomePage() {
               }
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {homeNotifications.map((n) => {
+                {(homeNotifications.length > 0
+                  ? homeNotifications
+                  : [
+                      {
+                        id: 'empty',
+                        meetingId: '',
+                        title: 'Chưa có hoạt động gần đây',
+                        desc: 'Khi có cuộc họp mới, thông báo sẽ hiển thị tại đây.',
+                        time: '',
+                        kind: 'info' as const,
+                        openedAt: null,
+                      },
+                    ]).map((n) => {
                   const icon =
                     n.kind === 'success' ? (
                       <FolderOpenOutlined style={{ color: '#16a34a', fontSize: 18 }} />
@@ -854,7 +909,19 @@ export default function HomePage() {
                       <InfoCircleOutlined style={{ color: '#2563eb', fontSize: 18 }} />
                     );
                   return (
-                    <div key={n.key} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div
+                      key={n.id}
+                      style={{
+                        display: 'flex',
+                        gap: 12,
+                        alignItems: 'flex-start',
+                        cursor: n.id === 'empty' ? 'default' : 'pointer',
+                        opacity: n.id === 'empty' || n.openedAt ? 0.86 : 1,
+                      }}
+                      onClick={() => {
+                        if (n.id !== 'empty') void openHomeNotification(n);
+                      }}
+                    >
                       <div style={{ flexShrink: 0, marginTop: 2 }}>{icon}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <Text strong style={{ display: 'block', fontSize: 14 }}>
@@ -1291,6 +1358,38 @@ export default function HomePage() {
             Tham gia ngay
           </Button>
         </Form>
+      </Modal>
+
+      <Modal
+        title="Chi tiết thông báo"
+        open={Boolean(openedNotification)}
+        onCancel={() => setOpenedNotification(null)}
+        footer={null}
+        destroyOnHidden
+      >
+        {openedNotification && (
+          <div>
+            <Typography.Title level={5} style={{ marginTop: 0 }}>
+              {openedNotification.title}
+            </Typography.Title>
+            <Typography.Paragraph style={{ marginBottom: 10 }}>
+              {openedNotification.desc}
+            </Typography.Paragraph>
+            <Typography.Text type="secondary" style={{ display: 'block' }}>
+              Thời gian nhận: {openedNotification.time}
+            </Typography.Text>
+            <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+              Trạng thái: {openedNotification.openedAt ? 'Đã mở' : 'Chưa mở'}
+            </Typography.Text>
+            {openedNotification.meetingId ? (
+              <div style={{ marginTop: 16 }}>
+                <Button type="primary" onClick={() => router.push('/meetings')}>
+                  Mở cuộc họp liên quan
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        )}
       </Modal>
 
       <style

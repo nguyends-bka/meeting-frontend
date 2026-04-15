@@ -102,7 +102,7 @@ function MeetingsPageContent() {
   const [tablePageSize, setTablePageSize] = useState(10);
   
   const [searchText, setSearchText] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'live' | 'done'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'live' | 'done' | 'no_show'>('all');
 
   const [pollModalMeeting, setPollModalMeeting] = useState<Meeting | null>(null);
   const [savingPoll, setSavingPoll] = useState(false);
@@ -162,8 +162,26 @@ function MeetingsPageContent() {
     return hostIdentity === userId || hostIdentity === username;
   };
 
+  const getMeetingStatus = (m: Meeting): 'live' | 'done' | 'upcoming' | 'no_show' => {
+    if (m.endedAt) return 'done';
+    const now = dayjs();
+    const start = dayjs(m.createdAt);
+    if (!start.isValid()) return 'upcoming';
+    if (now.isBefore(start)) return 'upcoming';
+    const estimatedEnd = m.startedAt ? dayjs(m.startedAt) : null;
+    if (
+      estimatedEnd &&
+      estimatedEnd.isValid() &&
+      now.isAfter(estimatedEnd) &&
+      (m.activeParticipantCount ?? 0) === 0
+    ) {
+      return 'no_show';
+    }
+    return 'live';
+  };
+
   const isUpcomingMeeting = (m: Meeting): boolean => {
-    return !m.endedAt && (m.activeParticipantCount ?? 0) === 0;
+    return getMeetingStatus(m) === 'upcoming';
   };
 
   const canEditMeeting = (m: Meeting): boolean => {
@@ -228,7 +246,6 @@ function MeetingsPageContent() {
         if (prev.some((x) => x.username.toLowerCase() === un)) return prev;
         return [...prev, r.data!];
       });
-      message.success('Đã thêm vào danh sách mời');
       setInviteUsernameInput('');
     }
     if (r.error) message.error(r.error);
@@ -242,7 +259,6 @@ function MeetingsPageContent() {
     if (!r.error) {
       const key = invUsername.toLowerCase();
       setMeetingInvitees((prev) => prev.filter((x) => x.username.toLowerCase() !== key));
-      message.success('Đã xóa khỏi danh sách mời');
     }
     if (r.error) message.error(r.error);
   };
@@ -259,7 +275,6 @@ function MeetingsPageContent() {
         if (prev.some((x) => x.hostUserId === r.data!.hostUserId)) return prev;
         return [...prev, r.data!];
       });
-      message.success('Đã chỉ định làm đồng chủ trì');
     }
     if (r.error) message.error(r.error);
   };
@@ -275,7 +290,6 @@ function MeetingsPageContent() {
       // Load lại để đảm bảo đồng bộ danh sách từ server
       const inv = await meetingApi.listInvitees(detailMeeting.id);
       if (inv.data) setMeetingInvitees(inv.data);
-      message.success('Đã chuyển vai trò thành Thành viên');
     }
     if (r.error) message.error(r.error);
   };
@@ -287,7 +301,6 @@ function MeetingsPageContent() {
     setRemovingCoHostUserId(null);
     if (!r.error) {
       setMeetingCoHosts((prev) => prev.filter((x) => x.hostUserId !== hostUserId));
-      message.success('Đã gỡ đồng chủ trì');
     }
     if (r.error) message.error(r.error);
   };
@@ -707,9 +720,7 @@ function MeetingsPageContent() {
   // --- LOGIC TÍNH TOÁN STATS VÀ LỌC ---
   const meetingsWithStatus = useMemo(() => {
     return meetings.map(m => {
-      const isEnded = Boolean(m.endedAt);
-      const isLive = !isEnded && (m.activeParticipantCount ?? 0) > 0;
-      const statusObj = isLive ? 'live' : isEnded ? 'done' : 'upcoming';
+      const statusObj = getMeetingStatus(m);
       return { ...m, computedStatus: statusObj };
     });
   }, [meetings]);
@@ -718,6 +729,7 @@ function MeetingsPageContent() {
   const statUpcoming = meetingsWithStatus.filter(m => m.computedStatus === 'upcoming').length;
   const statLive = meetingsWithStatus.filter(m => m.computedStatus === 'live').length;
   const statDone = meetingsWithStatus.filter(m => m.computedStatus === 'done').length;
+  const statNoShow = meetingsWithStatus.filter(m => m.computedStatus === 'no_show').length;
 
   const filteredMeetings = useMemo(() => {
     let result = meetingsWithStatus;
@@ -993,7 +1005,7 @@ function MeetingsPageContent() {
               <Col xs={24} sm={12} md={6}>
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                   <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Đã kết thúc</div>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b', lineHeight: 1 }}>{statDone}</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b', lineHeight: 1 }}>{statDone + statNoShow}</div>
             </div>
               </Col>
             </Row>
@@ -1023,6 +1035,9 @@ function MeetingsPageContent() {
                 </button>
                 <button className={`filter-chip ${filterStatus === 'done' ? 'active' : ''}`} onClick={() => setFilterStatus('done')}>
                   <CheckCircleOutlined /> Đã kết thúc
+                </button>
+                <button className={`filter-chip ${filterStatus === 'no_show' ? 'active' : ''}`} onClick={() => setFilterStatus('no_show')}>
+                  <CloseOutlined /> Không diễn ra
                 </button>
               </div>
             </div>
@@ -1058,6 +1073,7 @@ function MeetingsPageContent() {
                     const isLive = m.computedStatus === 'live';
                     const isDone = m.computedStatus === 'done';
                     const isUpcoming = m.computedStatus === 'upcoming';
+                    const isNoShow = m.computedStatus === 'no_show';
                     const actionLabel = isLive ? 'Tham gia' : isDone ? 'Xem lịch sử' : 'Chi tiết';
 
                     return (
@@ -1105,6 +1121,7 @@ function MeetingsPageContent() {
                               {isUpcoming && <span style={{ display: 'inline-flex', alignItems: 'center', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: isMobile ? '2px 4px' : '4px 10px', borderRadius: 99, fontSize: isMobile ? 9 : 11, fontWeight: 600, whiteSpace: 'nowrap' }}>Chưa diễn ra</span>}
                               {isLive && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: isMobile ? '2px 4px' : '4px 10px', borderRadius: 99, fontSize: isMobile ? 9 : 11, fontWeight: 600, whiteSpace: 'nowrap' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', animation: 'blink 1.5s ease-in-out infinite' }}></span> Đang diễn ra</span>}
                               {isDone && <span style={{ display: 'inline-flex', alignItems: 'center', background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', padding: isMobile ? '2px 4px' : '4px 10px', borderRadius: 99, fontSize: isMobile ? 9 : 11, fontWeight: 600, whiteSpace: 'nowrap' }}>Đã kết thúc</span>}
+                              {isNoShow && <span style={{ display: 'inline-flex', alignItems: 'center', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', padding: isMobile ? '2px 4px' : '4px 10px', borderRadius: 99, fontSize: isMobile ? 9 : 11, fontWeight: 600, whiteSpace: 'nowrap' }}>Không diễn ra</span>}
                            </div>
                         </Col>
 
@@ -1197,10 +1214,13 @@ function MeetingsPageContent() {
                   </div>
                 </div>
                 {(() => {
-                  const isEnded = Boolean(detailMeeting.endedAt);
-                  const isLive = !isEnded && (detailMeeting.activeParticipantCount ?? 0) > 0;
+                  const status = getMeetingStatus(detailMeeting);
+                  const isLive = status === 'live';
+                  const isEnded = status === 'done';
+                  const isNoShow = status === 'no_show';
                   if (isLive) return <span className="status-pill status-pill-live"><span className="dot dot-blink"></span> Đang diễn ra</span>;
                   if (isEnded) return <span className="status-pill status-pill-done">Đã kết thúc</span>;
+                  if (isNoShow) return <span className="status-pill status-pill-done">Không diễn ra</span>;
                   return <span className="status-pill status-pill-upcoming">Chưa diễn ra</span>;
                 })()}
               </div>
