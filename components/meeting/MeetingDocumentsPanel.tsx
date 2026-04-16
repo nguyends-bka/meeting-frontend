@@ -8,7 +8,7 @@ import { Button, Popconfirm, Space, Tag, Typography, message } from 'antd';
 import { CloseOutlined, DeleteOutlined, FileTextOutlined, EyeOutlined, UploadOutlined } from '@ant-design/icons';
 import { meetingApi } from '@/services/meeting/meetingApi';
 
-const MeetingPdfViewer = dynamic(() => import('@/components/MeetingPdfViewer'), { ssr: false });
+const MeetingPdfViewer = dynamic(() => import('@/components/meeting/MeetingPdfViewer'), { ssr: false });
 
 const { Text } = Typography;
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { MeetingToolsTab } from '@/components/MeetingUnifiedSidePanel';
+import type { MeetingToolsTab } from '@/components/meeting/MeetingUnifiedSidePanel';
 
 function isElementVisible(el: HTMLElement | null): boolean {
   if (!el) return false;

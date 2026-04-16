@@ -15,12 +15,12 @@ import { apiService, meetingApi } from '@/services/api';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
 import { startPhysicalMicWebSocket } from '@/lib/physicalMicWebSocket';
-import { TranscriptRoomProvider, useTranscriptRoom } from '@/components/TranscriptRoomProvider';
-import MeetingChatHistoryHydrator from '@/components/MeetingChatHistoryHydrator';
-import { VoteRoomProvider } from '@/components/VoteRoomProvider';
-import MeetingShellEnhancements from '@/components/MeetingShellEnhancements';
-import MeetingUnifiedSidePanel from '@/components/MeetingUnifiedSidePanel';
-import type { MeetingToolsTab } from '@/components/MeetingUnifiedSidePanel';
+import { TranscriptRoomProvider, useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
+import MeetingChatHistoryHydrator from '@/components/meeting/MeetingChatHistoryHydrator';
+import { VoteRoomProvider } from '@/components/meeting/VoteRoomProvider';
+import MeetingShellEnhancements from '@/components/meeting/MeetingShellEnhancements';
+import MeetingUnifiedSidePanel from '@/components/meeting/MeetingUnifiedSidePanel';
+import type { MeetingToolsTab } from '@/components/meeting/MeetingUnifiedSidePanel';
 import '@livekit/components-styles';
 import { Button, Modal, Typography } from 'antd';
 

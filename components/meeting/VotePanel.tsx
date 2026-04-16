@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   useVoteRoom,
   pollCounts,
-} from '@/components/VoteRoomProvider';
+} from '@/components/meeting/VoteRoomProvider';
 import {
   canVoteOnPoll,
   isPollExpired,

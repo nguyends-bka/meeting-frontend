@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Layout } from 'antd';
-import Sidebar from './Sidebar';
+import Sidebar from './meeting/Sidebar';
 
 const { Content } = Layout;
 

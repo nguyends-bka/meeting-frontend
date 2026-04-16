@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRoomContext } from '@livekit/components-react';
-import { useTranscriptRoom } from '@/components/TranscriptRoomProvider';
+import { useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
 import { useAuth } from '@/lib/auth';
 
 function isNearBottom(el: HTMLElement, threshold = 80): boolean {

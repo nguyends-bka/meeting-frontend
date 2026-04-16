@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useChat, useRoomContext } from '@livekit/components-react';
-import VotePanel from '@/components/VotePanel';
-import MeetingDocumentsPanel from '@/components/MeetingDocumentsPanel';
-import TranscriptPanel from '@/components/TranscriptPanel';
-import { useTranscriptRoom } from '@/components/TranscriptRoomProvider';
-import { useVoteRoom } from '@/components/VoteRoomProvider';
+import VotePanel from '@/components/meeting/VotePanel';
+import MeetingDocumentsPanel from '@/components/meeting/MeetingDocumentsPanel';
+import TranscriptPanel from '@/components/meeting/TranscriptPanel';
+import { useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
+import { useVoteRoom } from '@/components/meeting/VoteRoomProvider';
 import { meetingApi } from '@/services/meeting/meetingApi';
 
 export type MeetingToolsTab = 'vote' | 'documents' | 'chat' | 'transcript';

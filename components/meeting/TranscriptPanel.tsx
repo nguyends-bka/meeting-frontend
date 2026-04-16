@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useMemo, useCallback } from 'react';
-import { useTranscriptRoom } from '@/components/TranscriptRoomProvider';
+import { useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
 
 function formatReceivedTime(ts: number): string {
   const d = new Date(ts);
