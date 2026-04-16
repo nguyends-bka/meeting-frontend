@@ -145,7 +145,6 @@ export default function MeetingDocumentsOverlay({
         message.error(res.error);
         return;
       }
-      message.success('Đã lưu tài liệu');
       await fetchDocs();
     } finally {
       setUploading(false);
@@ -208,7 +207,6 @@ export default function MeetingDocumentsOverlay({
         return;
       }
 
-      message.success((res.data as any)?.message ?? 'Đã xóa tài liệu');
       if (activeDoc?.id === doc.id) clearActiveDoc();
       await fetchDocs();
     } finally {

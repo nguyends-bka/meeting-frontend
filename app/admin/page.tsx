@@ -109,7 +109,6 @@ export default function AdminPage() {
       return;
     }
 
-    message.success('Cập nhật role thành công');
     setEditModalOpen(false);
     setEditingUser(null);
     form.resetFields();
@@ -124,7 +123,6 @@ export default function AdminPage() {
       return;
     }
 
-    message.success('Xóa user thành công');
     await loadUsers();
     await loadStats();
   };

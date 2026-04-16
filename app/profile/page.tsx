@@ -182,7 +182,6 @@ export default function ProfilePage() {
       return;
     }
 
-    messageApi.success('Cập nhật thông tin thành công');
     updateUser({
       fullName: trimOrNull(values.fullName),
       position: trimOrNull(values.position),
@@ -202,7 +201,6 @@ export default function ProfilePage() {
       profileForm.setFieldValue('avatar', template);
       const preview = avatarBase64ToDataUrl(template);
       setFacePreviewUrl(preview);
-      messageApi.success('Đã xử lý ảnh đại diện');
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : 'Không thể xử lý ảnh');
     }
@@ -227,7 +225,6 @@ export default function ProfilePage() {
       return;
     }
 
-    messageApi.success('Đổi mật khẩu thành công');
     passwordForm.resetFields();
     setShowPasswordForm(false);
   };

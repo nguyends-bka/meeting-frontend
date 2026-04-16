@@ -202,7 +202,6 @@ export default function MeetingDocumentsPanel({
         return;
       }
 
-      message.success('Đã lưu tài liệu');
       setActiveDoc(null);
       await fetchDocs();
     } finally {
@@ -220,7 +219,6 @@ export default function MeetingDocumentsPanel({
         return;
       }
 
-      message.success((res.data as any)?.message ?? 'Đã xóa tài liệu');
       if (activeDoc?.id === doc.id) setActiveDoc(null);
       await fetchDocs();
     } finally {

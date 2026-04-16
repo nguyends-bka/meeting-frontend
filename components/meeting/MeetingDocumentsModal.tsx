@@ -94,7 +94,6 @@ export default function MeetingDocumentsModal({
         message.error(res.error);
         return;
       }
-      message.success('Đã lưu tài liệu');
       await fetchDocs();
     } finally {
       setUploading(false);

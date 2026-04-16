@@ -80,7 +80,6 @@ export default function ReportsPage() {
     if (!minutes) return;
     try {
       await navigator.clipboard.writeText(buildMinutesText(minutes));
-      message.success('Đã sao chép biên bản');
     } catch {
       message.error('Không sao chép được');
     }

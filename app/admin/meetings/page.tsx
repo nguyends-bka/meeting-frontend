@@ -86,7 +86,6 @@ export default function AdminMeetingsPage() {
       return;
     }
 
-    message.success('Xóa meeting thành công');
     await loadMeetings();
   };
 

@@ -167,7 +167,6 @@ export async function exportMeetingMinutesWord(minutes: MeetingMinutes): Promise
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    message.success('Đã xuất file Word');
   } catch (e) {
     console.error(e);
     message.error('Xuất Word thất bại');

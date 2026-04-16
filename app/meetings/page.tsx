@@ -332,10 +332,9 @@ function MeetingsPageContent() {
     router.replace('/meetings');
   }, [forcedDetailMeetingId, meetings, loadingMeetings, message, router]);
 
-  const copyText = async (text: string, typeName?: string) => {
+  const copyText = async (text: string, _typeName?: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      message.success(`Đã sao chép ${typeName ? typeName : ''}`);
     } catch {
       message.error('Không thể copy. Vui lòng thử lại.');
     }
@@ -387,7 +386,6 @@ function MeetingsPageContent() {
       message.error(result.error);
       return;
     }
-    message.success(editingDraftPollId ? 'Đã cập nhật biểu quyết nháp' : 'Đã lưu biểu quyết nháp');
     setPollModalMeeting(null);
     setEditingDraftPollId(null);
     pollForm.resetFields();
@@ -431,7 +429,6 @@ function MeetingsPageContent() {
       message.error(res.error);
       return;
     }
-    message.success('Đã thêm quản lý biểu quyết');
     setManagerUsername('');
     const mgrRes = await meetingApi.listPollManagers(viewPollMeeting.id);
     if (mgrRes.data) setManagers(mgrRes.data);
@@ -444,7 +441,6 @@ function MeetingsPageContent() {
       message.error(res.error);
       return;
     }
-    message.success('Đã xóa quản lý biểu quyết');
     const mgrRes = await meetingApi.listPollManagers(viewPollMeeting.id);
     if (mgrRes.data) setManagers(mgrRes.data);
   };
@@ -459,7 +455,6 @@ function MeetingsPageContent() {
       message.error(res.error);
       return;
     }
-    message.success('Đã kết thúc biểu quyết');
     const pollsRes = await meetingApi.listPolls(viewPollMeeting.id);
     if (pollsRes.data) setViewPolls(pollsRes.data);
   };
@@ -494,7 +489,6 @@ function MeetingsPageContent() {
       message.error(res.error);
       return;
     }
-    message.success('Đã xóa biểu quyết chờ');
     const pollsRes = await meetingApi.listPolls(viewPollMeeting.id);
     if (pollsRes.data) setViewPolls(pollsRes.data);
   };
@@ -577,7 +571,6 @@ function MeetingsPageContent() {
         message.error(res.error);
         return;
       }
-      message.success('Đã tải tài liệu lên');
       await loadDocumentsForMeeting(documentsMeeting.id);
     } finally {
       setDocumentsUploading(false);
@@ -593,7 +586,6 @@ function MeetingsPageContent() {
         message.error(res.error);
         return;
       }
-      message.success('Đã xóa tài liệu');
       await loadDocumentsForMeeting(documentsMeeting.id);
     } finally {
       setDocumentsDeletingId(null);
@@ -616,7 +608,6 @@ function MeetingsPageContent() {
     if (!reportMinutes) return;
     try {
       await navigator.clipboard.writeText(buildMinutesText(reportMinutes));
-      message.success('Đã sao chép biên bản');
     } catch {
       message.error('Không sao chép được');
     }
@@ -714,7 +705,6 @@ function MeetingsPageContent() {
     setMeetings((prev) => prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)));
     setDetailMeeting((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
     setEditMeetingModal(null);
-    message.success('Đã cập nhật cuộc họp');
   };
 
   // --- LOGIC TÍNH TOÁN STATS VÀ LỌC ---

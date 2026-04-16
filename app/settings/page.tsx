@@ -111,7 +111,6 @@ export default function SettingsPage() {
         applyTheme(values.theme);
       }
       
-      messageApi.success('Đã lưu cài đặt thành công');
     } catch (error) {
       console.error('Error saving settings:', error);
       messageApi.error('Có lỗi xảy ra khi lưu cài đặt');
@@ -126,7 +125,6 @@ export default function SettingsPage() {
     localStorage.removeItem(STORAGE_KEY);
     // Áp dụng theme mặc định
     applyTheme(DEFAULT_SETTINGS.theme);
-    messageApi.success('Đã khôi phục cài đặt mặc định');
   };
 
   const applyTheme = (theme: string) => {

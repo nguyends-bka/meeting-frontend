@@ -51,7 +51,6 @@ export default function JoinPage() {
     }
 
     if (result.data) {
-      message.success('Tham gia cuộc họp thành công');
       router.push(`/meeting/${result.data.meetingId}`);
     }
   };

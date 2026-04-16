@@ -259,7 +259,6 @@ export default function OrganizationPage() {
       return;
     }
 
-    message.success(payload.id ? 'Đã cập nhật đơn vị' : 'Đã thêm đơn vị');
     await loadUnits();
     setMode('list');
     setSelectedId(null);

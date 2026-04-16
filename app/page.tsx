@@ -413,7 +413,6 @@ export default function HomePage() {
       return;
     }
     if (result.data) {
-      message.success('Tạo cuộc họp thành công');
       setCreatedMeeting({
         id: result.data.meetingId,
         code: result.data.meetingCode,
@@ -1163,9 +1162,9 @@ export default function HomePage() {
       >
         {createdMeeting ? (
           <Result
-            status="success"
-            title="Tạo cuộc họp thành công!"
-            subTitle="Phòng họp của bạn đã sẵn sàng. Hãy chia sẻ thông tin dưới đây cho người tham gia."
+            status="info"
+            title="Thông tin cuộc họp"
+            subTitle="Phòng họp đã sẵn sàng. Hãy chia sẻ thông tin dưới đây cho người tham gia."
             style={{ padding: '24px 0 0 0' }}
             extra={
               <div style={{ textAlign: 'left', background: '#f5f5f5', padding: '20px', borderRadius: '8px', marginTop: 24 }}>
