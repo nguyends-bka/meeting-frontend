@@ -11,7 +11,7 @@ export interface AdminUser {
   academicDegree?: string | null;
   organizationUnitId?: string | null;
   organizationUnitName?: string | null;
-  hasFaceTemplate?: boolean;
+  hasAvatar?: boolean;
   createdAt: string;
 }
 

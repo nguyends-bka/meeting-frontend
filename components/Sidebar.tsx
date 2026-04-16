@@ -36,7 +36,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAdmin, logout } = useAuth();
-  const avatarSrc = user?.faceTemplate ? `data:image/jpeg;base64,${user.faceTemplate}` : undefined;
+  const avatarSrc = user?.avatar ? `data:image/jpeg;base64,${user.avatar}` : undefined;
   const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [sidebarTheme, setSidebarTheme] = useState<'light' | 'dark'>('dark');
   

@@ -25,7 +25,7 @@ export interface AuthUser {
   academicRank?: 'GS' | 'PGS' | null;
   academicDegree?: 'TS' | 'ThS' | 'CN' | 'KS' | null;
   organizationUnitId?: string | null;
-  faceTemplate?: string | null;
+  avatar?: string | null;
   /** Có embedding khuôn mặt trong DB (đăng nhập Face) */
   hasFaceEmbedding?: boolean;
 }

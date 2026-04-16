@@ -18,7 +18,7 @@ export interface UserProfile {
   academicDegree: 'TS' | 'ThS' | 'CN' | 'KS' | null;
   organizationUnitId: string | null;
   organizationUnitName: string | null;
-  faceTemplate: string | null;
+  avatar: string | null;
   hasFaceEmbedding?: boolean;
   createdAt: string;
 }
@@ -30,7 +30,7 @@ export interface UpdateProfileRequest {
   academicRank?: 'GS' | 'PGS' | null;
   academicDegree?: 'TS' | 'ThS' | 'CN' | 'KS' | null;
   organizationUnitId?: string | null;
-  faceTemplate?: string | null;
+  avatar?: string | null;
 }
 
 export interface UpdateProfileResponse {
@@ -46,7 +46,7 @@ export interface UpdateProfileResponse {
     academicDegree: 'TS' | 'ThS' | 'CN' | 'KS' | null;
     organizationUnitId: string | null;
     organizationUnitName: string | null;
-    faceTemplate: string | null;
+    avatar: string | null;
   };
 }
 

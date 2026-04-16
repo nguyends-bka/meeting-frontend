@@ -105,7 +105,7 @@ class ApiService {
     academicRank?: 'GS' | 'PGS' | null;
     academicDegree?: 'TS' | 'ThS' | 'CN' | 'KS' | null;
     organizationUnitId?: string | null;
-    faceTemplate?: string | null;
+    avatar?: string | null;
   }) {
     return userApi.updateProfile(request);
   }

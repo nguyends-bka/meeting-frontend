@@ -14,7 +14,7 @@ interface User {
   academicRank?: 'GS' | 'PGS' | null;
   academicDegree?: 'TS' | 'ThS' | 'CN' | 'KS' | null;
   organizationUnitId?: string | null;
-  faceTemplate?: string | null;
+  avatar?: string | null;
   /** Đã có FaceEmbedding trong DB (đăng nhập bằng khuôn mặt) */
   hasFaceEmbedding?: boolean;
 }

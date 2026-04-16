@@ -44,7 +44,7 @@ type User = {
   academicRank?: string | null;
   academicDegree?: string | null;
   organizationUnitName?: string | null;
-  hasFaceTemplate?: boolean;
+  hasAvatar?: boolean;
   createdAt: string;
 };
 
@@ -163,7 +163,7 @@ export default function AdminPage() {
           <Typography.Text type="secondary">Chức vụ: {record.position || '-'}</Typography.Text>
           <Typography.Text type="secondary">Học hàm/học vị: {record.academicRank || '-'} / {record.academicDegree || '-'}</Typography.Text>
           <Typography.Text type="secondary">Đơn vị: {record.organizationUnitName || '-'}</Typography.Text>
-          <Typography.Text type="secondary">Face template: {record.hasFaceTemplate ? 'Đã có' : 'Chưa có'}</Typography.Text>
+          <Typography.Text type="secondary">Avatar: {record.hasAvatar ? 'Đã có' : 'Chưa có'}</Typography.Text>
         </Space>
       ),
     },

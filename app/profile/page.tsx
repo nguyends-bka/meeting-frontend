@@ -78,7 +78,7 @@ type ProfileData = {
   academicDegree: 'TS' | 'ThS' | 'CN' | 'KS' | null;
   organizationUnitId: string | null;
   organizationUnitName: string | null;
-  faceTemplate: string | null;
+  avatar: string | null;
   hasFaceEmbedding?: boolean;
   createdAt: string;
 };
@@ -125,7 +125,7 @@ export default function ProfilePage() {
     const result = await apiService.getProfile();
     if (result.data) {
       setProfile(result.data as ProfileData);
-      setFacePreviewUrl(result.data.faceTemplate ? avatarBase64ToDataUrl(result.data.faceTemplate) : null);
+      setFacePreviewUrl(result.data.avatar ? avatarBase64ToDataUrl(result.data.avatar) : null);
       profileForm.setFieldsValue({
         fullName: result.data.fullName || '',
         email: result.data.email || '',
@@ -133,7 +133,7 @@ export default function ProfilePage() {
         academicRank: result.data.academicRank || undefined,
         academicDegree: result.data.academicDegree || undefined,
         organizationUnitId: result.data.organizationUnitId || undefined,
-        faceTemplate: result.data.faceTemplate || '',
+        avatar: result.data.avatar || '',
       });
     }
     if (result.error) {
@@ -160,9 +160,9 @@ export default function ProfilePage() {
     const values = await profileForm.validateFields();
     setUpdatingProfile(true);
 
-    const faceRaw = values.faceTemplate;
-    const faceTemplate =
-      faceRaw != null && String(faceRaw).trim() !== '' ? String(faceRaw).trim() : null;
+    const avatarRaw = values.avatar;
+    const avatar =
+      avatarRaw != null && String(avatarRaw).trim() !== '' ? String(avatarRaw).trim() : null;
     const emailVal = trimOrNull(values.email);
 
     const result = await apiService.updateProfileExtended({
@@ -172,7 +172,7 @@ export default function ProfilePage() {
       academicRank: values.academicRank ?? null,
       academicDegree: values.academicDegree ?? null,
       organizationUnitId: values.organizationUnitId ?? null,
-      faceTemplate,
+      avatar,
     });
 
     setUpdatingProfile(false);
@@ -189,7 +189,7 @@ export default function ProfilePage() {
       academicRank: values.academicRank ?? null,
       academicDegree: values.academicDegree ?? null,
       organizationUnitId: values.organizationUnitId ?? null,
-      faceTemplate,
+      avatar,
     });
     setShowUpdateForm(false);
     await loadProfile();
@@ -199,7 +199,7 @@ export default function ProfilePage() {
     if (!file) return;
     try {
       const template = await fileToAvatarBase64(file);
-      profileForm.setFieldValue('faceTemplate', template);
+      profileForm.setFieldValue('avatar', template);
       const preview = avatarBase64ToDataUrl(template);
       setFacePreviewUrl(preview);
       messageApi.success('Đã xử lý ảnh đại diện');
@@ -500,7 +500,7 @@ export default function ProfilePage() {
                       {showUpdateForm ? (
                         <Space direction="vertical" size={8}>
                           <Form.Item
-                            name="faceTemplate"
+                            name="avatar"
                             style={{ margin: 0, display: 'none' }}
                           >
                             <Input />
@@ -526,7 +526,7 @@ export default function ProfilePage() {
                             />
                             <Button
                               onClick={() => {
-                                profileForm.setFieldValue('faceTemplate', '');
+                                profileForm.setFieldValue('avatar', '');
                                 setFacePreviewUrl(null);
                               }}
                             >
