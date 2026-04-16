@@ -1,4 +1,3 @@
-export * from './admin/admin.dto';
 // Frontend DTOs for Admin domain
 
 export interface AdminUser {

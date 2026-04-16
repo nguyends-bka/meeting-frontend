@@ -1,4 +1,3 @@
-export * from './user/user.dto';
 // Frontend DTOs for User domain
 
 /** Kết quả tra cứu theo username (mời họp). */

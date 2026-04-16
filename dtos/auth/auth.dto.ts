@@ -1,4 +1,3 @@
-export * from './auth/auth.dto';
 // Frontend DTOs for Auth domain - only fields used by frontend
 
 export interface RegisterRequest {
