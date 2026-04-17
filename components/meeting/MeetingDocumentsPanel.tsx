@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import dayjs from 'dayjs';
 import { Button, Popconfirm, Space, Tag, Typography, message } from 'antd';
-import { CloseOutlined, DeleteOutlined, FileTextOutlined, EyeOutlined, UploadOutlined } from '@ant-design/icons';
+import { CloseOutlined, DeleteOutlined, EyeOutlined, FileTextOutlined, UploadOutlined } from '@ant-design/icons';
 import { meetingApi } from '@/services/meeting/meetingApi';
+import type { MeetingDocumentDto } from '@/dtos/meeting.dto';
 
 const MeetingPdfViewer = dynamic(() => import('@/components/meeting/MeetingPdfViewer'), { ssr: false });
 
@@ -32,11 +33,12 @@ export default function MeetingDocumentsPanel({
   /** Ẩn header riêng — dùng trong panel tab thống nhất */
   embedded?: boolean;
 }) {
-  const [docs, setDocs] = useState<any[]>([]);
+  const [docs, setDocs] = useState<MeetingDocumentDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [activeDoc, setActiveDoc] = useState<any | null>(null);
+  const [visibilityUpdatingId, setVisibilityUpdatingId] = useState<string | null>(null);
+  const [activeDoc, setActiveDoc] = useState<MeetingDocumentDto | null>(null);
   const [activeObjectUrl, setActiveObjectUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -46,20 +48,35 @@ export default function MeetingDocumentsPanel({
   const [overlayTopPx, setOverlayTopPx] = useState<number>(0);
   const [overlayHeightPx, setOverlayHeightPx] = useState<number>(0);
 
-  const fetchDocs = async () => {
-    setLoading(true);
+  const fetchDocs = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = Boolean(options?.silent);
+    if (!silent) {
+      setLoading(true);
+    }
+
     try {
       const res = await meetingApi.listMeetingDocuments(meetingId);
       if (res.error) {
-        message.error(res.error);
-        setDocs([]);
+        if (!silent) {
+          message.error(res.error);
+          setDocs([]);
+        }
         return;
       }
-      setDocs(res.data ?? []);
+
+      const nextDocs = res.data ?? [];
+      setDocs(nextDocs);
+      setActiveDoc((prev) => {
+        if (!prev) return null;
+        const stillVisible = nextDocs.find((d) => String(d.id) === String(prev.id));
+        return stillVisible ?? null;
+      });
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  };
+  }, [meetingId]);
 
   useEffect(() => {
     if (!documentsOpen) {
@@ -67,8 +84,14 @@ export default function MeetingDocumentsPanel({
     }
 
     void fetchDocs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documentsOpen, meetingId]);
+    const timer = window.setInterval(() => {
+      void fetchDocs({ silent: true });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [documentsOpen, fetchDocs]);
 
   useEffect(() => {
     if (!activeDoc) return;
@@ -209,7 +232,7 @@ export default function MeetingDocumentsPanel({
     }
   };
 
-  const onDeleteDoc = async (doc: any) => {
+  const onDeleteDoc = async (doc: MeetingDocumentDto) => {
     if (!canUpload) return;
     setDeletingId(doc.id);
     try {
@@ -223,6 +246,32 @@ export default function MeetingDocumentsPanel({
       await fetchDocs();
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const onToggleDocVisibility = async (doc: MeetingDocumentDto) => {
+    if (!canUpload) return;
+    setVisibilityUpdatingId(String(doc.id));
+    try {
+      const res = await meetingApi.updateMeetingDocumentVisibility(
+        meetingId,
+        String(doc.id),
+        !Boolean(doc.isShared),
+      );
+      if (res.error || !res.data) {
+        message.error(res.error || 'Không cập nhật được trạng thái tài liệu');
+        return;
+      }
+
+      const updatedDoc = res.data;
+
+      setDocs((prev) => prev.map((d) => (String(d.id) === String(doc.id) ? updatedDoc : d)));
+      setActiveDoc((prev) => {
+        if (!prev || String(prev.id) !== String(doc.id)) return prev;
+        return updatedDoc;
+      });
+    } finally {
+      setVisibilityUpdatingId(null);
     }
   };
 
@@ -375,7 +424,7 @@ export default function MeetingDocumentsPanel({
                 <div>Chưa có tài liệu nào.</div>
               </div>
             ) : (
-              (docs as any[]).map((doc: any) => (
+              docs.map((doc) => (
                 <div
                   key={String(doc.id)}
                   className={`meeting-documents-item${activeDoc?.id === doc.id ? ' is-active' : ''}`}
@@ -401,11 +450,34 @@ export default function MeetingDocumentsPanel({
                   </div>
 
                   <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                    {canUpload ? (
+                      <Button
+                        type="text"
+                        size="small"
+                        loading={visibilityUpdatingId === String(doc.id)}
+                        style={{ padding: 0, height: 'auto' }}
+                        onClick={() => {
+                          void onToggleDocVisibility(doc);
+                        }}
+                      >
+                        <Tag
+                          color={doc.isShared ? 'green' : 'default'}
+                          style={{ borderRadius: 999, paddingInline: 10, marginInlineEnd: 0, cursor: 'pointer' }}
+                        >
+                          {doc.isShared ? 'Đang chia sẻ' : 'Đã ẩn'}
+                        </Tag>
+                      </Button>
+                    ) : (
+                      <Tag color={doc.isShared ? 'green' : 'default'} style={{ borderRadius: 999, paddingInline: 10 }}>
+                        {doc.isShared ? 'Đang chia sẻ' : 'Đã ẩn'}
+                      </Tag>
+                    )}
+
                     <Button
                       size="small"
                       icon={<EyeOutlined />}
                       onClick={() => setActiveDoc(doc)}
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, minWidth: 96 }}
                     >
                       {activeDoc?.id === doc.id ? 'Đang xem' : 'Mở xem'}
                     </Button>

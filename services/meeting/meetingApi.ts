@@ -386,4 +386,14 @@ export const meetingApi = {
       },
     );
   },
+
+  updateMeetingDocumentVisibility: async (meetingId: string, documentId: string, isShared: boolean) => {
+    return apiClient.request<MeetingDocumentDto>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/documents/${encodeURIComponent(documentId)}/visibility`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ isShared }),
+      },
+    );
+  },
 };

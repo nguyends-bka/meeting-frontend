@@ -104,6 +104,7 @@ export interface MeetingDocumentDto {
   uploaderUserId: string;
   uploaderName: string;
   createdAt: string; // ISO string
+  isShared: boolean;
   fileEndpoint: string;
 }
 

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/auth';
 import { apiService, meetingApi } from '@/services/api';
 import type { MeetingMinutes, PollResponse, PollManagerItem, MeetingDocumentDto, MeetingInvitee, MeetingCoHostItem } from '@/dtos/meeting.dto';
@@ -48,6 +49,7 @@ import {
   CalendarOutlined,
   UserOutlined,
   CloseOutlined,
+  DownloadOutlined,
   MoreOutlined,
   CaretRightOutlined,
   FormOutlined,
@@ -58,6 +60,7 @@ import {
   UploadOutlined,
   DeleteOutlined,
   EyeOutlined,
+  EyeInvisibleOutlined,
   FileWordOutlined,
   SearchOutlined,
   HourglassOutlined,
@@ -68,6 +71,8 @@ import {
   ArrowLeftOutlined,
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
+
+const MeetingPdfViewer = dynamic(() => import('@/components/meeting/MeetingPdfViewer'), { ssr: false });
 
 export default function MeetingsPage() {
   return (
@@ -83,6 +88,7 @@ function MeetingsPageContent() {
   
   // Xác định màn hình mobile để tinh chỉnh font-size trực tiếp trên thẻ
   const isMobile = screens.md === false; 
+  const isTinyMobile = isMobile && screens.sm === false;
   const isCompactPagination = screens.lg === false;
   const reportPreviewScale = isMobile ? 0.68 : screens.xl === false ? 0.82 : 1;
 
@@ -146,8 +152,32 @@ function MeetingsPageContent() {
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentsUploading, setDocumentsUploading] = useState(false);
   const [documentsDeletingId, setDocumentsDeletingId] = useState<string | null>(null);
+  const [documentsVisibilityUpdatingId, setDocumentsVisibilityUpdatingId] = useState<string | null>(null);
   const [meetingDocuments, setMeetingDocuments] = useState<MeetingDocumentDto[]>([]);
+  const [documentSearchText, setDocumentSearchText] = useState('');
+  const [activeDocument, setActiveDocument] = useState<MeetingDocumentDto | null>(null);
+  const [activeDocumentUrl, setActiveDocumentUrl] = useState<string | null>(null);
+  const [activeDocumentLoading, setActiveDocumentLoading] = useState(false);
+  const [documentsPreviewVisible, setDocumentsPreviewVisible] = useState(true);
   const docFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const orderedMeetingDocuments = useMemo(() => {
+    return [...meetingDocuments].sort((a, b) => {
+      const aTs = dayjs(a.createdAt).valueOf();
+      const bTs = dayjs(b.createdAt).valueOf();
+      return bTs - aTs;
+    });
+  }, [meetingDocuments]);
+
+  const filteredMeetingDocuments = useMemo(() => {
+    const q = documentSearchText.trim().toLowerCase();
+    if (!q) return orderedMeetingDocuments;
+    return orderedMeetingDocuments.filter((d) => {
+      const name = String(d.fileName || '').toLowerCase();
+      const uploader = String(d.uploaderName || '').toLowerCase();
+      return name.includes(q) || uploader.includes(q);
+    });
+  }, [orderedMeetingDocuments, documentSearchText]);
 
   const canManagePollForMeeting = (m: Meeting): boolean => {
     return Boolean(m.canManagePoll);
@@ -547,14 +577,38 @@ function MeetingsPageContent() {
     if (res.error || !res.data) {
       message.error(res.error || 'Không tải được danh sách tài liệu');
       setMeetingDocuments([]);
+      setActiveDocument(null);
+      setActiveDocumentUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
       return;
     }
     setMeetingDocuments(res.data);
+
+    const stillExists = activeDocument ? res.data.find((d) => d.id === activeDocument.id) ?? null : null;
+    if (stillExists) {
+      setActiveDocument(stillExists);
+      return;
+    }
+
+    setActiveDocument(null);
+    setDocumentsPreviewVisible(false);
+    setActiveDocumentUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
   };
 
   const openDocumentsModal = async (meeting: Meeting) => {
     setDocumentsMeeting(meeting);
+    setDocumentsPreviewVisible(false);
     setMeetingDocuments([]);
+    setActiveDocument(null);
+    setActiveDocumentUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     await loadDocumentsForMeeting(meeting.id);
   };
 
@@ -592,17 +646,87 @@ function MeetingsPageContent() {
     }
   };
 
-  const onViewMeetingDocument = async (doc: MeetingDocumentDto) => {
+  const onDownloadMeetingDocument = async (doc: MeetingDocumentDto) => {
     if (!documentsMeeting) return;
     try {
       const blob = await meetingApi.getMeetingDocumentFileBlob(documentsMeeting.id, doc.id);
       const objectUrl = URL.createObjectURL(blob);
-      window.open(objectUrl, '_blank', 'noopener,noreferrer');
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = doc.fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
     } catch (err) {
-      message.error((err as Error)?.message || 'Không mở được tài liệu');
+      message.error((err as Error)?.message || 'Không tải được tài liệu');
     }
   };
+
+  const loadActiveDocumentPreview = async (doc: MeetingDocumentDto) => {
+    if (!documentsMeeting) return;
+    setActiveDocumentLoading(true);
+    try {
+      const blob = await meetingApi.getMeetingDocumentFileBlob(documentsMeeting.id, doc.id);
+      const objectUrl = URL.createObjectURL(blob);
+      setActiveDocumentUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return objectUrl;
+      });
+    } catch (err) {
+      message.error((err as Error)?.message || 'Không mở được tài liệu');
+    } finally {
+      setActiveDocumentLoading(false);
+    }
+  };
+
+  const onViewMeetingDocument = async (doc: MeetingDocumentDto) => {
+    if (activeDocument?.id === doc.id && documentsPreviewVisible) {
+      setDocumentsPreviewVisible(false);
+      return;
+    }
+    setActiveDocument(doc);
+    setDocumentsPreviewVisible(true);
+    await loadActiveDocumentPreview(doc);
+  };
+
+  const onToggleDocumentVisibility = async (doc: MeetingDocumentDto) => {
+    if (!documentsMeeting) return;
+    setDocumentsVisibilityUpdatingId(doc.id);
+    try {
+      const res = await meetingApi.updateMeetingDocumentVisibility(documentsMeeting.id, doc.id, !doc.isShared);
+      if (res.error || !res.data) {
+        message.error(res.error || 'Không cập nhật được trạng thái chia sẻ');
+        return;
+      }
+
+      setMeetingDocuments((prev) => prev.map((d) => (d.id === doc.id ? res.data! : d)));
+      if (activeDocument?.id === doc.id) {
+        setActiveDocument(res.data);
+      }
+    } finally {
+      setDocumentsVisibilityUpdatingId(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!documentsMeeting || !activeDocument || !documentsPreviewVisible) {
+      return;
+    }
+    void loadActiveDocumentPreview(activeDocument);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentsMeeting?.id, activeDocument?.id, documentsPreviewVisible]);
+
+  useEffect(() => {
+    if (documentsMeeting) return;
+    setActiveDocument(null);
+    setActiveDocumentLoading(false);
+    setDocumentsPreviewVisible(false);
+    setActiveDocumentUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }, [documentsMeeting]);
 
   const copyReportMinutesText = async () => {
     if (!reportMinutes) return;
@@ -1723,10 +1847,47 @@ function MeetingsPageContent() {
         onCancel={() => {
           setDocumentsMeeting(null);
           setMeetingDocuments([]);
+          setDocumentsVisibilityUpdatingId(null);
         }}
         footer={
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-            <Space>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button onClick={() => setDocumentsMeeting(null)}>Đóng</Button>
+          </div>
+        }
+        destroyOnHidden
+        width={isMobile ? '96vw' : 1280}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div
+            style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: 12,
+              background: '#fff',
+              padding: isTinyMobile ? '12px 12px' : '14px 16px',
+              display: 'flex',
+              alignItems: isMobile ? 'stretch' : 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexDirection: isMobile ? 'column' : 'row',
+            }}
+          >
+            <div>
+              <Typography.Title level={4} style={{ margin: 0 }}>
+                Quản lý tài liệu cuộc họp
+              </Typography.Title>
+              <Typography.Text type="secondary">
+                Quản lý và chia sẻ tài liệu cho các đại biểu
+              </Typography.Text>
+            </div>
+
+            <Space style={{ width: isMobile ? '100%' : undefined }} direction={isMobile ? 'vertical' : 'horizontal'}>
+              <Input
+                allowClear
+                placeholder="Tìm kiếm tài liệu..."
+                value={documentSearchText}
+                onChange={(e) => setDocumentSearchText(e.target.value)}
+                style={{ width: isMobile ? '100%' : 260 }}
+              />
               <input
                 ref={docFileInputRef}
                 type="file"
@@ -1740,86 +1901,267 @@ function MeetingsPageContent() {
                 loading={documentsUploading}
                 onClick={onPickDocumentFile}
                 disabled={!documentsMeeting || Boolean(documentsMeeting.endedAt)}
+                style={{ width: isMobile ? '100%' : undefined }}
               >
-                Tải tài liệu lên
-              </Button>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={() => documentsMeeting && void loadDocumentsForMeeting(documentsMeeting.id)}
-                loading={documentsLoading}
-                disabled={!documentsMeeting}
-              >
-                Làm mới
+                Tải lên
               </Button>
             </Space>
-            <Button
-              onClick={() => {
-                setDocumentsMeeting(null);
-                setMeetingDocuments([]);
-              }}
-            >
-              Đóng
-            </Button>
           </div>
-        }
-        destroyOnHidden
-        width={760}
-      >
-        <Table<MeetingDocumentDto>
-          rowKey="id"
-          loading={documentsLoading}
-          dataSource={meetingDocuments}
-          pagination={{ pageSize: 8, showSizeChanger: false }}
-          locale={{
-            emptyText: documentsLoading ? 'Đang tải...' : <Empty description="Chưa có tài liệu" />,
-          }}
-          columns={[
-            {
-              title: 'Tài liệu',
-              key: 'file',
-              render: (_v, r) => (
-                <Space direction="vertical" size={0}>
-                  <Typography.Text strong>{r.fileName}</Typography.Text>
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    {r.uploaderName} • {dayjs(r.createdAt).format('HH:mm, DD/MM/YYYY')}
-                  </Typography.Text>
-                </Space>
-              ),
-            },
-            {
-              title: 'Kích thước',
-              dataIndex: 'size',
-              width: 120,
-              render: (v: number) => `${Math.max(1, Math.round(v / 1024))} KB`,
-            },
-            {
-              title: 'Thao tác',
-              key: 'actions',
-              width: 190,
-              render: (_v, r) => (
-                <Space>
-                  <Button size="small" icon={<EyeOutlined />} onClick={() => void onViewMeetingDocument(r)}>
-                    Xem
-                  </Button>
-                  <Popconfirm
-                    title="Xóa tài liệu này?"
-                    okText="Xóa"
-                    cancelText="Hủy"
-                    onConfirm={() => void onDeleteMeetingDocument(r)}
-                  >
-                    <Button
-                      size="small"
-                      danger
-                      icon={<DeleteOutlined />}
-                      loading={documentsDeletingId === r.id}
-                      disabled={Boolean(documentsMeeting?.endedAt)}
-                    />
-                  </Popconfirm>
-                </Space>
-              ),
-            },
-          ]}
-        />
+
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
+            {!isMobile && (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2.6fr 1.5fr 1.6fr 0.8fr',
+                  gap: 12,
+                  padding: isTinyMobile ? '12px 12px' : '14px 16px',
+                  borderBottom: '1px solid #e5e7eb',
+                  background: '#f8fafc',
+                  fontWeight: 700,
+                  color: '#475569',
+                  letterSpacing: 0.5,
+                }}
+              >
+                <div>TÀI LIỆU</div>
+                <div>THÔNG TIN TẢI LÊN</div>
+                <div>TRẠNG THÁI CHIA SẺ</div>
+                <div style={{ textAlign: 'right' }}>THAO TÁC</div>
+              </div>
+            )}
+
+            {documentsLoading ? (
+              <div style={{ textAlign: 'center', padding: 28 }}>
+                <Spin />
+              </div>
+            ) : filteredMeetingDocuments.length === 0 ? (
+              <div style={{ padding: 20 }}>
+                <Empty description="Không có tài liệu phù hợp" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              </div>
+            ) : (
+              filteredMeetingDocuments.map((r) => {
+                const isViewing = activeDocument?.id === r.id && documentsPreviewVisible;
+                const isSelected = activeDocument?.id === r.id;
+                const canToggleVisibility = Boolean(
+                  documentsMeeting && isHostForMeeting(documentsMeeting) && !documentsMeeting.endedAt,
+                );
+                return (
+                  <React.Fragment key={r.id}>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '1fr' : '2.6fr 1.5fr 1.6fr 0.8fr',
+                        gap: 12,
+                        alignItems: isMobile ? 'stretch' : 'center',
+                        padding: isTinyMobile ? '12px 12px' : '14px 16px',
+                        borderBottom: isViewing ? 'none' : '1px solid #e5e7eb',
+                        background: isSelected ? '#f8fbff' : '#fff',
+                      }}
+                    >
+                      <div>
+                        <Typography.Text strong style={{ display: 'block' }} ellipsis>
+                          {r.fileName}
+                        </Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                          {Math.max(1, Math.round(r.size / 1024))} KB
+                        </Typography.Text>
+                      </div>
+
+                      <div>
+                        {isMobile && (
+                          <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>
+                            Người tải lên
+                          </Typography.Text>
+                        )}
+                        <Typography.Text strong style={{ display: 'block' }}>{r.uploaderName}</Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                          {dayjs(r.createdAt).format('HH:mm, DD/MM/YYYY')}
+                        </Typography.Text>
+                      </div>
+
+                      <div>
+                        {isMobile && (
+                          <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>
+                            Trạng thái chia sẻ
+                          </Typography.Text>
+                        )}
+                        {canToggleVisibility ? (
+                          <Button
+                            type="text"
+                            size="small"
+                            style={{ padding: isMobile ? '2px 4px' : 0, height: 'auto' }}
+                            loading={documentsVisibilityUpdatingId === r.id}
+                            onClick={() => {
+                              void onToggleDocumentVisibility(r);
+                            }}
+                          >
+                            <Tag
+                              color={r.isShared ? 'green' : 'default'}
+                              style={{
+                                borderRadius: 999,
+                                paddingInline: isTinyMobile ? 10 : 12,
+                                paddingBlock: isTinyMobile ? 2 : 0,
+                                fontSize: isTinyMobile ? 12 : 13,
+                                cursor: 'pointer',
+                                marginInlineEnd: 0,
+                              }}
+                            >
+                              {r.isShared ? 'Đang chia sẻ' : 'Đã ẩn'}
+                            </Tag>
+                          </Button>
+                        ) : (
+                          <Tag
+                            color={r.isShared ? 'green' : 'default'}
+                            style={{
+                              borderRadius: 999,
+                              paddingInline: isTinyMobile ? 10 : 12,
+                              paddingBlock: isTinyMobile ? 2 : 0,
+                              fontSize: isTinyMobile ? 12 : 13,
+                            }}
+                          >
+                            {r.isShared ? 'Đang chia sẻ' : 'Đã ẩn'}
+                          </Tag>
+                        )}
+                      </div>
+
+                      <div
+                        style={{
+                          display: isMobile ? 'grid' : 'flex',
+                          gridTemplateColumns: isMobile ? '1fr 1fr' : undefined,
+                          justifyContent: isMobile ? 'stretch' : 'flex-end',
+                          gap: 8,
+                          width: isMobile ? '100%' : undefined,
+                        }}
+                      >
+                        <Button
+                          size="small"
+                          type={isViewing ? 'primary' : 'default'}
+                          icon={isViewing ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                          style={{ width: isMobile ? '100%' : undefined }}
+                          onClick={() => {
+                            void onViewMeetingDocument(r);
+                          }}
+                        />
+
+                        <Button
+                          size="small"
+                          icon={<DownloadOutlined />}
+                          style={{ width: isMobile ? '100%' : undefined }}
+                          onClick={() => {
+                            void onDownloadMeetingDocument(r);
+                          }}
+                        />
+
+                        <div style={{ gridColumn: isMobile ? '1 / -1' : undefined }}>
+                          <Popconfirm
+                            title="Xóa tài liệu này?"
+                            okText="Xóa"
+                            cancelText="Hủy"
+                            onConfirm={() => void onDeleteMeetingDocument(r)}
+                          >
+                            <Button
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                              loading={documentsDeletingId === r.id}
+                              disabled={Boolean(documentsMeeting?.endedAt)}
+                              style={{ width: isMobile ? '100%' : undefined }}
+                            />
+                          </Popconfirm>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isViewing && (
+                      <div
+                        style={{
+                          borderTop: '1px solid #e5e7eb',
+                          borderBottom: '1px solid #e5e7eb',
+                          background: '#fff',
+                          minHeight: isTinyMobile ? 360 : isMobile ? 420 : 620,
+                          height: isTinyMobile ? 360 : isMobile ? 420 : 620,
+                          display: 'flex',
+                          flexDirection: 'column',
+                        }}
+                      >
+                        {activeDocumentLoading ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                            <Spin />
+                          </div>
+                        ) : !activeDocumentUrl ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                            <Typography.Text type="secondary">Không thể tải tài liệu để xem trước</Typography.Text>
+                          </div>
+                        ) : activeDocument?.contentType === 'application/pdf' ? (
+                          <MeetingPdfViewer
+                            fileUrl={activeDocumentUrl}
+                            fileName={activeDocument.fileName}
+                            onClose={() => setDocumentsPreviewVisible(false)}
+                          />
+                        ) : activeDocument?.contentType.startsWith('image/') ? (
+                          <div
+                            style={{
+                              width: '100%',
+                              minHeight: isTinyMobile ? 360 : isMobile ? 420 : 620,
+                              background: '#0b1220',
+                              display: 'flex',
+                              flexDirection: 'column',
+                            }}
+                          >
+                            <div
+                              style={{
+                                flexShrink: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '0 12px 0 16px',
+                                minHeight: 48,
+                                background: 'rgba(15, 23, 42, 0.95)',
+                                borderBottom: '1px solid rgba(148, 163, 184, 0.2)',
+                              }}
+                            >
+                              <Typography.Text style={{ color: '#e2e8f0', fontWeight: 600 }} ellipsis>
+                                {activeDocument.fileName}
+                              </Typography.Text>
+                              <Button
+                                type="text"
+                                icon={<CloseOutlined />}
+                                onClick={() => setDocumentsPreviewVisible(false)}
+                                style={{ color: '#e2e8f0' }}
+                              />
+                            </div>
+                            <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <img
+                                src={activeDocumentUrl}
+                                alt={activeDocument.fileName}
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#fff' }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ padding: 20 }}>
+                            <Typography.Text type="secondary">
+                              Định dạng này chưa hỗ trợ xem trực tiếp trong trình duyệt.
+                            </Typography.Text>
+                            <div style={{ marginTop: 12 }}>
+                              <a href={activeDocumentUrl} download={activeDocument.fileName}>
+                                Tải xuống: {activeDocument.fileName}
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })
+            )}
+
+            <div style={{ padding: '12px 16px', color: '#64748b', fontSize: 14 }}>
+              Hiển thị {filteredMeetingDocuments.length} tài liệu
+            </div>
+          </div>
+        </div>
       </Modal>
 
       <Modal
