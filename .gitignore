@@ -23,6 +23,9 @@
 # Docker build artifacts (too large for Git)
 *.tar
 
+# Local deploy helper scripts (contains server/password defaults)
+build-deploy-frontend.ps1
+
 # misc
 .DS_Store
 *.pem
