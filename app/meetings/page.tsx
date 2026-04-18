@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/auth';
 import { apiService, meetingApi } from '@/services/api';
 import type { MeetingMinutes, PollResponse, PollManagerItem, MeetingDocumentDto, MeetingInvitee, MeetingCoHostItem } from '@/dtos/meeting.dto';
+import type { MeetingRecordingDto } from '@/dtos/meeting.dto';
 import { MeetingMinutesPreview } from '@/components/meeting/MeetingMinutesPreview';
 import { buildMinutesText } from '@/lib/meetingMinutesFormat';
 import { exportMeetingMinutesWord } from '@/lib/exportMeetingMinutesWord';
@@ -160,6 +161,12 @@ function MeetingsPageContent() {
   const [activeDocumentLoading, setActiveDocumentLoading] = useState(false);
   const [documentsPreviewVisible, setDocumentsPreviewVisible] = useState(true);
   const docFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [meetingRecordings, setMeetingRecordings] = useState<MeetingRecordingDto[]>([]);
+  const [meetingRecordingsLoading, setMeetingRecordingsLoading] = useState(false);
+  const [recordingPlaybackModalOpen, setRecordingPlaybackModalOpen] = useState(false);
+  const [recordingPlaybackLoading, setRecordingPlaybackLoading] = useState(false);
+  const [recordingPlaybackUrl, setRecordingPlaybackUrl] = useState<string | null>(null);
+  const [recordingPlaybackTitle, setRecordingPlaybackTitle] = useState('');
 
   const orderedMeetingDocuments = useMemo(() => {
     return [...meetingDocuments].sort((a, b) => {
@@ -259,6 +266,42 @@ function MeetingsPageContent() {
       cancelled = true;
     };
   }, [detailMeeting, isAdmin, user?.id, user?.username]);
+
+  useEffect(() => {
+    if (!detailMeeting) {
+      setMeetingRecordings([]);
+      setMeetingRecordingsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setMeetingRecordingsLoading(true);
+    void (async () => {
+      const res = await meetingApi.listRecordings(detailMeeting.id);
+      if (cancelled) return;
+      setMeetingRecordingsLoading(false);
+      if (res.data) {
+        setMeetingRecordings(res.data);
+      } else {
+        setMeetingRecordings([]);
+      }
+      if (res.error) {
+        message.error(res.error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detailMeeting, message]);
+
+  useEffect(() => {
+    return () => {
+      if (recordingPlaybackUrl) {
+        URL.revokeObjectURL(recordingPlaybackUrl);
+      }
+    };
+  }, [recordingPlaybackUrl]);
 
   const submitAddInvitee = async () => {
     if (!detailMeeting) return;
@@ -727,6 +770,52 @@ function MeetingsPageContent() {
       return null;
     });
   }, [documentsMeeting]);
+
+  const formatRecordingDuration = (recording: MeetingRecordingDto): string => {
+    if (!recording.endedAtUtc) return 'Đang ghi hoặc chưa kết thúc';
+    const start = dayjs(recording.startedAtUtc);
+    const end = dayjs(recording.endedAtUtc);
+    if (!start.isValid() || !end.isValid() || end.isBefore(start)) return 'Không xác định';
+    const totalSeconds = end.diff(start, 'second');
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+  };
+
+  const openRecordingPlayback = async (meetingId: string, recording: MeetingRecordingDto) => {
+    setRecordingPlaybackLoading(true);
+    setRecordingPlaybackTitle(
+      dayjs(recording.startedAtUtc).isValid()
+        ? `Bản ghi ${dayjs(recording.startedAtUtc).format('DD/MM/YYYY HH:mm:ss')}`
+        : 'Bản ghi cuộc họp',
+    );
+    setRecordingPlaybackModalOpen(true);
+    try {
+      const blob = await meetingApi.getRecordingFileBlob(meetingId, recording.id);
+      const objectUrl = URL.createObjectURL(blob);
+      setRecordingPlaybackUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return objectUrl;
+      });
+    } catch (err) {
+      setRecordingPlaybackModalOpen(false);
+      message.error((err as Error)?.message || 'Không tải được file ghi hình');
+    } finally {
+      setRecordingPlaybackLoading(false);
+    }
+  };
+
+  const closeRecordingPlaybackModal = () => {
+    setRecordingPlaybackModalOpen(false);
+    setRecordingPlaybackTitle('');
+    setRecordingPlaybackUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  };
 
   const copyReportMinutesText = async () => {
     if (!reportMinutes) return;
@@ -1433,6 +1522,84 @@ function MeetingsPageContent() {
               </Col>
             </Row>
 
+            <div className="section-title-sm" style={{ marginTop: 18 }}>Bản ghi cuộc họp</div>
+            <div className="participants-card" style={{ padding: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                <Button
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  loading={meetingRecordingsLoading}
+                  onClick={async () => {
+                    if (!detailMeeting) return;
+                    setMeetingRecordingsLoading(true);
+                    const res = await meetingApi.listRecordings(detailMeeting.id);
+                    setMeetingRecordingsLoading(false);
+                    if (res.data) setMeetingRecordings(res.data);
+                    if (res.error) message.error(res.error);
+                  }}
+                >
+                  Tải lại bản ghi
+                </Button>
+              </div>
+
+              {meetingRecordingsLoading ? (
+                <div style={{ padding: 20, textAlign: 'center' }}><Spin /></div>
+              ) : meetingRecordings.length === 0 ? (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="Chưa có bản ghi cho cuộc họp này"
+                />
+              ) : (
+                <List
+                  dataSource={meetingRecordings}
+                  renderItem={(recording) => {
+                    const status = String(recording.status || '').toLowerCase();
+                    const canPlay = Boolean(recording.isFileAvailable) && status === 'completed';
+
+                    return (
+                      <List.Item
+                        key={recording.id}
+                        actions={[
+                          <Button
+                            key="play"
+                            type="primary"
+                            icon={<PlayCircleOutlined />}
+                            size="small"
+                            disabled={!canPlay}
+                            onClick={() => void openRecordingPlayback(detailMeeting.id, recording)}
+                          >
+                            Phát lại
+                          </Button>,
+                        ]}
+                      >
+                        <List.Item.Meta
+                          title={
+                            <Space size={8} wrap>
+                              <span>
+                                {dayjs(recording.startedAtUtc).isValid()
+                                  ? dayjs(recording.startedAtUtc).format('DD/MM/YYYY HH:mm:ss')
+                                  : 'Không rõ thời gian'}
+                              </span>
+                              <Tag color={status === 'completed' ? 'green' : status === 'failed' ? 'red' : 'blue'}>
+                                {recording.status}
+                              </Tag>
+                              {!recording.isFileAvailable && <Tag color="orange">Chưa thấy file</Tag>}
+                            </Space>
+                          }
+                          description={
+                            <Space direction="vertical" size={2}>
+                              <Typography.Text type="secondary">Thời lượng: {formatRecordingDuration(recording)}</Typography.Text>
+                              <Typography.Text type="secondary">Người bắt đầu: {recording.startedByName || recording.startedByUserId}</Typography.Text>
+                            </Space>
+                          }
+                        />
+                      </List.Item>
+                    );
+                  }}
+                />
+              )}
+            </div>
+
             <div className="section-title-sm" style={{ marginTop: 18 }}>Người tham gia</div>
             <div className="participants-card">
               <div className="p-row">
@@ -1645,6 +1812,32 @@ function MeetingsPageContent() {
             </div>
         )}
         </div>
+
+      <Modal
+        title={recordingPlaybackTitle || 'Xem lại bản ghi'}
+        open={recordingPlaybackModalOpen}
+        onCancel={closeRecordingPlaybackModal}
+        footer={null}
+        width={920}
+        destroyOnHidden
+      >
+        {recordingPlaybackLoading ? (
+          <div style={{ padding: 40, textAlign: 'center' }}>
+            <Spin />
+          </div>
+        ) : recordingPlaybackUrl ? (
+          <video
+            controls
+            style={{ width: '100%', maxHeight: '70vh', background: '#000', borderRadius: 8 }}
+            src={recordingPlaybackUrl}
+          />
+        ) : (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="Không thể tải bản ghi. Vui lòng thử lại."
+          />
+        )}
+      </Modal>
 
       <Modal
         title={editMeetingModal ? `Chỉnh sửa cuộc họp - ${editMeetingModal.title}` : 'Chỉnh sửa cuộc họp'}

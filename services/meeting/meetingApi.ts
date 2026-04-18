@@ -26,7 +26,10 @@ import type {
   MeetingInvitee,
   MeetingCoHostItem,
   MeetingNotificationItem,
+  MeetingRecordingDto,
 } from '@/dtos/meeting.dto';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://meeting.soict.io:8080';
 
 // Meeting domain API - React Query compatible
 export const meetingApi = {
@@ -319,7 +322,6 @@ export const meetingApi = {
   },
 
   uploadMeetingDocument: async (meetingId: string, file: File) => {
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://meeting.soict.io:8080';
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
     const form = new FormData();
@@ -351,7 +353,6 @@ export const meetingApi = {
   },
 
   getMeetingDocumentFileBlob: async (meetingId: string, documentId: string) => {
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://meeting.soict.io:8080';
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
     const res = await fetch(
@@ -395,5 +396,58 @@ export const meetingApi = {
         body: JSON.stringify({ isShared }),
       },
     );
+  },
+
+  listRecordings: async (meetingId: string) => {
+    return apiClient.request<MeetingRecordingDto[]>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/recordings`,
+      {
+        method: 'GET',
+      },
+    );
+  },
+
+  startRecording: async (meetingId: string) => {
+    return apiClient.request<MeetingRecordingDto>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/recordings/start`,
+      {
+        method: 'POST',
+      },
+    );
+  },
+
+  stopRecording: async (meetingId: string, recordingId: string) => {
+    return apiClient.request<MeetingRecordingDto>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/recordings/${encodeURIComponent(recordingId)}/stop`,
+      {
+        method: 'POST',
+      },
+    );
+  },
+
+  getRecordingFileBlob: async (meetingId: string, recordingId: string) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/meeting/${encodeURIComponent(meetingId)}/recordings/${encodeURIComponent(recordingId)}/file`,
+      {
+        method: 'GET',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      },
+    );
+
+    if (!res.ok) {
+      const text = await res.text();
+      let msg = `HTTP ${res.status}`;
+      try {
+        const j = JSON.parse(text);
+        msg = j?.message || j?.title || msg;
+      } catch {
+        if (text) msg = text;
+      }
+      throw new Error(msg);
+    }
+
+    return res.blob();
   },
 };

@@ -50,6 +50,12 @@ class ApiClient {
           const errorJson = JSON.parse(errorText);
           if (errorJson.message) {
             errorMessage = errorJson.message;
+          } else if (errorJson.msg) {
+            errorMessage = errorJson.msg;
+          } else if (errorJson.error) {
+            errorMessage = errorJson.error;
+          } else if (errorJson.detail) {
+            errorMessage = errorJson.detail;
           } else if (errorJson.title) {
             if (response.status === 401) {
               errorMessage = 'Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.';

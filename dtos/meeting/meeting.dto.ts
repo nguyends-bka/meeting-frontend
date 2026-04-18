@@ -108,6 +108,21 @@ export interface MeetingDocumentDto {
   fileEndpoint: string;
 }
 
+export interface MeetingRecordingDto {
+  id: string;
+  meetingId: string;
+  egressId: string;
+  status: string;
+  outputFilePath: string;
+  startedAtUtc: string;
+  endedAtUtc?: string | null;
+  startedByUserId: string;
+  startedByName: string;
+  errorMessage?: string | null;
+  playbackEndpoint: string;
+  isFileAvailable: boolean;
+}
+
 export interface MeetingHistoryItem {
   id: string;
   username: string;

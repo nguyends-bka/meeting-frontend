@@ -21,11 +21,36 @@ import { VoteRoomProvider } from '@/components/meeting/VoteRoomProvider';
 import MeetingShellEnhancements from '@/components/meeting/MeetingShellEnhancements';
 import MeetingUnifiedSidePanel from '@/components/meeting/MeetingUnifiedSidePanel';
 import type { MeetingToolsTab } from '@/components/meeting/MeetingUnifiedSidePanel';
+import type { MeetingRecordingDto } from '@/dtos/meeting.dto';
 import '@livekit/components-styles';
-import { Button, Modal, Typography } from 'antd';
+import { App, Button, Modal, Tag, Typography } from 'antd';
 
 type AudioSourceMode = 'real' | 'virtual';
 const { Text } = Typography;
+
+function normalizeLiveKitServerUrl(rawUrl: string): string {
+  const trimmed = (rawUrl || '').trim();
+  if (!trimmed) return trimmed;
+
+  const stripRtcPath = (path: string) => {
+    let normalized = path.replace(/\/+$/, '');
+    normalized = normalized.replace(/\/rtc\/v1$/i, '');
+    normalized = normalized.replace(/\/rtc$/i, '');
+    return normalized || '/';
+  };
+
+  try {
+    const parsed = new URL(trimmed);
+    parsed.pathname = stripRtcPath(parsed.pathname);
+    const next = parsed.toString().replace(/\/+$/, '');
+    return next;
+  } catch {
+    return trimmed
+      .replace(/\/+$/, '')
+      .replace(/\/rtc\/v1$/i, '')
+      .replace(/\/rtc$/i, '');
+  }
+}
 
 function DisconnectButtonInterceptor({
   shellRef,
@@ -463,6 +488,7 @@ export default function MeetingPage() {
   const params = useParams();
   const router = useRouter();
   const { isAuthenticated, loading: authLoading, user } = useAuth();
+  const { message } = App.useApp();
   const meetingId = params.id as string;
   const transcriptDisplayName =user?.fullName || user?.username || 'Current user'
 
@@ -497,6 +523,8 @@ export default function MeetingPage() {
   const meetingShellRef = useRef<HTMLDivElement>(null);
   const [hostLeaveModalOpen, setHostLeaveModalOpen] = useState(false);
   const [hostLeaveLoading, setHostLeaveLoading] = useState(false);
+  const [recordings, setRecordings] = useState<MeetingRecordingDto[]>([]);
+  const [recordingActionLoading, setRecordingActionLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -594,7 +622,7 @@ export default function MeetingPage() {
       if (result.data) {
         setUserChoices(normalizedChoices);
         setToken(result.data.token);
-        setUrl(result.data.liveKitUrl);
+        setUrl(normalizeLiveKitServerUrl(result.data.liveKitUrl));
         setParticipantId(result.data.participantId);
         setCurrentMeetingId(result.data.meetingId);
         setMeetingHostIdentity(result.data.hostIdentity ?? null);
@@ -618,6 +646,17 @@ export default function MeetingPage() {
 
     if (isDeviceLost) {
       console.warn('LiveKit: thiết bị mất kết nối, tham gia trong trạng thái mic/camera tắt:', error);
+      return;
+    }
+
+    const isTransientSignalIssue =
+      /could not establish signal connection|websocket error during connection establishment|failed to fetch/i.test(
+        msg,
+      );
+
+    if (isTransientSignalIssue) {
+      // LiveKit may emit transient signal errors during reconnect. Avoid switching to a fatal error screen.
+      console.warn('LiveKit: lỗi kết nối tín hiệu tạm thời, chờ reconnect:', error);
       return;
     }
 
@@ -670,6 +709,70 @@ export default function MeetingPage() {
   );
 
   const canCreatePoll = Boolean(isHost || isPollManager);
+  const activeRecording = recordings.find((r) => {
+    const s = (r.status || '').toLowerCase();
+    return s === 'starting' || s === 'active' || s === 'stopping';
+  }) ?? null;
+
+  const loadRecordings = useCallback(async () => {
+    const mid = currentMeetingId ?? meetingId;
+    if (!mid) return;
+
+    const res = await meetingApi.listRecordings(mid);
+    if (res.error || !res.data) {
+      return;
+    }
+    setRecordings(res.data);
+  }, [currentMeetingId, meetingId]);
+
+  useEffect(() => {
+    if (!preJoinDone) return;
+
+    void loadRecordings();
+    const timer = window.setInterval(() => {
+      void loadRecordings();
+    }, 5000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [preJoinDone, loadRecordings]);
+
+  const handleStartRecording = useCallback(async () => {
+    const mid = currentMeetingId ?? meetingId;
+    if (!mid) return;
+
+    setRecordingActionLoading(true);
+    try {
+      const res = await meetingApi.startRecording(mid);
+      if (res.error || !res.data) {
+        message.error(res.error || 'Không thể bắt đầu ghi hình');
+        return;
+      }
+      setRecordings((prev) => [res.data!, ...prev.filter((x) => x.id !== res.data!.id)]);
+      message.success('Đã bắt đầu ghi hình');
+    } finally {
+      setRecordingActionLoading(false);
+    }
+  }, [currentMeetingId, meetingId, message]);
+
+  const handleStopRecording = useCallback(async () => {
+    const mid = currentMeetingId ?? meetingId;
+    if (!mid || !activeRecording) return;
+
+    setRecordingActionLoading(true);
+    try {
+      const res = await meetingApi.stopRecording(mid, activeRecording.id);
+      if (res.error || !res.data) {
+        message.error(res.error || 'Không thể dừng ghi hình');
+        return;
+      }
+      setRecordings((prev) => prev.map((x) => (x.id === res.data!.id ? res.data! : x)));
+      message.success('Đã dừng ghi hình');
+    } finally {
+      setRecordingActionLoading(false);
+    }
+  }, [currentMeetingId, meetingId, activeRecording, message]);
 
   if (authLoading || (!isAuthenticated && !authLoading)) {
     return (
@@ -990,6 +1093,41 @@ export default function MeetingPage() {
                   className="meeting-room-shell"
                   data-meeting-layout="neither"
                 >
+                  {isHost && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 12,
+                        right: 12,
+                        zIndex: 35,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '8px 10px',
+                        borderRadius: 10,
+                        background: 'rgba(15, 23, 42, 0.7)',
+                        backdropFilter: 'blur(6px)',
+                      }}
+                    >
+                      {activeRecording ? <Tag color="red">Đang ghi</Tag> : <Tag>Chưa ghi</Tag>}
+                      <Button
+                        size="small"
+                        danger={Boolean(activeRecording)}
+                        type={activeRecording ? 'primary' : 'default'}
+                        loading={recordingActionLoading}
+                        onClick={() => {
+                          if (activeRecording) {
+                            void handleStopRecording();
+                            return;
+                          }
+                          void handleStartRecording();
+                        }}
+                      >
+                        {activeRecording ? 'Dừng ghi' : 'Bắt đầu ghi'}
+                      </Button>
+                    </div>
+                  )}
+
                   <MeetingChatHistoryHydrator />
                   <MeetingShellEnhancements
                     shellRef={meetingShellRef}
