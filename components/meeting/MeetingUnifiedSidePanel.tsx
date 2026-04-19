@@ -5,11 +5,12 @@ import { useChat, useRoomContext } from '@livekit/components-react';
 import VotePanel from '@/components/meeting/VotePanel';
 import MeetingDocumentsPanel from '@/components/meeting/MeetingDocumentsPanel';
 import TranscriptPanel from '@/components/meeting/TranscriptPanel';
+import MeetingToolsChatboxPanel from '@/components/meeting/MeetingToolsChatboxPanel';
 import { useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
 import { useVoteRoom } from '@/components/meeting/VoteRoomProvider';
 import { meetingApi } from '@/services/meeting/meetingApi';
 
-export type MeetingToolsTab = 'vote' | 'documents' | 'chat' | 'transcript';
+export type MeetingToolsTab = 'vote' | 'documents' | 'chat' | 'chatbox' | 'transcript';
 
 function findControlBar(shell: HTMLElement): HTMLElement | null {
   return shell.querySelector('.lk-control-bar') as HTMLElement | null;
@@ -291,6 +292,13 @@ export default function MeetingUnifiedSidePanel({
     }
   };
 
+  const onTabChatbox = () => {
+    setActiveTab('chatbox');
+    if (!documentsOpen) {
+      setDocumentsOpen(true);
+    }
+  };
+
   const onTabTranscript = () => {
     setActiveTab('transcript');
     if (!transcriptOpen) {
@@ -322,6 +330,15 @@ export default function MeetingUnifiedSidePanel({
                 {effectiveChatUnread > 99 ? '99+' : effectiveChatUnread}
               </span>
             ) : null}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'chatbox'}
+            className={`meeting-unified-tab${activeTab === 'chatbox' ? ' is-active' : ''}`}
+            onClick={onTabChatbox}
+          >
+            Chatbot
           </button>
           <button
             type="button"
@@ -395,6 +412,13 @@ export default function MeetingUnifiedSidePanel({
           hidden={activeTab !== 'chat'}
         >
           <div ref={chatSlotRef} className="meeting-unified-chat-slot" />
+        </div>
+        <div
+          className="meeting-unified-panel"
+          role="tabpanel"
+          hidden={activeTab !== 'chatbox'}
+        >
+          <MeetingToolsChatboxPanel />
         </div>
         <div
           className="meeting-unified-panel"

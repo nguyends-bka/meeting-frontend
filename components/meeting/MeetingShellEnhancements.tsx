@@ -342,6 +342,8 @@ export default function MeetingShellEnhancements({
             setTranscriptOpen(true);
           } else if (tab === 'documents') {
             setDocumentsOpen(true);
+          } else if (tab === 'chatbox') {
+            setDocumentsOpen(true);
           } else if (tab === 'chat') {
             const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)') as HTMLElement | null;
             chatToggle?.click();

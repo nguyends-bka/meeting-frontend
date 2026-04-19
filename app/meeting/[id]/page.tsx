@@ -23,7 +23,7 @@ import MeetingUnifiedSidePanel from '@/components/meeting/MeetingUnifiedSidePane
 import type { MeetingToolsTab } from '@/components/meeting/MeetingUnifiedSidePanel';
 import type { MeetingRecordingDto } from '@/dtos/meeting.dto';
 import '@livekit/components-styles';
-import { App, Button, Modal, Tag, Typography } from 'antd';
+import { App, Button, Modal, Typography } from 'antd';
 
 type AudioSourceMode = 'real' | 'virtual';
 const { Text } = Typography;
@@ -1098,7 +1098,7 @@ export default function MeetingPage() {
                       style={{
                         position: 'absolute',
                         top: 12,
-                        right: 12,
+                        left: 12,
                         zIndex: 35,
                         display: 'flex',
                         alignItems: 'center',
@@ -1109,7 +1109,6 @@ export default function MeetingPage() {
                         backdropFilter: 'blur(6px)',
                       }}
                     >
-                      {activeRecording ? <Tag color="red">Đang ghi</Tag> : <Tag>Chưa ghi</Tag>}
                       <Button
                         size="small"
                         danger={Boolean(activeRecording)}
