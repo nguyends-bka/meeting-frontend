@@ -27,6 +27,7 @@
     "next": "15.1.2",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
+    "react-markdown": "^10.1.0",
     "react-pdf": "10.1.0",
     "xlsx": "^0.18.5"
   },

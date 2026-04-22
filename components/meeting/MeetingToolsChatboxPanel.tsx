@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { ChatboxRealtimeClient } from '@/lib/realtime/chatboxWebSocket';
 
 type ChatFinalItem = {
@@ -213,7 +214,45 @@ export default function MeetingToolsChatboxPanel() {
                         <span>{formatChatTime(item.receivedAt)}</span>
                       </div>
                     ) : null}
-                    {item.text}
+                    {item.role === 'chatbox' ? (
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => <p style={{ margin: '0 0 8px' }}>{children}</p>,
+                          ul: ({ children }) => <ul style={{ margin: '0 0 8px 18px' }}>{children}</ul>,
+                          ol: ({ children }) => <ol style={{ margin: '0 0 8px 18px' }}>{children}</ol>,
+                          li: ({ children }) => <li style={{ marginBottom: 4 }}>{children}</li>,
+                          code: ({ children }) => (
+                            <code
+                              style={{
+                                background: 'rgba(148, 163, 184, 0.18)',
+                                padding: '1px 4px',
+                                borderRadius: 4,
+                                fontSize: 12,
+                              }}
+                            >
+                              {children}
+                            </code>
+                          ),
+                          pre: ({ children }) => (
+                            <pre
+                              style={{
+                                margin: '0 0 8px',
+                                background: '#e2e8f0',
+                                borderRadius: 8,
+                                padding: 10,
+                                overflowX: 'auto',
+                              }}
+                            >
+                              {children}
+                            </pre>
+                          ),
+                        }}
+                      >
+                        {item.text}
+                      </ReactMarkdown>
+                    ) : (
+                      item.text
+                    )}
                   </div>
                 </div>
               </div>
@@ -259,7 +298,16 @@ export default function MeetingToolsChatboxPanel() {
                         </span>
                       </span>
                     </div>
-                    {draftText}
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <p style={{ margin: '0 0 8px' }}>{children}</p>,
+                        ul: ({ children }) => <ul style={{ margin: '0 0 8px 18px' }}>{children}</ul>,
+                        ol: ({ children }) => <ol style={{ margin: '0 0 8px 18px' }}>{children}</ol>,
+                        li: ({ children }) => <li style={{ marginBottom: 4 }}>{children}</li>,
+                      }}
+                    >
+                      {draftText}
+                    </ReactMarkdown>
                   </div>
                 </div>
               </div>
