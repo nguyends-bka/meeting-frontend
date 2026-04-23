@@ -5,6 +5,8 @@ import { useRoomContext } from '@livekit/components-react';
 import { useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
 import { useAuth } from '@/lib/auth';
 
+const STATUS_MESSAGE_REGEX = /_+STATUS_+:(JOINED|LEFT):(\d+)/i;
+
 function isNearBottom(el: HTMLElement, threshold = 80): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
 }
@@ -45,6 +47,11 @@ function getNowFullTime(): string {
   return formatFullTime(Date.now());
 }
 
+function isStatusSystemMessage(raw: string): boolean {
+  const text = raw.trim();
+  return STATUS_MESSAGE_REGEX.test(text);
+}
+
 export default function MeetingChatHistoryHydrator() {
   const room = useRoomContext();
   const { chatHistory } = useTranscriptRoom();
@@ -83,6 +90,10 @@ export default function MeetingChatHistoryHydrator() {
 
         for (let i = chatHistory.length - 1; i >= 0; i -= 1) {
           const item = chatHistory[i];
+          if (isStatusSystemMessage(item.message)) {
+            continue;
+          }
+
           const domId = toDomId(item.senderIdentity, item.at, item.clientMessageId);
           if (list.querySelector(`[data-room-log-id="${domId}"]`)) continue;
 
@@ -112,6 +123,7 @@ export default function MeetingChatHistoryHydrator() {
 
           meta.appendChild(name);
           meta.appendChild(time);
+
           li.appendChild(meta);
           li.appendChild(body);
 
@@ -125,6 +137,19 @@ export default function MeetingChatHistoryHydrator() {
           const origin = rowEl.getAttribute('data-lk-message-origin');
           const metaEl = row.querySelector('.lk-meta-data') as HTMLElement | null;
           const bodyEl = row.querySelector('.lk-message-body') as HTMLElement | null;
+
+          const rowText = rowEl.textContent?.trim() ?? '';
+          if (STATUS_MESSAGE_REGEX.test(rowText)) {
+            rowEl.remove();
+            return;
+          }
+
+          if (bodyEl) {
+            if (isStatusSystemMessage(bodyEl.textContent ?? '')) {
+              rowEl.remove();
+              return;
+            }
+          }
 
           // LiveKit có thể group liên tiếp và bỏ metadata ở vài dòng.
           // Ép mọi dòng có đủ metadata để giao diện đồng bộ.

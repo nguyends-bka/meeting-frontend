@@ -28,6 +28,7 @@ import {
 } from '@/lib/transcriptReducer';
 
 export const TRANSCRIPT_DATA_TOPIC = 'bkmt-transcript';
+const STATUS_MESSAGE_REGEX = /_+STATUS_+:(JOINED|LEFT):(\d+)/i;
 
 type WsRelayStatus = 'idle' | 'connecting' | 'open' | 'error' | 'closed';
 
@@ -181,6 +182,7 @@ export function TranscriptRoomProvider({
     const senderIdentity = last.from?.identity?.trim() || '';
     const msgText = last.message?.trim() || '';
     if (!senderIdentity || !msgText) return;
+    if (STATUS_MESSAGE_REGEX.test(msgText)) return;
 
     const clientMessageId = last.id ?? null;
     const senderName = last.from?.name?.trim() || senderIdentity;

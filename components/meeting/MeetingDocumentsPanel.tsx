@@ -69,7 +69,9 @@ export default function MeetingDocumentsPanel({
       setActiveDoc((prev) => {
         if (!prev) return null;
         const stillVisible = nextDocs.find((d) => String(d.id) === String(prev.id));
-        return stillVisible ?? null;
+        if (!stillVisible) return null;
+        // Keep previous object reference to avoid re-triggering file reload effect.
+        return prev;
       });
     } finally {
       if (!silent) {
@@ -85,13 +87,15 @@ export default function MeetingDocumentsPanel({
 
     void fetchDocs();
     const timer = window.setInterval(() => {
+      // While opening a document, skip silent polling to avoid viewer refresh jitter.
+      if (activeDoc) return;
       void fetchDocs({ silent: true });
-    }, 1000);
+    }, 4000);
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [documentsOpen, fetchDocs]);
+  }, [documentsOpen, fetchDocs, activeDoc]);
 
   useEffect(() => {
     if (!activeDoc) return;

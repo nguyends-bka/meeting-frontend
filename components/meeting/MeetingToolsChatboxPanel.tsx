@@ -1,7 +1,8 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { ChatboxRealtimeClient } from '@/lib/realtime/chatboxWebSocket';
 
 type ChatFinalItem = {
@@ -18,6 +19,54 @@ const CHATBOX_WS_URL =
 function formatChatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleTimeString('vi-VN', { hour12: false });
 }
+
+const markdownComponents = {
+  p: ({ children }: { children?: ReactNode }) => <p style={{ margin: '0 0 8px' }}>{children}</p>,
+  ul: ({ children }: { children?: ReactNode }) => <ul style={{ margin: '0 0 8px 18px' }}>{children}</ul>,
+  ol: ({ children }: { children?: ReactNode }) => <ol style={{ margin: '0 0 8px 18px' }}>{children}</ol>,
+  li: ({ children }: { children?: ReactNode }) => <li style={{ marginBottom: 4 }}>{children}</li>,
+  table: ({ children }: { children?: ReactNode }) => (
+    <div style={{ overflowX: 'auto', marginBottom: 8 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>{children}</table>
+    </div>
+  ),
+  thead: ({ children }: { children?: ReactNode }) => (
+    <thead style={{ background: '#e2e8f0' }}>{children}</thead>
+  ),
+  th: ({ children }: { children?: ReactNode }) => (
+    <th style={{ border: '1px solid #cbd5e1', padding: '6px 8px', textAlign: 'left', verticalAlign: 'top' }}>
+      {children}
+    </th>
+  ),
+  td: ({ children }: { children?: ReactNode }) => (
+    <td style={{ border: '1px solid #cbd5e1', padding: '6px 8px', verticalAlign: 'top' }}>{children}</td>
+  ),
+  code: ({ children }: { children?: ReactNode }) => (
+    <code
+      style={{
+        background: 'rgba(148, 163, 184, 0.18)',
+        padding: '1px 4px',
+        borderRadius: 4,
+        fontSize: 12,
+      }}
+    >
+      {children}
+    </code>
+  ),
+  pre: ({ children }: { children?: ReactNode }) => (
+    <pre
+      style={{
+        margin: '0 0 8px',
+        background: '#e2e8f0',
+        borderRadius: 8,
+        padding: 10,
+        overflowX: 'auto',
+      }}
+    >
+      {children}
+    </pre>
+  ),
+};
 
 export default function MeetingToolsChatboxPanel() {
   const clientRef = useRef<ChatboxRealtimeClient | null>(null);
@@ -216,37 +265,8 @@ export default function MeetingToolsChatboxPanel() {
                     ) : null}
                     {item.role === 'chatbox' ? (
                       <ReactMarkdown
-                        components={{
-                          p: ({ children }) => <p style={{ margin: '0 0 8px' }}>{children}</p>,
-                          ul: ({ children }) => <ul style={{ margin: '0 0 8px 18px' }}>{children}</ul>,
-                          ol: ({ children }) => <ol style={{ margin: '0 0 8px 18px' }}>{children}</ol>,
-                          li: ({ children }) => <li style={{ marginBottom: 4 }}>{children}</li>,
-                          code: ({ children }) => (
-                            <code
-                              style={{
-                                background: 'rgba(148, 163, 184, 0.18)',
-                                padding: '1px 4px',
-                                borderRadius: 4,
-                                fontSize: 12,
-                              }}
-                            >
-                              {children}
-                            </code>
-                          ),
-                          pre: ({ children }) => (
-                            <pre
-                              style={{
-                                margin: '0 0 8px',
-                                background: '#e2e8f0',
-                                borderRadius: 8,
-                                padding: 10,
-                                overflowX: 'auto',
-                              }}
-                            >
-                              {children}
-                            </pre>
-                          ),
-                        }}
+                        remarkPlugins={[remarkGfm]}
+                        components={markdownComponents}
                       >
                         {item.text}
                       </ReactMarkdown>
@@ -299,12 +319,8 @@ export default function MeetingToolsChatboxPanel() {
                       </span>
                     </div>
                     <ReactMarkdown
-                      components={{
-                        p: ({ children }) => <p style={{ margin: '0 0 8px' }}>{children}</p>,
-                        ul: ({ children }) => <ul style={{ margin: '0 0 8px 18px' }}>{children}</ul>,
-                        ol: ({ children }) => <ol style={{ margin: '0 0 8px 18px' }}>{children}</ol>,
-                        li: ({ children }) => <li style={{ marginBottom: 4 }}>{children}</li>,
-                      }}
+                      remarkPlugins={[remarkGfm]}
+                      components={markdownComponents}
                     >
                       {draftText}
                     </ReactMarkdown>

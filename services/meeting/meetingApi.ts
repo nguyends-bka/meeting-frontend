@@ -339,11 +339,15 @@ export const meetingApi = {
     if (!res.ok) {
       const text = await res.text();
       let msg = `HTTP ${res.status}`;
+      if (res.status === 413 || /request entity too large/i.test(text)) {
+        msg = 'File quá lớn. Vui lòng chọn tài liệu nhỏ hơn 100MB.';
+        return { error: msg } as { error: string };
+      }
       try {
         const j = JSON.parse(text);
         msg = j?.message || j?.title || msg;
       } catch {
-        if (text) msg = text;
+        if (text && !/^\s*<(!doctype|html)/i.test(text)) msg = text;
       }
       return { error: msg } as { error: string };
     }

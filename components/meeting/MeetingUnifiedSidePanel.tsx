@@ -11,6 +11,9 @@ import { useVoteRoom } from '@/components/meeting/VoteRoomProvider';
 import { meetingApi } from '@/services/meeting/meetingApi';
 
 export type MeetingToolsTab = 'vote' | 'documents' | 'chat' | 'chatbox' | 'transcript';
+const STATUS_MESSAGE_REGEX = /_+STATUS_+:(JOINED|LEFT):(\d+)/i;
+const MEETING_TOOLS_MIN_WIDTH = 260;
+const MEETING_TOOLS_MAX_WIDTH = 840;
 
 function findControlBar(shell: HTMLElement): HTMLElement | null {
   return shell.querySelector('.lk-control-bar') as HTMLElement | null;
@@ -133,7 +136,9 @@ export default function MeetingUnifiedSidePanel({
     const localIdentity = room.localParticipant.identity;
     return chatMessages.reduce((acc, msg) => {
       const sender = msg.from?.identity?.trim() || '';
+      const text = msg.message?.trim() || '';
       if (!sender || sender === localIdentity) return acc;
+      if (STATUS_MESSAGE_REGEX.test(text)) return acc;
       return acc + 1;
     }, 0);
   }, [chatMessages, room.localParticipant.identity]);
@@ -154,10 +159,64 @@ export default function MeetingUnifiedSidePanel({
   const showChatBadge = effectiveChatUnread > 0;
 
   const chatSlotRef = useRef<HTMLDivElement | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
   const chatRestoreParentRef = useRef<{ parent: Node | null; next: ChildNode | null }>({
     parent: null,
     next: null,
   });
+
+  const applyToolsWidth = useCallback(
+    (nextWidth: number) => {
+      const shell = shellRef.current;
+      if (!shell) return;
+      const maxByViewport = Math.max(
+        MEETING_TOOLS_MIN_WIDTH,
+        Math.min(MEETING_TOOLS_MAX_WIDTH, window.innerWidth - 80),
+      );
+      const clamped = Math.round(Math.max(MEETING_TOOLS_MIN_WIDTH, Math.min(nextWidth, maxByViewport)));
+      shell.style.setProperty('--meeting-side-width', `${clamped}px`);
+    },
+    [shellRef],
+  );
+
+  const onResizeHandlePointerDown: React.PointerEventHandler<HTMLDivElement> = (event) => {
+    const isMouse = event.pointerType === 'mouse';
+    if (isMouse && event.button !== 0) return;
+
+    const shell = shellRef.current;
+    if (!shell) return;
+
+    const sideStack = shell.querySelector('.meeting-side-stack') as HTMLElement | null;
+    const startWidth = sideStack?.getBoundingClientRect().width ?? 360;
+    const startX = event.clientX;
+
+    event.preventDefault();
+
+    setIsResizing(true);
+    document.body.classList.add('meeting-resizing-tools');
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = startX - moveEvent.clientX;
+      applyToolsWidth(startWidth + deltaX);
+    };
+
+    const onPointerUp = () => {
+      setIsResizing(false);
+      document.body.classList.remove('meeting-resizing-tools');
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.dispatchEvent(new Event('resize'));
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
+  useEffect(() => {
+    return () => {
+      document.body.classList.remove('meeting-resizing-tools');
+    };
+  }, []);
 
   const mountChatInSlot = useCallback(() => {
     const shell = shellRef.current;
@@ -311,10 +370,17 @@ export default function MeetingUnifiedSidePanel({
   // Ẩn bằng CSS: `.meeting-unified-side-panel { display: none }` khi shell không `data-meeting-layout='tools-only'`.
   return (
     <aside
-      className="meeting-unified-side-panel"
+      className={`meeting-unified-side-panel${isResizing ? ' is-resizing' : ''}`}
       aria-label="Biểu quyết, tài liệu và tin nhắn"
       aria-hidden={!visible}
     >
+      <div
+        className="meeting-unified-resize-handle"
+        onPointerDown={onResizeHandlePointerDown}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Thay đổi kích thước bảng công cụ"
+      />
       <div className="meeting-unified-tabs">
         <div className="meeting-unified-tabs-inner" role="tablist">
           <button

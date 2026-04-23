@@ -19,6 +19,8 @@ const initial: TranscriptRoomState = {
   transcriptServiceReady: false,
 };
 
+const STATUS_MESSAGE_REGEX = /_+STATUS_+:(JOINED|LEFT):(\d+)/i;
+
 function pickSpeaker(o: Record<string, unknown>): string | null {
   const candidates = [o.speaker, o.displayName, o.senderName, o.username, o.user];
   for (const candidate of candidates) {
@@ -46,6 +48,10 @@ function tryParsePartialFinal(
 
 export function applyTranscriptRaw(prev: TranscriptRoomState, raw: string): TranscriptRoomState {
   const trimmed = raw.trim();
+
+  if (STATUS_MESSAGE_REGEX.test(trimmed)) {
+    return { ...prev, draftText: null, draftSpeaker: null };
+  }
 
   if (trimmed.startsWith('{')) {
     try {

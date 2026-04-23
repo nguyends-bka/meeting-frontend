@@ -1382,12 +1382,55 @@ button:active:not(:disabled):not(.meeting-unified-close) {
 /* Panel tab thống nhất (Biểu quyết | Tài liệu | Chat) */
 .meeting-unified-side-panel {
   display: none;
+  position: relative;
   flex-direction: column;
   min-height: 0;
   background: linear-gradient(180deg, #fafbfc 0%, #f5f6f8 100%);
   border-left: 1px solid #e8eaed;
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.04);
   overflow: hidden;
+}
+
+.meeting-unified-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 18px;
+  transform: translateX(-50%);
+  cursor: col-resize;
+  z-index: 4;
+  touch-action: none;
+}
+
+.meeting-unified-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 56px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.55);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.meeting-unified-side-panel:hover .meeting-unified-resize-handle::after,
+.meeting-unified-side-panel.is-resizing .meeting-unified-resize-handle::after,
+.meeting-unified-resize-handle:hover::after {
+  opacity: 1;
+}
+
+.meeting-unified-side-panel.is-resizing .meeting-unified-resize-handle::after {
+  background: rgba(59, 130, 246, 0.8);
+}
+
+body.meeting-resizing-tools,
+body.meeting-resizing-tools * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 
 .meeting-unified-tabs {
