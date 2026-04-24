@@ -1224,6 +1224,99 @@ button:active:not(:disabled):not(.meeting-unified-close) {
   border-radius: var(--lk-border-radius, 0.5rem);
 }
 
+.meeting-room-shell .lk-control-bar > .lk-button.meeting-more-toggle {
+  margin-inline: 3px;
+  border-radius: var(--lk-border-radius, 0.5rem);
+}
+
+.meeting-more-menu {
+  position: fixed;
+  z-index: 1200;
+  min-width: 210px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(71, 85, 105, 0.35);
+  background: rgba(15, 23, 42, 0.96);
+  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.45);
+  backdrop-filter: blur(8px);
+}
+
+.meeting-more-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #e5e7eb;
+  text-align: left;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.meeting-more-item:hover {
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.meeting-more-item.is-danger {
+  color: #f87171;
+}
+
+.meeting-more-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.meeting-title-overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 24px);
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.78);
+  color: #f8fafc;
+  backdrop-filter: blur(6px);
+}
+
+.meeting-title-text {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 48vw;
+}
+
+.meeting-recording-pill {
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(127, 29, 29, 0.48);
+  color: #fca5a5;
+  padding: 6px 12px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.meeting-recording-pill:disabled {
+  cursor: default;
+}
+
+.meeting-recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18);
+}
+
 .meeting-room-shell .lk-control-bar .meeting-transcript-toggle-inbar {
   position: absolute;
   right: 6px;

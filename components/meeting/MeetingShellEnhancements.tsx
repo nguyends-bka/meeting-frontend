@@ -62,6 +62,9 @@ const TOOLS_BUTTON_INNER =
   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' +
   '<span class="lk-button-text">Công cụ</span>';
 
+const MORE_BUTTON_INNER =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.08a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+
 export type MeetingLayoutDataset =
   | 'neither'
   | 'tools-only';
@@ -80,6 +83,11 @@ export default function MeetingShellEnhancements({
   setActiveToolsTab,
   onChatVisibilityChange,
   onChatUnreadChange,
+  canManageRecording = false,
+  recordingActive = false,
+  recordingBusy = false,
+  onStartRecording,
+  onStopRecording,
 }: {
   shellRef: React.RefObject<HTMLDivElement | null>;
   transcriptOpen: boolean;
@@ -92,13 +100,26 @@ export default function MeetingShellEnhancements({
   setActiveToolsTab?: (tab: MeetingToolsTab) => void;
   onChatVisibilityChange?: (open: boolean) => void;
   onChatUnreadChange?: (count: number) => void;
+  canManageRecording?: boolean;
+  recordingActive?: boolean;
+  recordingBusy?: boolean;
+  onStartRecording?: () => void;
+  onStopRecording?: () => void;
 }) {
   const [chatOpen, setChatOpen] = useState(false);
   const chatOpenRef = useRef(chatOpen);
   chatOpenRef.current = chatOpen;
   const prevChatOpenRef = useRef(false);
+  const setTranscriptOpenRef = useRef(setTranscriptOpen);
+  setTranscriptOpenRef.current = setTranscriptOpen;
+  const setVoteOpenRef = useRef(setVoteOpen);
+  setVoteOpenRef.current = setVoteOpen;
+  const setDocumentsOpenRef = useRef(setDocumentsOpen);
+  setDocumentsOpenRef.current = setDocumentsOpen;
   const setActiveToolsTabRef = useRef(setActiveToolsTab);
   setActiveToolsTabRef.current = setActiveToolsTab;
+  const onChatUnreadChangeRef = useRef(onChatUnreadChange);
+  onChatUnreadChangeRef.current = onChatUnreadChange;
   const transcriptOpenRef = useRef(transcriptOpen);
   transcriptOpenRef.current = transcriptOpen;
   const voteOpenRef = useRef(voteOpen);
@@ -108,6 +129,16 @@ export default function MeetingShellEnhancements({
   documentsOpenRef.current = documentsOpen;
   const activeToolsTabRef = useRef(activeToolsTab);
   activeToolsTabRef.current = activeToolsTab;
+  const canManageRecordingRef = useRef(canManageRecording);
+  canManageRecordingRef.current = canManageRecording;
+  const recordingActiveRef = useRef(recordingActive);
+  recordingActiveRef.current = recordingActive;
+  const recordingBusyRef = useRef(recordingBusy);
+  recordingBusyRef.current = recordingBusy;
+  const onStartRecordingRef = useRef(onStartRecording);
+  onStartRecordingRef.current = onStartRecording;
+  const onStopRecordingRef = useRef(onStopRecording);
+  onStopRecordingRef.current = onStopRecording;
 
   useEffect(() => {
     if (chatOpen && !prevChatOpenRef.current) {
@@ -121,7 +152,7 @@ export default function MeetingShellEnhancements({
   }, [chatOpen, onChatVisibilityChange]);
 
   useEffect(() => {
-    if (!onChatUnreadChange) return;
+    if (!onChatUnreadChangeRef.current) return;
     const shell = shellRef.current;
     if (!shell) return;
     const bar = findControlBar(shell);
@@ -132,8 +163,8 @@ export default function MeetingShellEnhancements({
       chatToggle?.getAttribute('data-unread-msgs') ??
       '0';
     const unreadNum = Number.parseInt(unreadRaw, 10);
-    onChatUnreadChange(Number.isFinite(unreadNum) ? unreadNum : 0);
-  }, [shellRef, onChatUnreadChange, chatOpen, activeToolsTab]);
+    onChatUnreadChangeRef.current?.(Number.isFinite(unreadNum) ? unreadNum : 0);
+  }, [shellRef, chatOpen, activeToolsTab]);
 
   // Add an explicit "X" close button for Chat panel header.
   // LiveKit's chat toggle can be closed via control-bar button; we just provide UI in the panel header.
@@ -278,10 +309,63 @@ export default function MeetingShellEnhancements({
 
     let cancelled = false;
     let toolsBtnEl: HTMLButtonElement | null = null;
+    let moreBtnEl: HTMLButtonElement | null = null;
+    let moreMenuEl: HTMLDivElement | null = null;
     let transcriptToggleBtnEl: HTMLButtonElement | null = null;
     let resizeObserver: ResizeObserver | null = null;
     let transcriptEnabled = true;
     let transcriptHasContent = false;
+
+    const closeMoreMenu = () => {
+      if (!moreMenuEl) return;
+      moreMenuEl.remove();
+      moreMenuEl = null;
+    };
+
+    const renderMoreMenu = () => {
+      if (!moreBtnEl) return;
+      closeMoreMenu();
+
+      const menu = document.createElement('div');
+      menu.className = 'meeting-more-menu';
+
+      const transcriptItem = document.createElement('button');
+      transcriptItem.type = 'button';
+      transcriptItem.className = 'meeting-more-item';
+      transcriptItem.textContent = transcriptEnabled ? 'Tắt transcript' : 'Bật transcript';
+      transcriptItem.addEventListener('click', () => {
+        window.dispatchEvent(new Event('bkmt-toggle-latest-transcript'));
+        closeMoreMenu();
+      });
+      menu.appendChild(transcriptItem);
+
+      if (canManageRecordingRef.current) {
+        const recordItem = document.createElement('button');
+        recordItem.type = 'button';
+        recordItem.className = `meeting-more-item${recordingActiveRef.current ? ' is-danger' : ''}`;
+        recordItem.disabled = recordingBusyRef.current;
+        recordItem.textContent = recordingActiveRef.current ? 'Dừng ghi' : 'Ghi hình';
+        recordItem.addEventListener('click', () => {
+          if (recordingBusyRef.current) return;
+          if (recordingActiveRef.current) {
+            onStopRecordingRef.current?.();
+          } else {
+            onStartRecordingRef.current?.();
+          }
+          closeMoreMenu();
+        });
+        menu.appendChild(recordItem);
+      }
+
+      document.body.appendChild(menu);
+      const rect = moreBtnEl.getBoundingClientRect();
+      const top = Math.max(8, rect.top - menu.offsetHeight - 8);
+      const left = Math.max(8, rect.right - menu.offsetWidth);
+      menu.style.top = `${top}px`;
+      menu.style.left = `${left}px`;
+
+      moreMenuEl = menu;
+    };
 
     const toolsSideOpen = () =>
       transcriptOpenRef.current || voteOpenRef.current || documentsOpenRef.current || chatOpenRef.current;
@@ -303,7 +387,9 @@ export default function MeetingShellEnhancements({
       } else {
         toolsBtnEl.removeAttribute('data-unread-msgs');
       }
-      onChatUnreadChange?.(unread && unread !== '0' ? Number.parseInt(unread, 10) || 0 : 0);
+      onChatUnreadChangeRef.current?.(
+        unread && unread !== '0' ? Number.parseInt(unread, 10) || 0 : 0,
+      );
 
       if (toolsSideOpen()) {
         toolsBtnEl.setAttribute('data-active', 'true');
@@ -324,12 +410,12 @@ export default function MeetingShellEnhancements({
         btn.type = 'button';
         btn.className = 'lk-button meeting-tools-toggle';
         btn.innerHTML = TOOLS_BUTTON_INNER;
-        btn.addEventListener('click', () => {
+        const toggleTools = () => {
           const isOpen = toolsSideOpen();
           if (isOpen) {
-            setTranscriptOpen(false);
-            setVoteOpen(false);
-            setDocumentsOpen(false);
+            setTranscriptOpenRef.current(false);
+            setVoteOpenRef.current(false);
+            setDocumentsOpenRef.current(false);
             if (chatOpenRef.current) {
               const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)') as HTMLElement | null;
               chatToggle?.click();
@@ -339,21 +425,59 @@ export default function MeetingShellEnhancements({
 
           const tab = activeToolsTabRef.current;
           if (tab === 'transcript') {
-            setTranscriptOpen(true);
+            setTranscriptOpenRef.current(true);
           } else if (tab === 'documents') {
-            setDocumentsOpen(true);
+            setDocumentsOpenRef.current(true);
           } else if (tab === 'chatbox') {
-            setDocumentsOpen(true);
+            setDocumentsOpenRef.current(true);
           } else if (tab === 'chat') {
             const chatToggle = bar.querySelector('.lk-chat-toggle:not(.meeting-transcript-toggle)') as HTMLElement | null;
             chatToggle?.click();
           } else {
-            setVoteOpen(true);
+            setVoteOpenRef.current(true);
           }
+        };
+        btn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleTools();
+        });
+        btn.addEventListener('keydown', (e) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          toggleTools();
         });
       }
       placeToolsButtonInBar(bar, btn);
       toolsBtnEl = btn;
+
+      let moreBtn = bar.querySelector('.meeting-more-toggle') as HTMLButtonElement | null;
+      if (!moreBtn) {
+        moreBtn = document.createElement('button');
+        moreBtn.type = 'button';
+        moreBtn.className = 'lk-button meeting-more-toggle';
+        moreBtn.innerHTML = MORE_BUTTON_INNER;
+        moreBtn.setAttribute('aria-label', 'Khác');
+        const toggleMore = () => {
+          if (moreMenuEl) {
+            closeMoreMenu();
+            return;
+          }
+          renderMoreMenu();
+        };
+        moreBtn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleMore();
+        });
+        moreBtn.addEventListener('keydown', (e) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          toggleMore();
+        });
+      }
+      placeToolsButtonInBar(bar, moreBtn);
+      moreBtnEl = moreBtn;
 
       let transcriptBtn = bar.querySelector('.meeting-transcript-toggle-inbar') as HTMLButtonElement | null;
       if (!transcriptBtn) {
@@ -396,6 +520,9 @@ export default function MeetingShellEnhancements({
         'aria-label',
         transcriptEnabled ? 'Tắt hiển thị transcript' : 'Bật hiển thị transcript',
       );
+      if (moreMenuEl) {
+        renderMoreMenu();
+      }
     };
     window.addEventListener('bkmt-latest-transcript-state', onTranscriptState as EventListener);
 
@@ -406,10 +533,12 @@ export default function MeetingShellEnhancements({
       if (resizeObserver) resizeObserver.disconnect();
       const bar = findControlBar(shell);
       if (bar) delete bar.dataset.meetingBarCompact;
+      closeMoreMenu();
       toolsBtnEl?.remove();
+      moreBtnEl?.remove();
       transcriptToggleBtnEl?.remove();
     };
-  }, [shellRef, setTranscriptOpen, setVoteOpen, setDocumentsOpen, setActiveToolsTab, onChatUnreadChange]);
+  }, [shellRef]);
 
   useEffect(() => {
     const shell = shellRef.current;

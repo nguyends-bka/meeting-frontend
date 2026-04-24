@@ -1590,6 +1590,11 @@ function MeetingsPageContent() {
                             <Space direction="vertical" size={2}>
                               <Typography.Text type="secondary">Thời lượng: {formatRecordingDuration(recording)}</Typography.Text>
                               <Typography.Text type="secondary">Người bắt đầu: {recording.startedByName || recording.startedByUserId}</Typography.Text>
+                              {status === 'failed' && recording.errorMessage ? (
+                                <Typography.Text type="danger" ellipsis={{ tooltip: recording.errorMessage }}>
+                                  Lỗi: {recording.errorMessage}
+                                </Typography.Text>
+                              ) : null}
                             </Space>
                           }
                         />

@@ -52,6 +52,19 @@ function normalizeLiveKitServerUrl(rawUrl: string): string {
   }
 }
 
+function formatRecordingDuration(totalSeconds: number): string {
+  const safe = Number.isFinite(totalSeconds) ? Math.max(0, Math.floor(totalSeconds)) : 0;
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = safe % 60;
+  const mm = String(minutes).padStart(2, '0');
+  const ss = String(seconds).padStart(2, '0');
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${mm}:${ss}`;
+  }
+  return `${mm}:${ss}`;
+}
+
 function DisconnectButtonInterceptor({
   shellRef,
   enabled,
@@ -498,6 +511,7 @@ export default function MeetingPage() {
   const [roomError, setRoomError] = useState<string | null>(null);
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [currentMeetingId, setCurrentMeetingId] = useState<string | null>(null);
+  const [meetingTitle, setMeetingTitle] = useState<string>('Cuộc họp');
   const [meetingHostIdentity, setMeetingHostIdentity] = useState<string | null>(null);
   const [isMeetingHostJoin, setIsMeetingHostJoin] = useState(false);
   const [isPollManager, setIsPollManager] = useState(false);
@@ -525,6 +539,7 @@ export default function MeetingPage() {
   const [hostLeaveLoading, setHostLeaveLoading] = useState(false);
   const [recordings, setRecordings] = useState<MeetingRecordingDto[]>([]);
   const [recordingActionLoading, setRecordingActionLoading] = useState(false);
+  const [recordingNowMs, setRecordingNowMs] = useState<number>(() => Date.now());
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -625,6 +640,7 @@ export default function MeetingPage() {
         setUrl(normalizeLiveKitServerUrl(result.data.liveKitUrl));
         setParticipantId(result.data.participantId);
         setCurrentMeetingId(result.data.meetingId);
+        setMeetingTitle(result.data.title?.trim() || 'Cuộc họp');
         setMeetingHostIdentity(result.data.hostIdentity ?? null);
         setIsMeetingHostJoin(Boolean(result.data.isMeetingHost));
         setPreJoinDone(true);
@@ -713,6 +729,38 @@ export default function MeetingPage() {
     const s = (r.status || '').toLowerCase();
     return s === 'starting' || s === 'active' || s === 'stopping';
   }) ?? null;
+  const [optimisticStopAtMs, setOptimisticStopAtMs] = useState<number | null>(null);
+  const lastRecordingIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = activeRecording?.id ?? null;
+    if (id !== lastRecordingIdRef.current) {
+      lastRecordingIdRef.current = id;
+      setOptimisticStopAtMs(null);
+    }
+  }, [activeRecording?.id]);
+
+  useEffect(() => {
+    if (!activeRecording) return;
+    setRecordingNowMs(Date.now());
+    const timer = window.setInterval(() => {
+      setRecordingNowMs(Date.now());
+    }, 1000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [activeRecording]);
+
+  const recordingElapsedLabel = (() => {
+    if (!activeRecording?.startedAtUtc) return null;
+    const startedAtMs = Date.parse(activeRecording.startedAtUtc);
+    if (!Number.isFinite(startedAtMs)) return null;
+    const endMs =
+      optimisticStopAtMs ??
+      (((activeRecording.status || '').toLowerCase() === 'stopping' ? recordingNowMs : null) as number | null) ??
+      recordingNowMs;
+    const elapsedSec = Math.max(0, Math.floor((endMs - startedAtMs) / 1000));
+    return formatRecordingDuration(elapsedSec);
+  })();
 
   const loadRecordings = useCallback(async () => {
     const mid = currentMeetingId ?? meetingId;
@@ -738,6 +786,24 @@ export default function MeetingPage() {
     };
   }, [preJoinDone, loadRecordings]);
 
+  useEffect(() => {
+    const mid = currentMeetingId ?? meetingId;
+    if (!mid) return;
+    let cancelled = false;
+
+    void (async () => {
+      const res = await meetingApi.getList();
+      if (cancelled || res.error || !res.data) return;
+      const found = res.data.find((x) => x.id === mid);
+      if (!found?.title) return;
+      setMeetingTitle(found.title);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentMeetingId, meetingId]);
+
   const handleStartRecording = useCallback(async () => {
     const mid = currentMeetingId ?? meetingId;
     if (!mid) return;
@@ -760,10 +826,13 @@ export default function MeetingPage() {
     const mid = currentMeetingId ?? meetingId;
     if (!mid || !activeRecording) return;
 
+    // Optimistic UI: freeze the timer immediately while we stop recording.
+    setOptimisticStopAtMs(Date.now());
     setRecordingActionLoading(true);
     try {
       const res = await meetingApi.stopRecording(mid, activeRecording.id);
       if (res.error || !res.data) {
+        setOptimisticStopAtMs(null);
         message.error(res.error || 'Không thể dừng ghi hình');
         return;
       }
@@ -1093,39 +1162,24 @@ export default function MeetingPage() {
                   className="meeting-room-shell"
                   data-meeting-layout="neither"
                 >
-                  {isHost && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 12,
-                        left: 12,
-                        zIndex: 35,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '8px 10px',
-                        borderRadius: 10,
-                        background: 'rgba(15, 23, 42, 0.7)',
-                        backdropFilter: 'blur(6px)',
-                      }}
-                    >
-                      <Button
-                        size="small"
-                        danger={Boolean(activeRecording)}
-                        type={activeRecording ? 'primary' : 'default'}
-                        loading={recordingActionLoading}
+                  <div className="meeting-title-overlay" aria-live="polite">
+                    <div className="meeting-title-text">{meetingTitle}</div>
+                    {activeRecording ? (
+                      <button
+                        type="button"
+                        className="meeting-recording-pill"
                         onClick={() => {
-                          if (activeRecording) {
-                            void handleStopRecording();
-                            return;
-                          }
-                          void handleStartRecording();
+                          if (!isHost || recordingActionLoading) return;
+                          void handleStopRecording();
                         }}
+                        disabled={!isHost || recordingActionLoading}
+                        title={isHost ? 'Dừng ghi hình' : 'Cuộc họp đang ghi hình'}
                       >
-                        {activeRecording ? 'Dừng ghi' : 'Bắt đầu ghi'}
-                      </Button>
-                    </div>
-                  )}
+                        <span className="meeting-recording-dot" aria-hidden="true" />
+                        <span>{`${recordingElapsedLabel ?? '00:00'} - Dừng ghi`}</span>
+                      </button>
+                    ) : null}
+                  </div>
 
                   <MeetingChatHistoryHydrator />
                   <MeetingShellEnhancements
@@ -1140,6 +1194,15 @@ export default function MeetingPage() {
                     setActiveToolsTab={setActiveToolsTab}
                     onChatVisibilityChange={setMeetingChatOpen}
                     onChatUnreadChange={setMeetingChatUnread}
+                    canManageRecording={isHost}
+                    recordingActive={Boolean(activeRecording)}
+                    recordingBusy={recordingActionLoading}
+                    onStartRecording={() => {
+                      void handleStartRecording();
+                    }}
+                    onStopRecording={() => {
+                      void handleStopRecording();
+                    }}
                   />
 
                   {/** Documents side panel is rendered inside meeting-side-stack (no overlay) */}
