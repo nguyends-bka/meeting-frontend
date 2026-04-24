@@ -353,6 +353,35 @@ export const meetingApi = {
     }
 
     const data = (await res.json()) as MeetingDocumentDto;
+    // After successful upload, also send file + doc_id + collection to embedding service
+    try {
+      const embedForm = new FormData();
+      embedForm.append('file', file);
+      embedForm.append('doc_id', (data as any).id);
+      embedForm.append('collection', meetingId);
+
+      // Fire-and-forget; do not fail the main upload if embedding fails
+      fetch('https://rag.soictlab.com/embed/file', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: embedForm,
+      })
+        .then(async (res) => {
+          const text = await res.text();
+          try {
+            const json = text ? JSON.parse(text) : null;
+            console.info('embed/file response', { status: res.status, ok: res.ok, body: json });
+          } catch (e) {
+            console.info('embed/file response', { status: res.status, ok: res.ok, body: text });
+          }
+        })
+        .catch((err) => {
+          console.warn('embed/file error', err);
+        });
+    } catch (err) {
+      // swallow errors intentionally
+    }
+
     return { data };
   },
 
