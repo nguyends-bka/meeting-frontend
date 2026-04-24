@@ -189,27 +189,67 @@ export default function MeetingUnifiedSidePanel({
     const sideStack = shell.querySelector('.meeting-side-stack') as HTMLElement | null;
     const startWidth = sideStack?.getBoundingClientRect().width ?? 360;
     const startX = event.clientX;
+    const handle = event.currentTarget;
+    const pointerId = event.pointerId;
 
     event.preventDefault();
+    try {
+      handle.setPointerCapture(pointerId);
+    } catch {
+      // Ignore capture failures on unsupported browsers/devices.
+    }
 
     setIsResizing(true);
     document.body.classList.add('meeting-resizing-tools');
+    let resizeDispatchRaf = 0;
 
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      const deltaX = startX - moveEvent.clientX;
-      applyToolsWidth(startWidth + deltaX);
+    const scheduleWindowResize = () => {
+      if (resizeDispatchRaf) return;
+      resizeDispatchRaf = window.requestAnimationFrame(() => {
+        resizeDispatchRaf = 0;
+        window.dispatchEvent(new Event('resize'));
+      });
     };
 
-    const onPointerUp = () => {
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
+      const deltaX = startX - moveEvent.clientX;
+      applyToolsWidth(startWidth + deltaX);
+      scheduleWindowResize();
+    };
+
+    const cleanup = () => {
       setIsResizing(false);
       document.body.classList.remove('meeting-resizing-tools');
+      if (resizeDispatchRaf) {
+        window.cancelAnimationFrame(resizeDispatchRaf);
+        resizeDispatchRaf = 0;
+      }
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
+      handle.removeEventListener('lostpointercapture', onLostPointerCapture);
       window.dispatchEvent(new Event('resize'));
+    };
+
+    const onPointerUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
+      cleanup();
+    };
+
+    const onPointerCancel = (cancelEvent: PointerEvent) => {
+      if (cancelEvent.pointerId !== pointerId) return;
+      cleanup();
+    };
+
+    const onLostPointerCapture = () => {
+      cleanup();
     };
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
+    handle.addEventListener('lostpointercapture', onLostPointerCapture);
   };
 
   useEffect(() => {

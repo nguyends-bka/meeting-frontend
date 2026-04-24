@@ -1433,6 +1433,13 @@ body.meeting-resizing-tools * {
   user-select: none !important;
 }
 
+/* PDF/iframe viewers can swallow pointer events, making resize update only on mouse-up. */
+body.meeting-resizing-tools .meeting-unified-panel iframe,
+body.meeting-resizing-tools .meeting-unified-panel embed,
+body.meeting-resizing-tools .meeting-unified-panel object {
+  pointer-events: none !important;
+}
+
 .meeting-unified-tabs {
   position: relative;
   flex-shrink: 0;
