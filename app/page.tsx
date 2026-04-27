@@ -237,31 +237,8 @@ export default function HomePage() {
   useEffect(() => {
     if (isAuthenticated) {
       void loadStats();
-      if (ENABLE_HOME_NOTIFICATIONS) {
-        void loadNotifications();
-      } else {
-        setHomeNotifications([]);
-      }
     }
   }, [isAuthenticated]);
-
-  const loadNotifications = async () => {
-    const res = await meetingApi.getMyNotifications();
-    if (res.error || !Array.isArray(res.data)) {
-      setHomeNotifications([]);
-      return;
-    }
-    const mapped: HomeNotificationItem[] = res.data.map((n) => ({
-      id: n.id,
-      meetingId: n.meetingId,
-      title: n.type === 'cohost_granted' ? 'Bạn được cấp quyền chủ trì' : 'Bạn được thêm vào cuộc họp',
-      desc: n.message,
-      time: dayjs(n.createdAt).format('DD/MM/YYYY HH:mm:ss'),
-      kind: n.type === 'cohost_granted' ? 'success' : 'info',
-      openedAt: n.openedAt ?? null,
-    }));
-    setHomeNotifications(mapped.slice(0, 10));
-  };
 
   const loadStats = async () => {
     setLoadingHome(true);
@@ -532,21 +509,7 @@ export default function HomePage() {
     return (stats.activeMeetings ?? 0) + extra;
   }, [todaySchedule, stats]);
 
-  const openHomeNotification = useCallback(
-    async (item: HomeNotificationItem) => {
-      if (!item.openedAt) {
-        await meetingApi.openNotification(item.id);
-      }
-      setHomeNotifications((prev) =>
-        prev.map((n) => (n.id === item.id ? { ...n, openedAt: n.openedAt ?? new Date().toISOString() } : n)),
-      );
-      setOpenedNotification({
-        ...item,
-        openedAt: item.openedAt ?? new Date().toISOString(),
-      });
-    },
-    [],
-  );
+
 
   const greetingWord = (() => {
     const h = dayjs().hour();
@@ -568,69 +531,80 @@ export default function HomePage() {
         : start.add(1, 'hour');
     return (
       <div
+        className="hover-scale premium-shadow"
         style={{
-          borderRadius: 16,
-          padding: isNarrow ? 18 : 24,
-          marginBottom: 16,
-          background: '#ffffff',
+          borderRadius: 20,
+          padding: isNarrow ? 20 : 28,
+          marginBottom: 24,
+          background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)',
           color: '#0f172a',
-          boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
-          border: '1px solid #e5e7eb',
+          border: '1px solid #e2e8f0',
+          position: 'relative',
+          overflow: 'hidden'
         }}
       >
-        <Space style={{ marginBottom: 10 }} wrap size={[8, 8]}>
-          <Tag color={isHeroLive ? 'success' : 'processing'} style={{ margin: 0, fontWeight: 700, border: 'none' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: isHeroLive ? '#22c55e' : '#3b82f6' }} />
+        <Space style={{ marginBottom: 12 }} wrap size={[8, 8]}>
+          <Tag color={isHeroLive ? 'success' : 'processing'} style={{ margin: 0, fontWeight: 700, padding: '4px 10px', borderRadius: '6px', border: 'none', background: isHeroLive ? '#dcfce7' : '#dbeafe', color: isHeroLive ? '#166534' : '#1e40af' }}>
             {isHeroLive ? 'ĐANG DIỄN RA' : 'SẮP DIỄN RA'}
           </Tag>
-          <Text style={{ color: '#64748b', fontSize: 13 }}>
+          <Text style={{ color: '#64748b', fontSize: 14, fontWeight: 500 }}>
             {isHeroLive ? 'Hôm nay' : 'Dự kiến'}, {start.format('DD/MM/YYYY')}
           </Text>
         </Space>
-        <Title level={3} style={{ margin: 0, color: '#0f172a' }}>
+        <Title level={2} style={{ margin: 0, color: '#0f172a', fontWeight: 800, letterSpacing: '-0.02em' }}>
           {liveHighlight.title}
         </Title>
-        <div style={{ marginTop: 12, opacity: 0.95, fontSize: 14 }}>
-          <div>
-            {start.format('HH:mm')} – {end.format('HH:mm')}
+        <div style={{ marginTop: 14, display: 'flex', gap: 24, alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#475569', fontSize: 15, fontWeight: 500 }}>
+             <CalendarOutlined style={{ color: '#3b82f6' }} />
+             {start.format('HH:mm')} – {end.format('HH:mm')}
           </div>
-          <div style={{ marginTop: 4 }}>Host: {liveHighlight.hostName}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#475569', fontSize: 15, fontWeight: 500 }}>
+             <UserOutlined style={{ color: '#8b5cf6' }} />
+             Host: <span style={{ color: '#1e293b', fontWeight: 600 }}>{liveHighlight.hostName}</span>
+          </div>
         </div>
         <div
           style={{
-            marginTop: 16,
-            padding: 14,
+            marginTop: 20,
+            padding: 16,
             borderRadius: 12,
-            background: '#ffffff',
-            border: '1px solid #dbe2ea',
+            background: 'rgba(241, 245, 249, 0.7)',
+            border: '1px dashed #cbd5e1',
+            display: 'flex',
+            gap: 32,
+            alignItems: 'center'
           }}
         >
-          <div style={{ fontSize: 13 }}>
-            <Text style={{ color: '#64748b' }}>Mã phòng: </Text>
-            <Text strong style={{ color: '#0f172a' }}>
+          <div>
+            <Text style={{ color: '#64748b', fontSize: 13, display: 'block', marginBottom: 4 }}>Mã phòng</Text>
+            <Text strong style={{ color: '#0f172a', fontSize: 18, fontFamily: 'monospace', letterSpacing: '1px' }}>
               {liveHighlight.meetingCode}
             </Text>
           </div>
-          <div style={{ fontSize: 13, marginTop: 8 }}>
-            <Text style={{ color: '#64748b' }}>Passcode: </Text>
-            <Text strong style={{ color: '#0f172a' }}>
+          <div style={{ width: 1, height: 40, background: '#cbd5e1' }} />
+          <div>
+            <Text style={{ color: '#64748b', fontSize: 13, display: 'block', marginBottom: 4 }}>Passcode</Text>
+            <Text strong style={{ color: '#0f172a', fontSize: 18, fontFamily: 'monospace', letterSpacing: '1px' }}>
               {liveHighlight.passcode || '—'}
             </Text>
           </div>
         </div>
-        <Space style={{ marginTop: 18 }} wrap>
+        <Space style={{ marginTop: 24 }} wrap size={16}>
           <Button
-            type="default"
+            type="primary"
             size="large"
             icon={<CaretRightOutlined />}
             onClick={() => router.push(`/meeting/${liveHighlight.id}`)}
-            style={{ fontWeight: 600, color: '#1e3a8a' }}
+            style={{ fontWeight: 600, background: 'linear-gradient(to right, #2563eb, #3b82f6)', border: 'none', height: 46, padding: '0 28px', borderRadius: 8, boxShadow: '0 4px 14px rgba(37,99,235,0.4)', animation: isHeroLive ? 'pulse-glow 2s infinite' : 'none' }}
           >
             Tham gia ngay
           </Button>
           <Button
             size="large"
             onClick={() => setDetailMeeting(liveHighlight)}
-            style={{ borderColor: '#cbd5e1', color: '#334155' }}
+            style={{ fontWeight: 600, color: '#475569', height: 46, padding: '0 28px', borderRadius: 8, border: '1px solid #cbd5e1' }}
           >
             Chi tiết
           </Button>
@@ -654,45 +628,61 @@ export default function HomePage() {
         }}
       >
         <Row gutter={[24, 24]}>
-          <Col xs={24} lg={16}>
+          <Col xs={24} lg={24}>
             <Card
               bordered={false}
               style={{
-                borderRadius: 12,
-                marginBottom: 16,
-                background: '#ffffff',
-                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+                borderRadius: 24,
+                marginBottom: 24,
+                background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%)',
+                boxShadow: '0 20px 40px -10px rgba(15, 23, 42, 0.4)',
+                overflow: 'hidden',
+                position: 'relative',
               }}
             >
+              {/* Decorative circles */}
+              <div style={{
+                position: 'absolute', top: -100, right: -50, width: 300, height: 300,
+                borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,0.3) 0%, rgba(0,0,0,0) 70%)', pointerEvents: 'none', filter: 'blur(20px)'
+              }} />
+              <div style={{
+                position: 'absolute', bottom: -100, right: 150, width: 250, height: 250,
+                borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, rgba(0,0,0,0) 70%)', pointerEvents: 'none', filter: 'blur(20px)'
+              }} />
               <div
                 style={{
                   display: 'flex',
                   flexWrap: 'wrap',
-                  alignItems: 'flex-start',
+                  alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: 16,
+                  gap: 20,
+                  position: 'relative',
+                  zIndex: 1,
+                  padding: '8px 4px'
                 }}
               >
                 <div style={{ flex: '1 1 260px', minWidth: 0 }}>
-                  <Title level={3} style={{ margin: 0 }}>
+                  <Title level={2} className="animated-gradient-text" style={{ margin: 0, fontWeight: 800, letterSpacing: '-0.02em' }}>
                     {greetingWord}, {user?.fullName}! 👋
                   </Title>
-                  <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 15 }}>
-                    Hôm nay là {dayjs().format('dddd')}, {dayjs().format('D')} tháng {dayjs().format('MM')} năm{' '}
-                    {dayjs().format('YYYY')}. Bạn có <Text strong>{pendingForYou}</Text> cuộc họp đang chờ.
+                  <Text style={{ display: 'block', marginTop: 12, fontSize: 16, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>
+                    Hôm nay là <span style={{ color: '#fff', fontWeight: 600 }}>{dayjs().format('dddd, D [tháng] MM, YYYY')}</span>. Bạn có <Text style={{ color: '#60a5fa', fontWeight: 800, fontSize: 18 }}>{pendingForYou}</Text> cuộc họp đang chờ.
                   </Text>
                 </div>
                 <div
                   style={{
                     display: 'flex',
                     flexWrap: 'nowrap',
-                    gap: 10,
+                    gap: 12,
                     alignItems: 'center',
                     justifyContent: 'flex-end',
                     flex: '0 0 auto',
                   }}
                 >
-                  <Button size="large" icon={<RightCircleOutlined />} onClick={openJoinModal}>
+                  <Button size="large" icon={<RightCircleOutlined />} onClick={openJoinModal}
+                    style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 600, backdropFilter: 'blur(8px)', height: 46, borderRadius: 8 }}
+                    className="hover-scale"
+                  >
                     Tham gia
                   </Button>
                   <Button
@@ -700,7 +690,8 @@ export default function HomePage() {
                     size="large"
                     onClick={() => setCreateOpen(true)}
                     icon={<PlusOutlined />}
-                    style={{ fontWeight: 600, background: '#2563eb', borderColor: '#2563eb' }}
+                    style={{ fontWeight: 600, background: '#ffffff', borderColor: '#ffffff', color: '#0f172a', boxShadow: '0 4px 14px rgba(0,0,0,0.2)', height: 46, borderRadius: 8 }}
+                    className="hover-scale"
                   >
                     Tạo cuộc họp mới
                   </Button>
@@ -708,22 +699,95 @@ export default function HomePage() {
               </div>
             </Card>
 
+            {stats && (
+              <Card
+                bordered={false}
+                className="premium-shadow"
+                style={{ borderRadius: 24, marginBottom: 24, border: 'none' }}
+                title={<span style={{ fontWeight: 800, fontSize: 18, color: '#1e293b' }}>Tổng quan cá nhân</span>}
+              >
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} sm={12}>
+                    <div
+                      className="hover-scale"
+                      style={{
+                        padding: ss(20),
+                        borderRadius: ss(16),
+                        background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                        border: '1px solid rgba(186, 230, 253, 0.5)',
+                        height: '100%',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      <div style={{ position: 'absolute', right: -10, top: -10, opacity: 0.1 }}>
+                        <VideoCameraOutlined style={{ fontSize: 80, color: '#0284c7' }} />
+                      </div>
+                      <VideoCameraOutlined style={{ fontSize: ss(28), color: '#0ea5e9' }} />
+                      <div style={{ fontSize: ss(36), fontWeight: 800, marginTop: ss(12), color: '#0369a1', lineHeight: 1 }}>
+                        {stats.createdThisWeek}
+                      </div>
+                      <Text style={{ fontSize: ss(13), display: 'block', marginTop: 8, color: '#0284c7', fontWeight: 600 }}>
+                        Đã tạo tuần này
+                      </Text>
+                    </div>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <div
+                      className="hover-scale"
+                      style={{
+                        padding: ss(20),
+                        borderRadius: ss(16),
+                        background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                        border: '1px solid rgba(187, 247, 208, 0.5)',
+                        height: '100%',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push('/history')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') router.push('/history');
+                      }}
+                    >
+                      <div style={{ position: 'absolute', right: -10, top: -10, opacity: 0.1 }}>
+                        <CheckCircleOutlined style={{ fontSize: 80, color: '#16a34a' }} />
+                      </div>
+                      <CheckCircleOutlined style={{ fontSize: ss(28), color: '#22c55e' }} />
+                      <div style={{ fontSize: ss(36), fontWeight: 800, marginTop: ss(12), color: '#14532d', lineHeight: 1 }}>
+                        {stats.joinedSessionsTotal}
+                      </div>
+                      <Text style={{ fontSize: ss(13), display: 'block', marginTop: 8, color: '#16a34a', fontWeight: 600 }}>
+                        Đã tham gia (lượt)
+                      </Text>
+                    </div>
+                  </Col>
+                </Row>
+              </Card>
+            )}
+
             {heroSection}
 
             <Card
               bordered={false}
-              style={{ borderRadius: 12, marginBottom: 16, boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)' }}
-              title={<span style={{ fontWeight: 700 }}>Lịch trình hôm nay</span>}
+              className="premium-shadow"
+              style={{ borderRadius: 24, marginBottom: 24, border: 'none', background: '#ffffff' }}
+              title={<span style={{ fontWeight: 800, fontSize: 18, color: '#1e293b' }}>Lịch trình hôm nay</span>}
               extra={
-                <Button type="link" onClick={() => router.push('/meetings')} style={{ padding: 0 }}>
+                <Button type="link" onClick={() => router.push('/meetings')} style={{ fontWeight: 600, color: '#3b82f6' }}>
                   Xem lịch đầy đủ →
                 </Button>
               }
             >
               {loadingHome ? (
-                <Text type="secondary">Đang tải…</Text>
+                <Text type="secondary" style={{ color: '#94a3b8' }}>Đang tải…</Text>
               ) : todaySchedule.length === 0 ? (
-                <Text type="secondary">Chưa có cuộc họp nào được tạo hôm nay.</Text>
+                <div style={{ textAlign: 'center', padding: '20px 0', color: '#94a3b8' }}>
+                  <CalendarOutlined style={{ fontSize: 32, opacity: 0.4, display: 'block', marginBottom: 8 }} />
+                  <Text type="secondary">Chưa có cuộc họp nào được tạo hôm nay.</Text>
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {todaySchedule.map((m, index) => {
@@ -780,14 +844,14 @@ export default function HomePage() {
                           ) : null}
                           <div
                             style={{
-                              width: 12,
-                              height: 12,
+                              width: 14,
+                              height: 14,
                               borderRadius: '50%',
                               background: dot,
-                              marginTop: 6,
+                              marginTop: 5,
                               zIndex: 1,
-                              border: '2px solid #fff',
-                              boxShadow: `0 0 0 1px ${dot}`,
+                              border: '3px solid #fff',
+                              boxShadow: `0 0 0 2px ${dot}40`,
                               flexShrink: 0,
                             }}
                           />
@@ -813,134 +877,7 @@ export default function HomePage() {
             </Card>
           </Col>
 
-          <Col xs={24} lg={8}>
-            {stats && (
-              <Card
-                bordered={false}
-                style={{ borderRadius: 12, marginBottom: 16, boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)' }}
-                title={<span style={{ fontWeight: 700 }}>Tổng quan cá nhân</span>}
-              >
-                <Row gutter={[12, 12]}>
-                  <Col xs={24} sm={12}>
-                    <div
-                      style={{
-                        padding: ss(14),
-                        borderRadius: ss(12),
-                        background: '#f0f7ff',
-                        border: '1px solid #dbeafe',
-                        height: '100%',
-                      }}
-                    >
-                      <VideoCameraOutlined style={{ fontSize: ss(22), color: '#2563eb' }} />
-                      <div style={{ fontSize: ss(26), fontWeight: 800, marginTop: ss(8), color: '#0f172a' }}>
-                        {stats.createdThisWeek}
-                      </div>
-                      <Text type="secondary" style={{ fontSize: ss(12), display: 'block', marginTop: 4 }}>
-                        Đã tạo tuần này
-                      </Text>
-                    </div>
-                  </Col>
-                  <Col xs={24} sm={12}>
-                    <div
-                      style={{
-                        padding: ss(14),
-                        borderRadius: ss(12),
-                        background: '#ecfdf5',
-                        border: '1px solid #bbf7d0',
-                        height: '100%',
-                        cursor: 'pointer',
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => router.push('/history')}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') router.push('/history');
-                      }}
-                    >
-                      <CheckCircleOutlined style={{ fontSize: ss(22), color: '#16a34a' }} />
-                      <div style={{ fontSize: ss(26), fontWeight: 800, marginTop: ss(8), color: '#0f172a' }}>
-                        {stats.joinedSessionsTotal}
-                      </div>
-                      <Text type="secondary" style={{ fontSize: ss(12), display: 'block', marginTop: 4 }}>
-                        Đã tham gia (lượt)
-                      </Text>
-                    </div>
-                  </Col>
-                </Row>
-              </Card>
-            )}
 
-            <Card
-              bordered={false}
-              style={{ borderRadius: 12, boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)' }}
-              title={
-                <Space>
-                  <BellOutlined />
-                  <span style={{ fontWeight: 700 }}>Thông báo mới</span>
-                </Space>
-              }
-              extra={
-                <Button type="link" onClick={() => router.push('/history')} style={{ padding: 0 }}>
-                  Xem tất cả
-                </Button>
-              }
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {(homeNotifications.length > 0
-                  ? homeNotifications
-                  : [
-                      {
-                        id: 'empty',
-                        meetingId: '',
-                        title: 'Chưa có hoạt động gần đây',
-                        desc: 'Khi có cuộc họp mới, thông báo sẽ hiển thị tại đây.',
-                        time: '',
-                        kind: 'info' as const,
-                        openedAt: null,
-                      },
-                    ]).map((n) => {
-                  const icon =
-                    n.kind === 'success' ? (
-                      <FolderOpenOutlined style={{ color: '#16a34a', fontSize: 18 }} />
-                    ) : n.kind === 'warn' ? (
-                      <ExclamationCircleOutlined style={{ color: '#dc2626', fontSize: 18 }} />
-                    ) : (
-                      <InfoCircleOutlined style={{ color: '#2563eb', fontSize: 18 }} />
-                    );
-                  return (
-                    <div
-                      key={n.id}
-                      style={{
-                        display: 'flex',
-                        gap: 12,
-                        alignItems: 'flex-start',
-                        cursor: n.id === 'empty' ? 'default' : 'pointer',
-                        opacity: n.id === 'empty' || n.openedAt ? 0.86 : 1,
-                      }}
-                      onClick={() => {
-                        if (n.id !== 'empty') void openHomeNotification(n);
-                      }}
-                    >
-                      <div style={{ flexShrink: 0, marginTop: 2 }}>{icon}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <Text strong style={{ display: 'block', fontSize: 14 }}>
-                          {n.title}
-                        </Text>
-                        <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 4 }}>
-                          {n.desc}
-                        </Text>
-                        {n.time ? (
-                          <Text type="secondary" style={{ fontSize: 12, marginTop: 6, display: 'block' }}>
-                            {n.time}
-                          </Text>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          </Col>
         </Row>
       </div>
 
@@ -1359,46 +1296,62 @@ export default function HomePage() {
         </Form>
       </Modal>
 
-      <Modal
-        title="Chi tiết thông báo"
-        open={Boolean(openedNotification)}
-        onCancel={() => setOpenedNotification(null)}
-        footer={null}
-        destroyOnHidden
-      >
-        {openedNotification && (
-          <div>
-            <Typography.Title level={5} style={{ marginTop: 0 }}>
-              {openedNotification.title}
-            </Typography.Title>
-            <Typography.Paragraph style={{ marginBottom: 10 }}>
-              {openedNotification.desc}
-            </Typography.Paragraph>
-            <Typography.Text type="secondary" style={{ display: 'block' }}>
-              Thời gian nhận: {openedNotification.time}
-            </Typography.Text>
-            <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-              Trạng thái: {openedNotification.openedAt ? 'Đã mở' : 'Chưa mở'}
-            </Typography.Text>
-            {openedNotification.meetingId ? (
-              <div style={{ marginTop: 16 }}>
-                <Button type="primary" onClick={() => router.push('/meetings')}>
-                  Mở cuộc họp liên quan
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        )}
-      </Modal>
+
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
+          @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(37, 99, 235, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+          }
+          .hover-scale {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .hover-scale:hover {
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+          }
+          .animated-gradient-text {
+            background: linear-gradient(to right, #60a5fa, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% auto;
+            animation: textShine 4s linear infinite;
+          }
+          @keyframes textShine {
+            to {
+              background-position: 200% center;
+            }
+          }
+          .premium-shadow {
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
+          }
+          .notification-item {
+            transition: all 0.2s ease;
+          }
+          .notification-item:hover {
+            background: #ffffff !important;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06) !important;
+            transform: translateX(4px);
+          }
           .dark-theme .ant-card {
             background: rgba(15, 23, 42, 0.65);
             border: 1px solid rgba(148, 163, 184, 0.16);
           }
-          `,
+          .ant-card-head {
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6) !important;
+          }
+          .ant-card-head-title {
+            padding: 18px 0 !important;
+          }
+          .ant-btn-primary:not([disabled]):hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+          }
+          `
         }}
       />
     </MainLayout>

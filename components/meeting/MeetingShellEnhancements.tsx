@@ -308,7 +308,6 @@ export default function MeetingShellEnhancements({
     let moreMenuEl: HTMLDivElement | null = null;
     let resizeObserver: ResizeObserver | null = null;
     let transcriptEnabled = true;
-    let transcriptHasContent = false;
 
     const closeMoreMenu = () => {
       if (!moreMenuEl) return;
@@ -488,7 +487,6 @@ export default function MeetingShellEnhancements({
     const onTranscriptState = (event: Event) => {
       const detail = (event as CustomEvent<{ enabled?: boolean; hasContent?: boolean }>).detail;
       transcriptEnabled = detail?.enabled !== false;
-      transcriptHasContent = Boolean(detail?.hasContent);
       if (moreMenuEl) {
         renderMoreMenu();
       }

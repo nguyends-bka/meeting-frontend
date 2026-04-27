@@ -59,6 +59,7 @@ export default function MeetingChatHistoryHydrator() {
 
   useEffect(() => {
     const pinState = new WeakMap<HTMLElement, boolean>();
+    const scrollHandlers = new WeakMap<HTMLElement, EventListener>();
 
     const localIdentity = room.localParticipant.identity;
     const preferredLocalName =
@@ -75,10 +76,11 @@ export default function MeetingChatHistoryHydrator() {
         const listEl = list as HTMLElement;
         const isFirstBind = !listEl.dataset.bkmtChatScrollBound;
         if (!listEl.dataset.bkmtChatScrollBound) {
-          const onScroll = () => {
+          const onScroll: EventListener = () => {
             pinState.set(listEl, isNearBottom(listEl));
           };
           listEl.addEventListener('scroll', onScroll);
+          scrollHandlers.set(listEl, onScroll);
           listEl.dataset.bkmtChatScrollBound = '1';
           pinState.set(listEl, true);
         }
@@ -219,6 +221,14 @@ export default function MeetingChatHistoryHydrator() {
     return () => {
       obs.disconnect();
       window.clearInterval(timer);
+      const lists = document.querySelectorAll('.lk-chat .lk-chat-messages');
+      lists.forEach((list) => {
+        const listEl = list as HTMLElement;
+        const handler = scrollHandlers.get(listEl);
+        if (!handler) return;
+        listEl.removeEventListener('scroll', handler);
+        delete listEl.dataset.bkmtChatScrollBound;
+      });
     };
   }, [
     chatHistory,

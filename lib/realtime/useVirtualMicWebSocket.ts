@@ -80,7 +80,7 @@ export function useVirtualMicWebSocket(options: UseVirtualMicWebSocketOptions = 
     } else {
       ws.addEventListener('open', openHandler, { once: true });
     }
-  }, [options.meetingId, options.audioDeviceId, options.config]);
+  }, [options.meetingId, options.audioDeviceId, options.config, token]);
 
   const stop = useCallback(() => {
     stopStreamRef.current?.();

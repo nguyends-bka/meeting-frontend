@@ -10,6 +10,8 @@ interface MainLayoutProps {
   children: React.ReactNode;
 }
 
+import AppHeader from './AppHeader';
+
 export default function MainLayout({ children }: MainLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [viewportWidth, setViewportWidth] = useState<number | null>(null);
@@ -55,11 +57,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
           minWidth: 0,
         }}
       >
+        <AppHeader />
         <Content
           style={{
             margin: 0,
             padding: 0,
-            height: '100%',
+            height: 'calc(100% - 64px)',
             overflow: 'auto',
             backgroundColor: '#f3f4f6',
             minWidth: 0,
