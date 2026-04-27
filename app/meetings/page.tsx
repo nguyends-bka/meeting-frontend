@@ -163,6 +163,7 @@ function MeetingsPageContent() {
   const docFileInputRef = useRef<HTMLInputElement | null>(null);
   const [meetingRecordings, setMeetingRecordings] = useState<MeetingRecordingDto[]>([]);
   const [meetingRecordingsLoading, setMeetingRecordingsLoading] = useState(false);
+  const [recordingDeletingId, setRecordingDeletingId] = useState<string | null>(null);
   const [recordingPlaybackModalOpen, setRecordingPlaybackModalOpen] = useState(false);
   const [recordingPlaybackLoading, setRecordingPlaybackLoading] = useState(false);
   const [recordingPlaybackUrl, setRecordingPlaybackUrl] = useState<string | null>(null);
@@ -817,6 +818,26 @@ function MeetingsPageContent() {
     });
   };
 
+  const onDeleteMeetingRecording = async (recording: MeetingRecordingDto) => {
+    if (!detailMeeting) return;
+    setRecordingDeletingId(recording.id);
+    try {
+      const res = await meetingApi.deleteRecording(detailMeeting.id, recording.id);
+      if (res.error) {
+        message.error(res.error);
+        return;
+      }
+
+      setMeetingRecordings((prev) => prev.filter((x) => x.id !== recording.id));
+      if (recordingPlaybackModalOpen) {
+        closeRecordingPlaybackModal();
+      }
+      message.success('Đã xóa bản ghi');
+    } finally {
+      setRecordingDeletingId(null);
+    }
+  };
+
   const copyReportMinutesText = async () => {
     if (!reportMinutes) return;
     try {
@@ -868,6 +889,8 @@ function MeetingsPageContent() {
   const openDetailModal = (meeting: Meeting) => {
     router.push(`/meetings/${meeting.id}`);
   };
+
+  const canDeleteRecording = Boolean(detailMeeting && isHostForMeeting(detailMeeting));
 
   const openEditMeetingModal = (meeting: Meeting) => {
     if (!canEditMeeting(meeting)) {
@@ -1555,6 +1578,8 @@ function MeetingsPageContent() {
                   renderItem={(recording) => {
                     const status = String(recording.status || '').toLowerCase();
                     const canPlay = Boolean(recording.isFileAvailable) && status === 'completed';
+                    const canDelete = canDeleteRecording && status !== 'starting' && status !== 'active' && status !== 'stopping';
+                    const deleting = recordingDeletingId === recording.id;
 
                     return (
                       <List.Item
@@ -1565,11 +1590,31 @@ function MeetingsPageContent() {
                             type="primary"
                             icon={<PlayCircleOutlined />}
                             size="small"
-                            disabled={!canPlay}
+                            disabled={!canPlay || deleting}
                             onClick={() => void openRecordingPlayback(detailMeeting.id, recording)}
                           >
                             Phát lại
                           </Button>,
+                          <Popconfirm
+                            key="delete"
+                            title="Xóa bản ghi này?"
+                            description="Thao tác này sẽ xóa cả file ghi hình và không thể hoàn tác."
+                            okText="Xóa"
+                            cancelText="Hủy"
+                            okButtonProps={{ danger: true, loading: deleting }}
+                            disabled={!canDelete}
+                            onConfirm={() => void onDeleteMeetingRecording(recording)}
+                          >
+                            <Button
+                              danger
+                              size="small"
+                              icon={<DeleteOutlined />}
+                              disabled={!canDelete}
+                              loading={deleting}
+                            >
+                              Xóa
+                            </Button>
+                          </Popconfirm>,
                         ]}
                       >
                         <List.Item.Meta

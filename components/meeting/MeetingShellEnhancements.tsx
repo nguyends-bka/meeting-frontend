@@ -53,11 +53,6 @@ function placeToolsButtonInBar(bar: HTMLElement, btn: HTMLButtonElement) {
   parent.insertBefore(btn, anchor);
 }
 
-function placeTranscriptButtonRight(bar: HTMLElement, btn: HTMLButtonElement) {
-  if (btn.parentNode === bar) return;
-  bar.appendChild(btn);
-}
-
 const TOOLS_BUTTON_INNER =
   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' +
   '<span class="lk-button-text">Công cụ</span>';
@@ -311,7 +306,6 @@ export default function MeetingShellEnhancements({
     let toolsBtnEl: HTMLButtonElement | null = null;
     let moreBtnEl: HTMLButtonElement | null = null;
     let moreMenuEl: HTMLDivElement | null = null;
-    let transcriptToggleBtnEl: HTMLButtonElement | null = null;
     let resizeObserver: ResizeObserver | null = null;
     let transcriptEnabled = true;
     let transcriptHasContent = false;
@@ -479,24 +473,6 @@ export default function MeetingShellEnhancements({
       placeToolsButtonInBar(bar, moreBtn);
       moreBtnEl = moreBtn;
 
-      let transcriptBtn = bar.querySelector('.meeting-transcript-toggle-inbar') as HTMLButtonElement | null;
-      if (!transcriptBtn) {
-        transcriptBtn = document.createElement('button');
-        transcriptBtn.type = 'button';
-        transcriptBtn.className = 'meeting-transcript-toggle-inbar';
-        transcriptBtn.addEventListener('click', () => {
-          window.dispatchEvent(new Event('bkmt-toggle-latest-transcript'));
-        });
-      }
-      placeTranscriptButtonRight(bar, transcriptBtn);
-      transcriptToggleBtnEl = transcriptBtn;
-      transcriptBtn.style.display = transcriptHasContent ? 'inline-flex' : 'none';
-      transcriptBtn.textContent = transcriptEnabled ? 'Tắt transcript' : 'Bật transcript';
-      transcriptBtn.setAttribute(
-        'aria-label',
-        transcriptEnabled ? 'Tắt hiển thị transcript' : 'Bật hiển thị transcript',
-      );
-
       syncButtonUI();
 
       if (!resizeObserver) {
@@ -513,13 +489,6 @@ export default function MeetingShellEnhancements({
       const detail = (event as CustomEvent<{ enabled?: boolean; hasContent?: boolean }>).detail;
       transcriptEnabled = detail?.enabled !== false;
       transcriptHasContent = Boolean(detail?.hasContent);
-      if (!transcriptToggleBtnEl) return;
-      transcriptToggleBtnEl.style.display = transcriptHasContent ? 'inline-flex' : 'none';
-      transcriptToggleBtnEl.textContent = transcriptEnabled ? 'Tắt transcript' : 'Bật transcript';
-      transcriptToggleBtnEl.setAttribute(
-        'aria-label',
-        transcriptEnabled ? 'Tắt hiển thị transcript' : 'Bật hiển thị transcript',
-      );
       if (moreMenuEl) {
         renderMoreMenu();
       }
@@ -536,7 +505,6 @@ export default function MeetingShellEnhancements({
       closeMoreMenu();
       toolsBtnEl?.remove();
       moreBtnEl?.remove();
-      transcriptToggleBtnEl?.remove();
     };
   }, [shellRef]);
 

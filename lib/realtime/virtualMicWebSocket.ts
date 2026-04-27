@@ -9,7 +9,7 @@
 
 const getWsBaseUrl = (): string => {
   if (typeof window === 'undefined') return '';
-  const api = process.env.NEXT_PUBLIC_API_URL || 'https://meeting.soict.io:8080';
+  const api = process.env.NEXT_PUBLIC_API_URL || 'https://meeting.soict.io';
   return api.replace(/^https?/, (s) => (s === 'https' ? 'wss' : 'ws'));
 };
 

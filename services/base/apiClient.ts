@@ -1,5 +1,4 @@
 // Base API client with common request handling
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://meeting.soict.io:8080';
 
 export interface ApiResponse<T> {
   data?: T;
@@ -27,7 +26,7 @@ class ApiClient {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetch(endpoint, {
         ...options,
         headers: headers as HeadersInit,
       });

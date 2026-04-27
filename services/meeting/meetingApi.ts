@@ -29,7 +29,10 @@ import type {
   MeetingRecordingDto,
 } from '@/dtos/meeting.dto';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://meeting.soict.io:8080';
+const MAX_MEETING_DOCUMENT_SIZE_BYTES = 100 * 1024 * 1024;
+const RETRYABLE_UPLOAD_STATUS = new Set([502, 503, 504]);
+const MAX_UPLOAD_RETRIES = 2;
+const UPLOAD_RETRY_DELAY_MS = 1200;
 
 // Meeting domain API - React Query compatible
 export const meetingApi = {
@@ -96,14 +99,14 @@ export const meetingApi = {
     });
   },
 
-  /** Lưu biểu quyết vào DB (host). pollId gửi lên để trùng với LiveKit. */
+  /** LÆ°u biá»ƒu quyáº¿t vÃ o DB (host). pollId gá»­i lÃªn Ä‘á»ƒ trÃ¹ng vá»›i LiveKit. */
   listPolls: async (meetingId: string) => {
     return apiClient.request<PollResponse[]>(`/api/meeting/${encodeURIComponent(meetingId)}/polls`, {
       method: 'GET',
     });
   },
 
-  /** Lưu biểu quyết vào DB (host). pollId gửi lên để trùng với LiveKit. */
+  /** LÆ°u biá»ƒu quyáº¿t vÃ o DB (host). pollId gá»­i lÃªn Ä‘á»ƒ trÃ¹ng vá»›i LiveKit. */
   createPoll: async (meetingId: string, body: PollCreateRequest) => {
     return apiClient.request<unknown>(`/api/meeting/${encodeURIComponent(meetingId)}/polls`, {
       method: 'POST',
@@ -322,27 +325,96 @@ export const meetingApi = {
   },
 
   uploadMeetingDocument: async (meetingId: string, file: File) => {
+    if (file.size > MAX_MEETING_DOCUMENT_SIZE_BYTES) {
+      return { error: 'File qua lon. Vui long chon tai lieu nho hon 100MB.' } as { error: string };
+    }
+
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const apiPath = `/api/meeting/${encodeURIComponent(meetingId)}/documents/upload`;
+    const directApiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
+    const sameOriginBase = typeof window !== 'undefined' ? window.location.origin.replace(/\/+$/, '') : '';
+    const directUploadUrl = directApiBase ? `${directApiBase}${apiPath}` : '';
+    const uploadTargets = [apiPath];
+    if (directUploadUrl && directUploadUrl !== `${sameOriginBase}${apiPath}`) {
+      uploadTargets.push(directUploadUrl);
+    }
 
-    const form = new FormData();
-    form.append('file', file);
+    console.info('[MeetingDocuments] upload request', {
+      meetingId,
+      uploadTargets,
+      fileName: file.name,
+      fileSize: file.size,
+      contentType: file.type,
+      hasToken: Boolean(token),
+      maxRetries: MAX_UPLOAD_RETRIES,
+    });
 
-    const res = await fetch(
-      `${API_BASE_URL}/api/meeting/${encodeURIComponent(meetingId)}/documents/upload`,
-      {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        body: form,
-      },
-    );
+    let res: Response | null = null;
+    let responseText = '';
+    let usedUploadUrl = uploadTargets[0];
+
+    for (let targetIndex = 0; targetIndex < uploadTargets.length; targetIndex++) {
+      usedUploadUrl = uploadTargets[targetIndex];
+      for (let attempt = 0; attempt <= MAX_UPLOAD_RETRIES; attempt++) {
+        const form = new FormData();
+        form.append('file', file);
+
+        res = await fetch(usedUploadUrl, {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          body: form,
+        });
+
+        if (res.ok) {
+          break;
+        }
+
+        responseText = await res.text();
+        const shouldRetry = RETRYABLE_UPLOAD_STATUS.has(res.status) && attempt < MAX_UPLOAD_RETRIES;
+
+        console.error('[MeetingDocuments] upload failed', {
+          meetingId,
+          uploadUrl: usedUploadUrl,
+          targetIndex,
+          attempt: attempt + 1,
+          status: res.status,
+          statusText: res.statusText,
+          responseText,
+          willRetry: shouldRetry,
+        });
+
+        if (!shouldRetry) {
+          break;
+        }
+
+        await new Promise((resolve) => window.setTimeout(resolve, UPLOAD_RETRY_DELAY_MS * (attempt + 1)));
+      }
+
+      if (res?.ok) {
+        break;
+      }
+      if (!res || !RETRYABLE_UPLOAD_STATUS.has(res.status)) {
+        break;
+      }
+    }
+
+    if (!res) {
+      return { error: 'Khong the gui yeu cau tai tai lieu.' } as { error: string };
+    }
 
     if (!res.ok) {
-      const text = await res.text();
+      const text = responseText || (await res.text());
       let msg = `HTTP ${res.status}`;
+
       if (res.status === 413 || /request entity too large/i.test(text)) {
-        msg = 'File quá lớn. Vui lòng chọn tài liệu nhỏ hơn 100MB.';
+        msg = 'File qua lon. Vui long chon tai lieu nho hon 100MB.';
         return { error: msg } as { error: string };
       }
+      if (RETRYABLE_UPLOAD_STATUS.has(res.status)) {
+        msg = 'Server upload dang timeout (Gateway Timeout). Vui long thu lai sau vai giay.';
+        return { error: msg } as { error: string };
+      }
+
       try {
         const j = JSON.parse(text);
         msg = j?.message || j?.title || msg;
@@ -353,6 +425,14 @@ export const meetingApi = {
     }
 
     const data = (await res.json()) as MeetingDocumentDto;
+    console.info('[MeetingDocuments] upload success', {
+      meetingId,
+      uploadUrl: usedUploadUrl,
+      documentId: data?.id,
+      fileName: data?.fileName,
+      size: data?.size,
+    });
+
     // After successful upload, also send file + doc_id + collection to embedding service
     try {
       const embedForm = new FormData();
@@ -389,7 +469,7 @@ export const meetingApi = {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
     const res = await fetch(
-      `${API_BASE_URL}/api/meeting/${encodeURIComponent(meetingId)}/documents/${encodeURIComponent(documentId)}/file`,
+      `/api/meeting/${encodeURIComponent(meetingId)}/documents/${encodeURIComponent(documentId)}/file`,
       {
         method: 'GET',
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -458,11 +538,20 @@ export const meetingApi = {
     );
   },
 
+  deleteRecording: async (meetingId: string, recordingId: string) => {
+    return apiClient.request<unknown>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/recordings/${encodeURIComponent(recordingId)}`,
+      {
+        method: 'DELETE',
+      },
+    );
+  },
+
   getRecordingFileBlob: async (meetingId: string, recordingId: string) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
     const res = await fetch(
-      `${API_BASE_URL}/api/meeting/${encodeURIComponent(meetingId)}/recordings/${encodeURIComponent(recordingId)}/file`,
+      `/api/meeting/${encodeURIComponent(meetingId)}/recordings/${encodeURIComponent(recordingId)}/file`,
       {
         method: 'GET',
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,

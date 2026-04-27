@@ -1,7 +1,9 @@
 # Build image locally, push to registry; server only pulls and runs.
 # Build args: pass URLs of your server (used at next build time).
-ARG NEXT_PUBLIC_API_URL=https://meeting.soict.io
-#ARG NEXT_PUBLIC_API_URL=https://meeting.soict.io:8080
+# Default to the backend port directly to avoid gateway timeouts on large uploads.
+# Override at build time if you intentionally route through a gateway/reverse-proxy.
+ARG NEXT_PUBLIC_API_URL=https://meeting.soict.io:8080
+#ARG NEXT_PUBLIC_API_URL=https://meeting.soict.io
 ARG NEXT_PUBLIC_VIRTUAL_MIC_WS_URL=
 
 FROM node:20-alpine AS deps
