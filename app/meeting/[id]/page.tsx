@@ -15,7 +15,6 @@ import { apiService, meetingApi } from '@/services/api';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
 import { startPhysicalMicWebSocket } from '@/lib/physicalMicWebSocket';
-import { startQueryConnection, stopQueryConnection } from '@/lib/realtime/queryWebSocket';
 import { TranscriptRoomProvider, useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
 import MeetingChatHistoryHydrator from '@/components/meeting/MeetingChatHistoryHydrator';
 import { VoteRoomProvider } from '@/components/meeting/VoteRoomProvider';
@@ -718,19 +717,6 @@ export default function MeetingPage() {
       cancelled = true;
     };
   }, [preJoinDone, currentMeetingId, user?.username]);
-
-  // Start a local query WS bridge when meeting is joined so external callers
-  // can POST queries to `ws://127.0.0.1:9001/query` and receive RAG responses.
-  useEffect(() => {
-    if (!preJoinDone) return;
-    const mid = currentMeetingId ?? meetingId;
-    if (!mid) return;
-
-    startQueryConnection(mid);
-    return () => {
-      stopQueryConnection();
-    };
-  }, [preJoinDone, currentMeetingId, meetingId]);
 
   const isHost = Boolean(
     isMeetingHostJoin ||

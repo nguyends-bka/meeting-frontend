@@ -5,12 +5,12 @@ import { useChat, useRoomContext } from '@livekit/components-react';
 import VotePanel from '@/components/meeting/VotePanel';
 import MeetingDocumentsPanel from '@/components/meeting/MeetingDocumentsPanel';
 import TranscriptPanel from '@/components/meeting/TranscriptPanel';
-import MeetingToolsChatboxPanel from '@/components/meeting/MeetingToolsChatboxPanel';
+import MeetingToolsChatbotPanel from '@/components/meeting/MeetingToolsChatboxPanel';
 import { useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
 import { useVoteRoom } from '@/components/meeting/VoteRoomProvider';
 import { meetingApi } from '@/services/meeting/meetingApi';
 
-export type MeetingToolsTab = 'vote' | 'documents' | 'chat' | 'chatbox' | 'transcript';
+export type MeetingToolsTab = 'vote' | 'documents' | 'chat' | 'chatbot' | 'transcript';
 const STATUS_MESSAGE_REGEX = /_+STATUS_+:(JOINED|LEFT):(\d+)/i;
 const MEETING_TOOLS_MIN_WIDTH = 260;
 const MEETING_TOOLS_MAX_WIDTH = 840;
@@ -391,8 +391,8 @@ export default function MeetingUnifiedSidePanel({
     }
   };
 
-  const onTabChatbox = () => {
-    setActiveTab('chatbox');
+  const onTabChatbot = () => {
+    setActiveTab('chatbot');
     if (!documentsOpen) {
       setDocumentsOpen(true);
     }
@@ -440,9 +440,9 @@ export default function MeetingUnifiedSidePanel({
           <button
             type="button"
             role="tab"
-            aria-selected={activeTab === 'chatbox'}
-            className={`meeting-unified-tab${activeTab === 'chatbox' ? ' is-active' : ''}`}
-            onClick={onTabChatbox}
+            aria-selected={activeTab === 'chatbot'}
+            className={`meeting-unified-tab${activeTab === 'chatbot' ? ' is-active' : ''}`}
+            onClick={onTabChatbot}
           >
             Chatbot
           </button>
@@ -522,9 +522,9 @@ export default function MeetingUnifiedSidePanel({
         <div
           className="meeting-unified-panel"
           role="tabpanel"
-          hidden={activeTab !== 'chatbox'}
+          hidden={activeTab !== 'chatbot'}
         >
-          <MeetingToolsChatboxPanel />
+          <MeetingToolsChatbotPanel meetingId={meetingId} />
         </div>
         <div
           className="meeting-unified-panel"

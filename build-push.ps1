@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 if (-not $ImageName) { $ImageName = "nguyends/frontend" }
 if (-not $Tag) { $Tag = "latest" }
-if (-not $ApiUrl) { $ApiUrl = "https://meeting.soict.io:8080" }
+if (-not $ApiUrl) { $ApiUrl = "http://meeting.soict.io:8080" }
 $FullImage = "${ImageName}:${Tag}"
 Write-Host "Building: $FullImage" -ForegroundColor Cyan
 Write-Host "  NEXT_PUBLIC_API_URL=$ApiUrl" -ForegroundColor Gray

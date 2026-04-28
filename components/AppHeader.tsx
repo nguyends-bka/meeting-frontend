@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { Layout, Badge, Popover, List, Typography, Button, Modal } from 'antd';
-import { BellOutlined, FolderOpenOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { BellOutlined, FolderOpenOutlined, ExclamationCircleOutlined, InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { meetingApi } from '@/services/api';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/navigation';
@@ -22,33 +22,85 @@ type HomeNotificationItem = {
   openedAt?: string | null;
 };
 
+type NotificationItemWithEmpty = HomeNotificationItem | { id: 'empty'; title: string; desc: string; kind: 'info' };
+
 export default function AppHeader() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<HomeNotificationItem[]>([]);
   const [openedNotification, setOpenedNotification] = useState<HomeNotificationItem | null>(null);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   const loadNotifications = async () => {
+    setLoadingNotifications(true);
     const res = await meetingApi.getMyNotifications();
     if (res.error || !Array.isArray(res.data)) {
       setNotifications([]);
+      setLoadingNotifications(false);
       return;
     }
-    const mapped: HomeNotificationItem[] = res.data.map((n) => ({
-      id: n.id,
-      meetingId: n.meetingId,
-      title: n.type === 'cohost_granted' ? 'Bạn được cấp quyền chủ trì' : 'Bạn được thêm vào cuộc họp',
-      desc: n.message,
-      time: dayjs(n.createdAt).format('DD/MM/YYYY HH:mm:ss'),
-      kind: n.type === 'cohost_granted' ? 'success' : 'info',
-      openedAt: n.openedAt ?? null,
-    }));
+    const mapped: HomeNotificationItem[] = res.data.map((n) => {
+      // Map notification types to user-friendly titles and styles
+      let title = '';
+      let kind: 'info' | 'success' | 'warn' = 'info';
+      
+      switch (n.type) {
+        case 'cohost_granted':
+          title = 'Bạn được cấp quyền chủ trì';
+          kind = 'success';
+          break;
+        case 'invite_added':
+          title = 'Bạn được thêm vào cuộc họp';
+          kind = 'info';
+          break;
+        case 'cohost_removed':
+          title = 'Quyền chủ trì của bạn bị gỡ bỏ';
+          kind = 'warn';
+          break;
+        case 'removed_from_meeting':
+          title = 'Bạn bị loại khỏi cuộc họp';
+          kind = 'warn';
+          break;
+        case 'meeting_started':
+          title = 'Cuộc họp bắt đầu';
+          kind = 'info';
+          break;
+        case 'meeting_ended':
+          title = 'Cuộc họp kết thúc';
+          kind = 'info';
+          break;
+        default:
+          title = 'Thông báo mới';
+          kind = 'info';
+      }
+      
+      return {
+        id: n.id,
+        meetingId: n.meetingId,
+        title,
+        desc: n.message || `Từ: ${n.actorUsername || 'Hệ thống'}`,
+        time: dayjs(n.createdAt).format('DD/MM/YYYY HH:mm:ss'),
+        kind,
+        openedAt: n.openedAt ?? null,
+      };
+    });
     setNotifications(mapped.slice(0, 10));
+    setLoadingNotifications(false);
   };
 
   useEffect(() => {
-    if (ENABLE_NOTIFICATIONS) {
-      loadNotifications();
-    }
+    if (!ENABLE_NOTIFICATIONS) return;
+
+    // Load notifications immediately on mount
+    void loadNotifications();
+
+    // Poll for new notifications every 30 seconds
+    const interval = window.setInterval(() => {
+      void loadNotifications();
+    }, 30000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
   }, []);
 
   const openNotificationDetail = useCallback(
@@ -79,7 +131,7 @@ export default function AppHeader() {
           desc: 'Khi có hoạt động mới, thông báo sẽ hiển thị tại đây.',
           kind: 'info' as const
         }]}
-        renderItem={(n: any) => {
+        renderItem={(n: NotificationItemWithEmpty) => {
           if (n.id === 'empty') {
             return (
               <div style={{ padding: '32px 0', textAlign: 'center', color: '#94a3b8' }}>
@@ -88,38 +140,40 @@ export default function AppHeader() {
               </div>
             );
           }
+          // After type guard, n is now typed as HomeNotificationItem
+          const notif = n as HomeNotificationItem;
           const icon =
-            n.kind === 'success' ? (
+            notif.kind === 'success' ? (
               <FolderOpenOutlined style={{ color: '#16a34a', fontSize: 20 }} />
-            ) : n.kind === 'warn' ? (
+            ) : notif.kind === 'warn' ? (
               <ExclamationCircleOutlined style={{ color: '#dc2626', fontSize: 20 }} />
             ) : (
               <InfoCircleOutlined style={{ color: '#3b82f6', fontSize: 20 }} />
             );
           return (
             <div
-              onClick={() => openNotificationDetail(n)}
+              onClick={() => openNotificationDetail(notif)}
               style={{
                 display: 'flex',
                 gap: 14,
                 padding: '14px 16px',
                 cursor: 'pointer',
                 borderBottom: '1px solid #f1f5f9',
-                background: n.openedAt ? 'transparent' : '#f0f9ff',
+                background: notif.openedAt ? 'transparent' : '#f0f9ff',
                 transition: 'background 0.2s'
               }}
             >
               <div style={{ flexShrink: 0, marginTop: 2 }}>{icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Text strong style={{ display: 'block', fontSize: 14, color: '#1e293b' }}>
-                  {n.title}
+                  {notif.title}
                 </Text>
                 <Text style={{ fontSize: 13, display: 'block', marginTop: 4, color: '#475569' }}>
-                  {n.desc}
+                  {notif.desc}
                 </Text>
-                {n.time ? (
+                {notif.time ? (
                   <Text type="secondary" style={{ fontSize: 12, marginTop: 6, display: 'block', fontWeight: 500 }}>
-                    {n.time}
+                    {notif.time}
                   </Text>
                 ) : null}
               </div>
@@ -146,7 +200,24 @@ export default function AppHeader() {
         <div style={{ fontSize: 18, fontWeight: 600, color: '#1e3a8a', letterSpacing: '-0.01em' }}>
           Hệ Thống Họp Trực Tuyến
         </div>
-        <Popover content={content} title={<span style={{ fontWeight: 700, fontSize: 16 }}>Thông báo mới</span>} trigger="click" placement="bottomRight">
+        <Popover 
+          content={content} 
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontWeight: 700, fontSize: 16 }}>Thông báo mới</span>
+              <Button 
+                type="text" 
+                size="small" 
+                icon={<ReloadOutlined />}
+                loading={loadingNotifications}
+                onClick={() => void loadNotifications()}
+                title="Làm mới thông báo"
+              />
+            </div>
+          } 
+          trigger="click" 
+          placement="bottomRight"
+        >
           <Badge count={unreadCount} style={{ backgroundColor: '#ef4444' }} offset={[-4, 4]}>
             <div style={{
               width: 36,

@@ -78,16 +78,6 @@ type HistoryEntry = {
   duration: number | null;
 };
 
-type HomeNotificationItem = {
-  id: string;
-  meetingId: string;
-  title: string;
-  desc: string;
-  time: string;
-  kind: 'info' | 'success' | 'warn';
-  openedAt?: string | null;
-};
-
 function isMeetingLive(r: HomeMeetingRow): boolean {
   if (r.endedAt) return false;
   const now = dayjs();
@@ -207,8 +197,6 @@ export default function HomePage() {
   const [historyTablePage, setHistoryTablePage] = useState(1);
   const [historyTablePageSize, setHistoryTablePageSize] = useState(10);
   const [exportingHistoryExcel, setExportingHistoryExcel] = useState(false);
-  const [homeNotifications, setHomeNotifications] = useState<HomeNotificationItem[]>([]);
-  const [openedNotification, setOpenedNotification] = useState<HomeNotificationItem | null>(null);
 
   const [createForm] = Form.useForm();
   const scheduleRangeWatch = Form.useWatch('scheduleRange', createForm);

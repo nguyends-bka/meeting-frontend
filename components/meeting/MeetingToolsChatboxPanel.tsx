@@ -3,16 +3,16 @@
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ChatboxRealtimeClient } from '@/lib/realtime/chatboxWebSocket';
+import { ChatbotRealtimeClient } from '@/lib/realtime/chatboxWebSocket';
 
 type ChatFinalItem = {
   id: string;
-  role: 'self' | 'chatbox';
+  role: 'self' | 'chatbot';
   text: string;
   receivedAt: number;
 };
 
-const CHATBOX_WS_URL =
+const CHATBOT_WS_URL =
   process.env.NEXT_PUBLIC_WS_CHATBOT_URL ??
   `${process.env.NEXT_PUBLIC_WS_BASE_URL ?? 'ws://127.0.0.1:9001'}/chatbot`;
 
@@ -68,8 +68,8 @@ const markdownComponents = {
   ),
 };
 
-export default function MeetingToolsChatboxPanel() {
-  const clientRef = useRef<ChatboxRealtimeClient | null>(null);
+export default function MeetingToolsChatbotPanel({ meetingId }: { meetingId: string }) {
+  const clientRef = useRef<ChatbotRealtimeClient | null>(null);
   const [finalized, setFinalized] = useState<ChatFinalItem[]>([]);
   const [draftText, setDraftText] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
@@ -125,7 +125,7 @@ export default function MeetingToolsChatboxPanel() {
   }, [scrollDeps, draftText, scrollToBottom]);
 
   useEffect(() => {
-    const client = new ChatboxRealtimeClient(CHATBOX_WS_URL, {
+    const client = new ChatbotRealtimeClient(CHATBOT_WS_URL, meetingId, {
       onOpen: () => {
         setConnected(true);
       },
@@ -137,12 +137,62 @@ export default function MeetingToolsChatboxPanel() {
         const finalText = (payload.final ?? '').trim();
         const incomingQuestion = (payload.question ?? '').trim();
 
+        const msgType = (payload.type ?? '').trim();
+        if (msgType === 'rag_response') {
+          const data = (payload as any).data;
+          const text = typeof (payload as any).text === 'string' ? (payload as any).text : '';
+          
+          let extracted = '';
+          if (typeof data === 'string') {
+            extracted = data;
+          } else if (data && typeof data.answer === 'string') {
+            extracted = data.answer;
+          } else if (data && typeof data.result === 'string') {
+            extracted = data.result;
+          } else if (text) {
+            extracted = text;
+          }
+          
+          // If we couldn't extract a readable string (e.g., it's just raw JSON RAG data),
+          // we should not display this raw object to the user.
+          if (!extracted) {
+            return;
+          }
+
+          setFinalized((prev) => [
+            ...prev,
+            {
+              id: `${Date.now()}-rag`,
+              role: 'chatbot',
+              text: extracted,
+              receivedAt: Date.now(),
+            },
+          ]);
+          setDraftText(null);
+          return;
+        }
+
+        if (msgType === 'rag_error') {
+          const errText = (payload as any).error ? String((payload as any).error) : 'RAG error';
+          setFinalized((prev) => [
+            ...prev,
+            {
+              id: `${Date.now()}-rag-error`,
+              role: 'chatbot',
+              text: errText,
+              receivedAt: Date.now(),
+            },
+          ]);
+          setDraftText(null);
+          return;
+        }
+
         if (incomingQuestion) {
           setFinalized((prev) => [
             ...prev,
             {
               id: `${Date.now()}-incoming-question`,
-              role: 'chatbox',
+              role: 'chatbot',
               text: incomingQuestion,
               receivedAt: Date.now(),
             },
@@ -160,7 +210,7 @@ export default function MeetingToolsChatboxPanel() {
             ...prev,
             {
               id: `${Date.now()}-final`,
-              role: 'chatbox',
+              role: 'chatbot',
               text: finalText,
               receivedAt: Date.now(),
             },
@@ -182,15 +232,15 @@ export default function MeetingToolsChatboxPanel() {
       }
       setConnected(false);
     };
-  }, []);
+  }, [meetingId]);
 
-  const handleSend = (e: FormEvent) => {
+  const handleSend = async (e: FormEvent) => {
     e.preventDefault();
     const text = question.trim();
     if (!text) return;
 
     const client = clientRef.current;
-    if (!client || !client.sendQuestion(text)) {
+    if (!client || !(await client.sendQuestion(text))) {
       return;
     }
 
@@ -247,7 +297,7 @@ export default function MeetingToolsChatboxPanel() {
                       wordBreak: 'break-word',
                     }}
                   >
-                    {item.role === 'chatbox' ? (
+                    {item.role === 'chatbot' ? (
                       <div
                         style={{
                           fontSize: 11,
@@ -263,7 +313,7 @@ export default function MeetingToolsChatboxPanel() {
                         <span>{formatChatTime(item.receivedAt)}</span>
                       </div>
                     ) : null}
-                    {item.role === 'chatbox' ? (
+                    {item.role === 'chatbot' ? (
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={markdownComponents}
@@ -309,9 +359,9 @@ export default function MeetingToolsChatboxPanel() {
                       }}
                     >
                       <span style={{ color: '#334155' }}>Chatbot</span>
-                      <span className="meeting-chatbox-thinking-pill">
+                      <span className="meeting-chatbot-thinking-pill">
                         Đang trả lời
-                        <span className="meeting-chatbox-dot-wave" aria-hidden="true">
+                        <span className="meeting-chatbot-dot-wave" aria-hidden="true">
                           <span />
                           <span />
                           <span />
@@ -368,7 +418,7 @@ export default function MeetingToolsChatboxPanel() {
       </form>
 
       <style jsx>{`
-        .meeting-chatbox-thinking-pill {
+        .meeting-chatbot-thinking-pill {
           display: inline-flex;
           align-items: center;
           gap: 6px;
@@ -382,31 +432,31 @@ export default function MeetingToolsChatboxPanel() {
           letter-spacing: 0.02em;
         }
 
-        .meeting-chatbox-dot-wave {
+        .meeting-chatbot-dot-wave {
           display: inline-flex;
           align-items: center;
           gap: 3px;
           min-width: 20px;
         }
 
-        .meeting-chatbox-dot-wave > span {
+        .meeting-chatbot-dot-wave > span {
           width: 4px;
           height: 4px;
           border-radius: 50%;
           background: #0f766e;
           opacity: 0.5;
-          animation: meeting-chatbox-dot-wave 1s infinite ease-in-out;
+          animation: meeting-chatbot-dot-wave 1s infinite ease-in-out;
         }
 
-        .meeting-chatbox-dot-wave > span:nth-child(2) {
+        .meeting-chatbot-dot-wave > span:nth-child(2) {
           animation-delay: 0.15s;
         }
 
-        .meeting-chatbox-dot-wave > span:nth-child(3) {
+        .meeting-chatbot-dot-wave > span:nth-child(3) {
           animation-delay: 0.3s;
         }
 
-        @keyframes meeting-chatbox-dot-wave {
+        @keyframes meeting-chatbot-dot-wave {
           0%,
           80%,
           100% {
