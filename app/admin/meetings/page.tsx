@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { apiService } from '@/services/api';
 import MainLayout from '@/components/MainLayout';
+import type { MeetingListItem } from '@/dtos/meeting.dto';
+
+type AdminMeetingListItem = MeetingListItem & { participantCount: number; activeParticipantCount: number };
+
 import {
   App,
   Button,
@@ -30,25 +34,13 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
-type Meeting = {
-  id: string;
-  title: string;
-  hostName: string;
-  hostIdentity: string;
-  meetingCode: string;
-  passcode: string;
-  roomName: string;
-  createdAt: string;
-  participantCount: number;
-  activeParticipantCount: number;
-};
 
 export default function AdminMeetingsPage() {
   const router = useRouter();
   const { isAuthenticated, loading, isAdmin } = useAuth();
   const { message } = App.useApp();
 
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [meetings, setMeetings] = useState<AdminMeetingListItem[]>([]);
   const [loadingMeetings, setLoadingMeetings] = useState(false);
   const [searchText, setSearchText] = useState('');
 
@@ -70,7 +62,7 @@ export default function AdminMeetingsPage() {
     setLoadingMeetings(true);
     const result = await apiService.getAllMeetings();
     if (result.data) {
-      setMeetings(result.data as Meeting[]);
+      setMeetings(result.data as unknown as AdminMeetingListItem[]);
     }
     if (result.error) {
       message.error(result.error);
@@ -104,9 +96,9 @@ export default function AdminMeetingsPage() {
 
   const stats = useMemo(() => {
     const total = meetings.length;
-    const active = meetings.filter((m) => m.activeParticipantCount > 0).length;
-    const totalParticipants = meetings.reduce((sum, m) => sum + m.participantCount, 0);
-    const activeParticipants = meetings.reduce((sum, m) => sum + m.activeParticipantCount, 0);
+    const active = meetings.filter((m) => (m.activeParticipantCount ?? 0) > 0).length;
+    const totalParticipants = (meetings as any[]).reduce((sum, m) => sum + (m.participantCount ?? 0), 0);
+    const activeParticipants = meetings.reduce((sum, m) => sum + (m.activeParticipantCount ?? 0), 0);
     return { total, active, totalParticipants, activeParticipants };
   }, [meetings]);
 
@@ -119,7 +111,7 @@ export default function AdminMeetingsPage() {
       key: 'stt',
       width: 80,
       align: 'center' as const,
-      render: (_: unknown, __: Meeting, index: number) => index + 1,
+      render: (_: unknown, __: MeetingListItem, index: number) => index + 1,
     },
     {
       title: 'Tên cuộc họp',
@@ -151,7 +143,7 @@ export default function AdminMeetingsPage() {
       title: 'Người tham gia',
       key: 'participants',
       width: 150,
-      render: (_: unknown, record: Meeting) => (
+      render: (_: unknown, record: AdminMeetingListItem) => (
         <Space direction="vertical" size={0}>
           <Space size={4}>
             <TeamOutlined />
@@ -176,7 +168,7 @@ export default function AdminMeetingsPage() {
       title: 'Thao tác',
       key: 'actions',
       width: 200,
-      render: (_: unknown, record: Meeting) => (
+      render: (_: unknown, record: AdminMeetingListItem) => (
         <Space>
           <Button
             size="small"
@@ -269,7 +261,7 @@ export default function AdminMeetingsPage() {
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
               />
             ) : (
-              <Table<Meeting>
+              <Table<AdminMeetingListItem>
                 rowKey="id"
                 loading={loadingMeetings}
                 columns={columns as any}
@@ -288,3 +280,4 @@ export default function AdminMeetingsPage() {
     </MainLayout>
   );
 }
+

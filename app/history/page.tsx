@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { apiService } from '@/services/api';
 import MainLayout from '@/components/MainLayout';
+import type { MyHistoryItem } from '@/dtos/meeting.dto';
 import {
   App,
   Button,
@@ -18,23 +19,11 @@ import {
 import { HistoryOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
-type HistoryItem = {
-  id: string;
-  meetingId: string;
-  meetingTitle: string;
-  username: string;
-  joinedAt: string;
-  leftAt: string | null;
-  duration: number | null;
-  meetingCode: string;
-  hostName: string;
-};
-
 export default function HistoryPage() {
   const router = useRouter();
   const { isAuthenticated, loading } = useAuth();
   const { message } = App.useApp();
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [history, setHistory] = useState<MyHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
@@ -53,7 +42,7 @@ export default function HistoryPage() {
     setLoadingHistory(true);
     const result = await apiService.getMyHistory();
     if (result.data) {
-      setHistory(result.data as HistoryItem[]);
+      setHistory(result.data as MyHistoryItem[]);
     }
     if (result.error) {
       message.error(result.error);
@@ -78,13 +67,13 @@ export default function HistoryPage() {
       key: 'stt',
       width: 80,
       align: 'center' as const,
-      render: (_: unknown, __: HistoryItem, index: number) => index + 1,
+      render: (_: unknown, __: MyHistoryItem, index: number) => index + 1,
     },
     {
       title: 'Tên cuộc họp',
       dataIndex: 'meetingTitle',
       key: 'meetingTitle',
-      render: (text: string, record: HistoryItem) => (
+      render: (text: string, record: MyHistoryItem) => (
         <Space direction="vertical" size={0}>
           <Typography.Text strong>{text}</Typography.Text>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -105,7 +94,7 @@ export default function HistoryPage() {
       dataIndex: 'leftAt',
       key: 'leftAt',
       width: 180,
-      render: (v: string | null) => 
+      render: (v: string | null) =>
         v ? dayjs(v).format('DD/MM/YYYY HH:mm') : <Tag color="processing">Đang tham gia</Tag>,
     },
     {
@@ -119,11 +108,8 @@ export default function HistoryPage() {
       title: 'Thao tác',
       key: 'actions',
       width: 150,
-      render: (_: unknown, record: HistoryItem) => (
-        <Button
-          type="link"
-          onClick={() => router.push(`/history/${record.meetingId}`)}
-        >
+      render: (_: unknown, record: MyHistoryItem) => (
+        <Button type="link" onClick={() => router.push(`/history/${record.meetingId}`)}>
           Xem chi tiết
         </Button>
       ),
@@ -143,11 +129,7 @@ export default function HistoryPage() {
             </Space>
           }
           extra={
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => void loadHistory()}
-              loading={loadingHistory}
-            >
+            <Button icon={<ReloadOutlined />} onClick={() => void loadHistory()} loading={loadingHistory}>
               Tải lại
             </Button>
           }
@@ -158,12 +140,12 @@ export default function HistoryPage() {
               image={Empty.PRESENTED_IMAGE_SIMPLE}
             />
           ) : (
-            <Table
+            <Table<MyHistoryItem>
               rowKey="id"
               loading={loadingHistory}
               columns={columns}
               dataSource={history}
-              pagination={{ 
+              pagination={{
                 pageSize: 10,
                 showSizeChanger: true,
                 pageSizeOptions: [10, 20, 50, 100],

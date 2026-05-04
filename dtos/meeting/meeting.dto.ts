@@ -58,6 +58,8 @@ export interface MeetingListItem {
   startedAt?: string | null;
   endedAt?: string | null;
   activeParticipantCount?: number;
+  participantCount?: number;
+  roomName?: string;
 }
 
 /** Người được host mời — cùng cấu trúc PollManagerItem (bảng + API). */
@@ -126,6 +128,8 @@ export interface MeetingRecordingDto {
 export interface MeetingHistoryItem {
   id: string;
   username: string;
+  /** Full name – populated by admin lookup on the frontend side */
+  fullName?: string | null;
   userId: string;
   joinedAt: string;
   leftAt: string | null;

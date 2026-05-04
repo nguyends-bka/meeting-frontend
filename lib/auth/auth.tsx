@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiService } from '@/services/api';
 import { FaceRegistrationGate } from '@/components/FaceRegistrationGate';
 
-interface User {
+export interface User {
   id: string;
   username: string;
   role: string;
