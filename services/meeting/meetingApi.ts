@@ -31,8 +31,6 @@ import type {
 
 const MAX_MEETING_DOCUMENT_SIZE_BYTES = 100 * 1024 * 1024;
 const RETRYABLE_UPLOAD_STATUS = new Set([502, 503, 504]);
-const MAX_UPLOAD_RETRIES = 2;
-const UPLOAD_RETRY_DELAY_MS = 1200;
 
 // Meeting domain API - React Query compatible
 export const meetingApi = {
@@ -331,76 +329,35 @@ export const meetingApi = {
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const apiPath = `/api/meeting/${encodeURIComponent(meetingId)}/documents/upload`;
-    const directApiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
+    const directApiBaseRaw = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
     const sameOriginBase = typeof window !== 'undefined' ? window.location.origin.replace(/\/+$/, '') : '';
+    const isHttpsPage = typeof window !== 'undefined' && window.location.protocol === 'https:';
+    const directApiBase = isHttpsPage && directApiBaseRaw.startsWith('http://') ? '' : directApiBaseRaw;
     const directUploadUrl = directApiBase ? `${directApiBase}${apiPath}` : '';
-    const uploadTargets = [apiPath];
-    if (directUploadUrl && directUploadUrl !== `${sameOriginBase}${apiPath}`) {
-      uploadTargets.push(directUploadUrl);
-    }
+    const uploadUrl =
+      directUploadUrl && directUploadUrl !== `${sameOriginBase}${apiPath}`
+        ? directUploadUrl
+        : apiPath;
 
     console.info('[MeetingDocuments] upload request', {
       meetingId,
-      uploadTargets,
+      uploadUrl,
       fileName: file.name,
       fileSize: file.size,
       contentType: file.type,
       hasToken: Boolean(token),
-      maxRetries: MAX_UPLOAD_RETRIES,
     });
 
-    let res: Response | null = null;
-    let responseText = '';
-    let usedUploadUrl = uploadTargets[0];
+    const form = new FormData();
+    form.append('file', file);
 
-    for (let targetIndex = 0; targetIndex < uploadTargets.length; targetIndex++) {
-      usedUploadUrl = uploadTargets[targetIndex];
-      for (let attempt = 0; attempt <= MAX_UPLOAD_RETRIES; attempt++) {
-        const form = new FormData();
-        form.append('file', file);
+    const res = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: form,
+    });
 
-        res = await fetch(usedUploadUrl, {
-          method: 'POST',
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          body: form,
-        });
-
-        if (res.ok) {
-          break;
-        }
-
-        responseText = await res.text();
-        const shouldRetry = RETRYABLE_UPLOAD_STATUS.has(res.status) && attempt < MAX_UPLOAD_RETRIES;
-
-        console.error('[MeetingDocuments] upload failed', {
-          meetingId,
-          uploadUrl: usedUploadUrl,
-          targetIndex,
-          attempt: attempt + 1,
-          status: res.status,
-          statusText: res.statusText,
-          responseText,
-          willRetry: shouldRetry,
-        });
-
-        if (!shouldRetry) {
-          break;
-        }
-
-        await new Promise((resolve) => window.setTimeout(resolve, UPLOAD_RETRY_DELAY_MS * (attempt + 1)));
-      }
-
-      if (res?.ok) {
-        break;
-      }
-      if (!res || !RETRYABLE_UPLOAD_STATUS.has(res.status)) {
-        break;
-      }
-    }
-
-    if (!res) {
-      return { error: 'Khong the gui yeu cau tai tai lieu.' } as { error: string };
-    }
+    const responseText = res.ok ? '' : await res.text();
 
     if (!res.ok) {
       const text = responseText || (await res.text());
@@ -427,40 +384,11 @@ export const meetingApi = {
     const data = (await res.json()) as MeetingDocumentDto;
     console.info('[MeetingDocuments] upload success', {
       meetingId,
-      uploadUrl: usedUploadUrl,
+      uploadUrl,
       documentId: data?.id,
       fileName: data?.fileName,
       size: data?.size,
     });
-
-    // After successful upload, also send file + doc_id + collection to embedding service
-    try {
-      const embedForm = new FormData();
-      embedForm.append('file', file);
-      embedForm.append('doc_id', (data as any).id);
-      embedForm.append('collection', meetingId);
-
-      // Fire-and-forget; do not fail the main upload if embedding fails
-      fetch('https://rag.soictlab.com/embed/file', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        body: embedForm,
-      })
-        .then(async (res) => {
-          const text = await res.text();
-          try {
-            const json = text ? JSON.parse(text) : null;
-            console.info('embed/file response', { status: res.status, ok: res.ok, body: json });
-          } catch (e) {
-            console.info('embed/file response', { status: res.status, ok: res.ok, body: text });
-          }
-        })
-        .catch((err) => {
-          console.warn('embed/file error', err);
-        });
-    } catch (err) {
-      // swallow errors intentionally
-    }
 
     return { data };
   },
