@@ -1,3 +1,16 @@
+// ── Server-terminal logger ─────────────────────────────────────────────────
+// Gửi log WS lên Next.js API route → hiện trên terminal docker logs
+function wsLog(event: string, payload: unknown): void {
+  if (typeof window === 'undefined') return;
+
+  // fire-and-forget, không block
+  fetch('/next-api/ws-log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event, payload }),
+  }).catch(() => { /* ignore network errors */ });
+}
+
 export type ChatbotMessage = {
   partial?: string;
   final?: string;
@@ -18,15 +31,6 @@ export type ChatbotRealtimeHandlers = {
   onClose?: () => void;
   onMessage?: (message: ChatbotMessage) => void;
   onError?: () => void;
-};
-
-const sendLogToServer = (event: string, payload: any) => {
-  if (typeof window === 'undefined') return;
-  fetch('/api/ws-log', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event, payload })
-  }).catch(() => {});
 };
 
 export class ChatbotRealtimeClient {
@@ -71,14 +75,18 @@ export class ChatbotRealtimeClient {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const ragPayload = { query: text, collection: this.collection };
 
-    console.log('[Chatbot] Sending request to https://rag.soictlab.com/query:', {
+    // Gọi qua proxy nội bộ (đã đổi sang /next-api để không bị Nginx chặn)
+    const PROXY_URL = '/next-api/rag-proxy/query';
+
+    console.log('[Chatbot] Sending request via proxy:', {
       requestId,
+      proxy: PROXY_URL,
       payload: ragPayload,
       hasAuth: !!token
     });
 
     try {
-      const res = await fetch('https://rag.soictlab.com/query', {
+      const res = await fetch(PROXY_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,7 +95,7 @@ export class ChatbotRealtimeClient {
         body: JSON.stringify(ragPayload),
       });
 
-      console.log('[Chatbot] Received response from https://rag.soictlab.com/query:', {
+      console.log('[Chatbot] Proxy response received (full log on server terminal):', {
         requestId,
         status: res.status,
         statusText: res.statusText,
@@ -99,27 +107,16 @@ export class ChatbotRealtimeClient {
 
       let outgoing: unknown;
       try {
+        // Chỉ dùng để kiểm tra xem có phải JSON hợp lệ không
         const json = bodyText ? JSON.parse(bodyText) : null;
-        outgoing = {
-          type: 'rag_response',
-          request_id: requestId,
-          ok: res.ok,
-          status: res.status,
-          data: json,
-        };
+        
+        // Bọc toàn bộ nội dung (dưới dạng chuỗi string) vào field "question" như bạn yêu cầu
+        outgoing = { question: bodyText };
 
-        console.log('[Chatbot] Parsed response body:', {
-          requestId,
-          outgoing
-        });
+        console.log('[Chatbot] Wrapped response body in question field:', { requestId, outgoing });
       } catch {
-        outgoing = {
-          type: 'rag_response',
-          request_id: requestId,
-          ok: res.ok,
-          status: res.status,
-          text: bodyText,
-        };
+        // Non-JSON: gửi dạng object có text
+        outgoing = { text: bodyText };
 
         console.log('[Chatbot] Non-JSON response body:', {
           requestId,
@@ -128,23 +125,20 @@ export class ChatbotRealtimeClient {
         });
       }
 
-      const msg = outgoing as ChatbotMessage;
       console.log('[Chatbot] Sending WebSocket message:', {
         requestId,
-        type: msg.type,
-        hasData: !!msg.data,
         dataSize: JSON.stringify(outgoing).length
       });
 
-      sendLogToServer('WS_SEND', outgoing);
-      this.socket.send(JSON.stringify(outgoing));
-
-      // Also notify local UI immediately (server may not echo).
-      this.handlers.onMessage?.(outgoing as ChatbotMessage);
+      const outgoingStr = JSON.stringify(outgoing);
+      console.log(`[WS Chatbot] 📤 SEND → ${this.url}`, outgoing);
+      wsLog('ws:send', { url: this.url, ts: new Date().toISOString(), question: outgoing });
+      this.socket.send(outgoingStr);
       return true;
     } catch (err) {
-      console.error('[Chatbot] Error sending question to RAG:', {
+      console.error('[Chatbot] Error calling RAG proxy:', {
         requestId,
+        proxy: PROXY_URL,
         error: err,
         question: text,
         collection: this.collection
@@ -156,12 +150,13 @@ export class ChatbotRealtimeClient {
         error: String(err),
       };
       try {
-        sendLogToServer('WS_SEND', outgoing);
-        this.socket.send(JSON.stringify(outgoing));
+        const errStr = JSON.stringify(outgoing);
+        console.log(`[WS Chatbot] 📤 SEND (error payload) → ${this.url}`, outgoing);
+        wsLog('ws:send', { url: this.url, ts: new Date().toISOString(), question: outgoing });
+        this.socket.send(errStr);
       } catch {
         // ignore
       }
-      this.handlers.onMessage?.(outgoing as ChatbotMessage);
       return false;
     }
   }
@@ -172,24 +167,34 @@ export class ChatbotRealtimeClient {
 
     ws.onopen = () => {
       this.reconnectAttempts = 0;
+      const msg = `✅ WebSocket OPEN → ${this.url}`;
+      console.log(`[WS Chatbot] ${msg}`);
+      wsLog('ws:open', { url: this.url, ts: new Date().toISOString() });
       this.handlers.onOpen?.();
     };
 
     ws.onmessage = (event) => {
       try {
         const payload = JSON.parse(String(event.data ?? '{}')) as ChatbotMessage;
-        sendLogToServer('WS_RECEIVE', payload);
+        console.log(`[WS Chatbot] 📨 RECEIVE ← ${this.url}`, payload);
+        wsLog('ws:receive', { url: this.url, ts: new Date().toISOString(), data: payload });
         this.handlers.onMessage?.(payload);
       } catch {
+        console.warn(`[WS Chatbot] ⚠️ Failed to parse message from ${this.url}`, event.data);
+        wsLog('ws:receive:error', { url: this.url, ts: new Date().toISOString(), raw: String(event.data) });
         this.handlers.onError?.();
       }
     };
 
-    ws.onerror = () => {
+    ws.onerror = (err) => {
+      console.error(`[WS Chatbot] ❌ ERROR on ${this.url}`, err);
+      wsLog('ws:error', { url: this.url, ts: new Date().toISOString(), message: String(err) });
       this.handlers.onError?.();
     };
 
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
+      console.log(`[WS Chatbot] 🔌 CLOSE ← ${this.url}`, { code: ev.code, reason: ev.reason, wasClean: ev.wasClean });
+      wsLog('ws:close', { url: this.url, ts: new Date().toISOString(), code: ev.code, reason: ev.reason, wasClean: ev.wasClean });
       this.handlers.onClose?.();
 
       if (this.closedManually) {

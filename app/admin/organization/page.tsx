@@ -275,8 +275,8 @@ export default function OrganizationPage() {
                <Title level={3} style={{ margin: 0, color: '#1e293b' }}>Quản lý Cơ cấu tổ chức</Title>
             </div>
             
-            <Card 
-              bordered={false} 
+            <Card
+              variant="borderless"
               style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0' }}
               styles={{ body: { padding: '20px' } }}
             >
@@ -601,8 +601,8 @@ function OrganizationForm({
   };
 
   return (
-    <Card 
-      bordered={false} 
+    <Card
+      variant="borderless" 
       style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0' }}
       styles={{ body: { padding: '32px' } }}
     >
@@ -733,8 +733,8 @@ function OrganizationDetail({
 
   return (
     <>
-      <Card 
-        bordered={false} 
+      <Card
+        variant="borderless" 
         style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', marginBottom: 24 }}
         styles={{ body: { padding: '24px' } }}
       >
@@ -762,8 +762,8 @@ function OrganizationDetail({
       <Row gutter={24}>
         {/* CỘT TRÁI - THÔNG TIN CHUNG */}
         <Col span={8}>
-          <Card 
-            bordered={false} 
+          <Card
+            variant="borderless" 
             style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', height: '100%' }}
           >
             <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.5 }}>THÔNG TIN CHUNG</Text>
@@ -797,8 +797,8 @@ function OrganizationDetail({
         {/* CỘT PHẢI */}
         <Col span={16}>
           {/* Card Đơn vị con */}
-          <Card 
-            bordered={false} 
+          <Card
+            variant="borderless" 
             title={<Space><ApartmentOutlined style={{ color: '#60a5fa' }}/><Text strong style={{ color: '#334155' }}>Danh sách đơn vị trực thuộc ({children.length})</Text></Space>}
             style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', marginBottom: 24 }}
             styles={{ body: { padding: '16px 24px' }, header: { borderBottom: '1px solid #f0f0f0' } }}
@@ -835,8 +835,8 @@ function OrganizationDetail({
           {/* 2 Card thống kê */}
           <Row gutter={24}>
             <Col span={12}>
-              <Card 
-                bordered={false} 
+              <Card
+                variant="borderless" 
                 style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', textAlign: 'center', height: '100%' }}
                 styles={{ body: { padding: '32px 24px' } }}
               >
@@ -850,8 +850,8 @@ function OrganizationDetail({
             </Col>
             
             <Col span={12}>
-              <Card 
-                bordered={false} 
+              <Card
+                variant="borderless" 
                 style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', textAlign: 'center', height: '100%' }}
                 styles={{ body: { padding: '32px 24px' } }}
               >

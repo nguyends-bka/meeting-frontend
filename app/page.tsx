@@ -618,7 +618,7 @@ export default function HomePage() {
         <Row gutter={[24, 24]}>
           <Col xs={24} lg={24}>
             <Card
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 24,
                 marginBottom: 24,
@@ -689,7 +689,7 @@ export default function HomePage() {
 
             {stats && (
               <Card
-                bordered={false}
+                variant="borderless"
                 className="premium-shadow"
                 style={{ borderRadius: 24, marginBottom: 24, border: 'none' }}
                 title={<span style={{ fontWeight: 800, fontSize: 18, color: '#1e293b' }}>Tổng quan cá nhân</span>}
@@ -759,7 +759,7 @@ export default function HomePage() {
             {heroSection}
 
             <Card
-              bordered={false}
+              variant="borderless"
               className="premium-shadow"
               style={{ borderRadius: 24, marginBottom: 24, border: 'none', background: '#ffffff' }}
               title={<span style={{ fontWeight: 800, fontSize: 18, color: '#1e293b' }}>Lịch trình hôm nay</span>}
@@ -923,7 +923,7 @@ export default function HomePage() {
         style={{ maxWidth: 'calc(100vw - 32px)' }}
         styles={{ body: { background: '#f5f7fb' } }}
       >
-        <Card bordered={false} style={{ borderRadius: 14 }}>
+        <Card variant="borderless" style={{ borderRadius: 14 }}>
           <Table<HistoryEntry>
             rowKey="id"
             loading={historyLoading}
@@ -1007,7 +1007,7 @@ export default function HomePage() {
 
             <Card
               style={{ marginTop: 14, borderRadius: 10, background: '#fafcff' }}
-              bodyStyle={{ padding: 14 }}
+              styles={{ body: { padding: 14 } }}
             >
               <div
                 style={{

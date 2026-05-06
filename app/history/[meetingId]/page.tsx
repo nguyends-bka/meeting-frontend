@@ -222,8 +222,8 @@ export default function MeetingHistoryPage() {
         {/* Thống kê nổi bật */}
         <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
           <Col xs={24} sm={8}>
-            <Card 
-              bordered={false} 
+            <Card
+              variant="borderless" 
               style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', display: 'flex', alignItems: 'center' }}
               styles={{ body: { padding: '20px', width: '100%', display: 'flex', alignItems: 'center', gap: 16 } }}
             >
@@ -237,8 +237,8 @@ export default function MeetingHistoryPage() {
             </Card>
           </Col>
           <Col xs={24} sm={8}>
-            <Card 
-              bordered={false} 
+            <Card
+              variant="borderless" 
               style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', display: 'flex', alignItems: 'center' }}
               styles={{ body: { padding: '20px', width: '100%', display: 'flex', alignItems: 'center', gap: 16 } }}
             >
@@ -252,8 +252,8 @@ export default function MeetingHistoryPage() {
             </Card>
           </Col>
           <Col xs={24} sm={8}>
-            <Card 
-              bordered={false} 
+            <Card
+              variant="borderless" 
               style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', display: 'flex', alignItems: 'center' }}
               styles={{ body: { padding: '20px', width: '100%', display: 'flex', alignItems: 'center', gap: 16 } }}
             >
@@ -270,7 +270,7 @@ export default function MeetingHistoryPage() {
 
         {/* Content Section (Table) */}
         <Card
-          bordered={false} 
+          variant="borderless" 
           style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0' }}
           styles={{ body: { padding: '20px 24px' } }}
         >

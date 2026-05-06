@@ -190,7 +190,7 @@ export function DocumentsModal({ meeting, onClose, user }: DocumentsModalProps) 
       onCancel={onClose}
       footer={null}
       width={1000}
-      bodyStyle={{ padding: 0 }}
+      styles={{ body: { padding: 0 } }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', height: '70vh', minHeight: 500 }}>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0', display: 'flex', gap: 12, justifyContent: 'space-between', flexWrap: 'wrap' }}>
