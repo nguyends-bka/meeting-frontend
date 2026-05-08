@@ -41,6 +41,7 @@ export class ChatbotRealtimeClient {
   private reconnectTimer: number | null = null;
   private reconnectAttempts = 0;
   private closedManually = false;
+  private hasEverConnected = false;
 
   constructor(url: string, collection: string, handlers: ChatbotRealtimeHandlers) {
     this.url = url;
@@ -50,6 +51,7 @@ export class ChatbotRealtimeClient {
 
   connect() {
     this.closedManually = false;
+    this.hasEverConnected = false;
     this.openSocket();
   }
 
@@ -167,6 +169,7 @@ export class ChatbotRealtimeClient {
 
     ws.onopen = () => {
       this.reconnectAttempts = 0;
+      this.hasEverConnected = true;
       const msg = `✅ WebSocket OPEN → ${this.url}`;
       console.log(`[WS Chatbot] ${msg}`);
       wsLog('ws:open', { url: this.url, ts: new Date().toISOString() });
@@ -187,15 +190,26 @@ export class ChatbotRealtimeClient {
     };
 
     ws.onerror = (err) => {
-      console.error(`[WS Chatbot] ❌ ERROR on ${this.url}`, err);
-      wsLog('ws:error', { url: this.url, ts: new Date().toISOString(), message: String(err) });
-      this.handlers.onError?.();
+      if (this.hasEverConnected) {
+        // Lỗi thật sự sau khi đã kết nối thành công ít nhất 1 lần
+        console.error(`[WS Chatbot] ❌ ERROR on ${this.url}`, err);
+        wsLog('ws:error', { url: this.url, ts: new Date().toISOString(), message: String(err) });
+        this.handlers.onError?.();
+      } else {
+        // Lỗi kết nối lần đầu (server chưa sẵn sàng) → chỉ log nhẹ
+        console.warn(`[WS Chatbot] ⏳ Waiting for server on ${this.url}, retrying...`);
+        wsLog('ws:error', { url: this.url, ts: new Date().toISOString(), message: 'initial-connect-failed' });
+      }
     };
 
     ws.onclose = (ev) => {
-      console.log(`[WS Chatbot] 🔌 CLOSE ← ${this.url}`, { code: ev.code, reason: ev.reason, wasClean: ev.wasClean });
-      wsLog('ws:close', { url: this.url, ts: new Date().toISOString(), code: ev.code, reason: ev.reason, wasClean: ev.wasClean });
-      this.handlers.onClose?.();
+      if (this.hasEverConnected) {
+        // Mất kết nối sau khi đã open → log đầy đủ
+        console.log(`[WS Chatbot] 🔌 CLOSE ← ${this.url}`, { code: ev.code, reason: ev.reason, wasClean: ev.wasClean });
+        wsLog('ws:close', { url: this.url, ts: new Date().toISOString(), code: ev.code, reason: ev.reason, wasClean: ev.wasClean });
+        this.handlers.onClose?.();
+      }
+      // Nếu chưa từng kết nối thành công → bỏ qua close event, chờ reconnect
 
       if (this.closedManually) {
         return;

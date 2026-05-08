@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const RAG_URL = 'https://rag.soictlab.com/query';
+// const RAG_URL = 'http://localhost:3001/';
 
 export async function POST(req: NextRequest) {
   const timestamp = new Date().toISOString();

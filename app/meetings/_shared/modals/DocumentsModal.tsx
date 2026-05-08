@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Modal, Input, Button, Table, Space, Typography, Tag, Popconfirm, Spin, App, Empty } from 'antd';
-import { 
-  UploadOutlined, SearchOutlined, EyeOutlined, EyeInvisibleOutlined, 
-  DownloadOutlined, DeleteOutlined 
+import {
+  UploadOutlined, SearchOutlined, EyeOutlined, EyeInvisibleOutlined,
+  DownloadOutlined, DeleteOutlined, FileWordOutlined, FilePdfOutlined
 } from '@ant-design/icons';
 import dynamic from 'next/dynamic';
 import dayjs from 'dayjs';
@@ -11,6 +11,7 @@ import type { MeetingListItem, MeetingDocumentDto } from '@/dtos/meeting.dto';
 import { isHostForMeeting } from '../helpers';
 
 const MeetingPdfViewer = dynamic(() => import('@/components/meeting/MeetingPdfViewer'), { ssr: false });
+const MeetingDocxViewer = dynamic(() => import('@/components/meeting/MeetingDocxViewer'), { ssr: false });
 
 interface DocumentsModalProps {
   meeting: MeetingListItem | null;
@@ -176,6 +177,15 @@ export function DocumentsModal({ meeting, onClose, user }: DocumentsModalProps) 
 
   const isHost = meeting ? isHostForMeeting(meeting, user) : false;
 
+  const isWordFile = (fileName: string) => /\.(doc|docx)$/i.test(fileName);
+  const isPdfFile = (fileName: string) => /\.pdf$/i.test(fileName);
+
+  const getFileIcon = (fileName: string) => {
+    if (isWordFile(fileName)) return <FileWordOutlined style={{ color: '#1890ff' }} />;
+    if (isPdfFile(fileName)) return <FilePdfOutlined style={{ color: '#ff4d4f' }} />;
+    return null;
+  };
+
   return (
     <Modal
       title={
@@ -219,7 +229,10 @@ export function DocumentsModal({ meeting, onClose, user }: DocumentsModalProps) 
               columns={[
                 { title: 'Tên file', dataIndex: 'fileName', render: (val, r) => (
                     <Space direction="vertical" size={0}>
-                      <Typography.Text style={{ fontWeight: 500 }}>{val}</Typography.Text>
+                      <Space size={4}>
+                        {getFileIcon(val)}
+                        <Typography.Text style={{ fontWeight: 500 }}>{val}</Typography.Text>
+                      </Space>
                       <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                         {r.uploaderName} • {dayjs(r.createdAt).format('DD/MM/YYYY HH:mm')}
                       </Typography.Text>
@@ -254,13 +267,22 @@ export function DocumentsModal({ meeting, onClose, user }: DocumentsModalProps) 
           </div>
 
           {previewVisible && (
-            <div style={{ flex: 1, background: '#f8fafc', padding: 24, overflow: 'auto' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
               {activeDocumentLoading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
                   <Spin tip="Đang tải file..." />
                 </div>
               ) : activeDocumentUrl ? (
-                <MeetingPdfViewer fileUrl={activeDocumentUrl} fileName={activeDocument?.fileName || ''} onClose={() => setPreviewVisible(false)} />
+                isWordFile(activeDocument?.fileName || '') ? (
+                  <MeetingDocxViewer fileUrl={activeDocumentUrl} fileName={activeDocument?.fileName || ''} onClose={() => setPreviewVisible(false)} />
+                ) : isPdfFile(activeDocument?.fileName || '') ? (
+                  <MeetingPdfViewer fileUrl={activeDocumentUrl} fileName={activeDocument?.fileName || ''} onClose={() => setPreviewVisible(false)} />
+                ) : (
+                  <div style={{ padding: 24, color: '#64748b' }}>
+                    Định dạng file không hỗ trợ xem trực tiếp.{' '}
+                    <a href={activeDocumentUrl} download={activeDocument?.fileName} style={{ color: '#1890ff' }}>Tải xuống</a>
+                  </div>
+                )
               ) : (
                 <Empty description="Chọn tài liệu để xem" style={{ marginTop: '20%' }} />
               )}

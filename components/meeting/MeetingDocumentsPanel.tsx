@@ -10,12 +10,14 @@ import { meetingApi } from '@/services/meeting/meetingApi';
 import type { MeetingDocumentDto } from '@/dtos/meeting.dto';
 
 const MeetingPdfViewer = dynamic(() => import('@/components/meeting/MeetingPdfViewer'), { ssr: false });
+const MeetingDocxViewer = dynamic(() => import('@/components/meeting/MeetingDocxViewer'), { ssr: false });
 
 const { Text } = Typography;
 
-function getDocIcon(contentType: string) {
+function getDocIcon(contentType: string, fileName?: string) {
   if (contentType.startsWith('image/')) return <span style={{ fontSize: 18 }}>🖼️</span>;
   if (contentType === 'application/pdf') return <span style={{ fontSize: 18 }}>📄</span>;
+  if (/\.(doc|docx)$/i.test(fileName || '') || contentType.includes('word')) return <span style={{ fontSize: 18 }}>📝</span>;
   return <span style={{ fontSize: 18 }}>📎</span>;
 }
 
@@ -279,6 +281,11 @@ export default function MeetingDocumentsPanel({
     }
   };
 
+  const isWordFile = (doc: MeetingDocumentDto) =>
+    /\.(doc|docx)$/i.test(doc.fileName) ||
+    doc.contentType.includes('word') ||
+    doc.contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
   const documentOverlay =
     activeDoc && activeObjectUrl ? (
       <div
@@ -307,6 +314,12 @@ export default function MeetingDocumentsPanel({
         >
           {activeDoc.contentType === 'application/pdf' ? (
             <MeetingPdfViewer
+              fileUrl={activeObjectUrl}
+              fileName={activeDoc.fileName}
+              onClose={() => setActiveDoc(null)}
+            />
+          ) : isWordFile(activeDoc) ? (
+            <MeetingDocxViewer
               fileUrl={activeObjectUrl}
               fileName={activeDoc.fileName}
               onClose={() => setActiveDoc(null)}
@@ -434,7 +447,7 @@ export default function MeetingDocumentsPanel({
                   className={`meeting-documents-item${activeDoc?.id === doc.id ? ' is-active' : ''}`}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <div style={{ marginTop: 2 }}>{getDocIcon(doc.contentType)}</div>
+                    <div style={{ marginTop: 2 }}>{getDocIcon(doc.contentType, doc.fileName)}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <Text
                         style={{

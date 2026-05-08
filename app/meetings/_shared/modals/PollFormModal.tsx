@@ -80,6 +80,7 @@ export function PollFormModal({ meeting, pollId, initialValues, onClose, user, o
       title={pollId ? "Sửa biểu quyết nháp" : "Tạo biểu quyết nháp"}
       open={!!meeting}
       onCancel={onClose}
+      destroyOnHidden
       footer={[
         <Button key="cancel" onClick={onClose}>Hủy</Button>,
         <Button key="submit" type="primary" onClick={handleSubmit} loading={saving}>Lưu nháp</Button>

@@ -2705,3 +2705,37 @@ body.meeting-resizing-tools .meeting-unified-panel object {
   background: #1e293b;
   color: #f1f5f9;
 }
+/* ============================================================
+   DOCX PREVIEW STYLES
+   ============================================================ */
+.docx-viewer-content {
+  background: white;
+  padding: 40px;
+  max-width: 800px;
+  margin: 0 auto;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.docx-viewer-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.docx-viewer-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.docx-viewer-content td,
+.docx-viewer-content th {
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+}
+
+.docx-viewer-content h1,
+.docx-viewer-content h2,
+.docx-viewer-content h3 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}

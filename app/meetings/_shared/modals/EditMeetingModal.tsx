@@ -70,6 +70,7 @@ export function EditMeetingModal({ meeting, onClose, onSuccess }: EditMeetingMod
       title="Sửa thông tin cuộc họp"
       open={!!meeting}
       onCancel={onClose}
+      destroyOnHidden
       footer={[
         <Button key="cancel" onClick={onClose}>Hủy</Button>,
         <Button key="submit" type="primary" onClick={handleSubmit} loading={updating}>Lưu thay đổi</Button>

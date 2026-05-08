@@ -16,7 +16,7 @@ export function RecordingPlaybackModal({ open, onClose, url, title }: RecordingP
       onCancel={onClose}
       footer={null}
       width={800}
-      destroyOnClose
+      destroyOnHidden
     >
       {url ? (
         <video controls style={{ width: '100%', borderRadius: 8, outline: 'none' }} autoPlay>
