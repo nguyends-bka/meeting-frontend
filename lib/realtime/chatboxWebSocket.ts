@@ -26,6 +26,8 @@ export type ChatbotMessage = {
   error?: string;
 };
 
+export type RagQueryMode = 'meeting' | 'collection' | 'both';
+
 export type ChatbotRealtimeHandlers = {
   onOpen?: () => void;
   onClose?: () => void;
@@ -35,7 +37,8 @@ export type ChatbotRealtimeHandlers = {
 
 export class ChatbotRealtimeClient {
   private readonly url: string;
-  private readonly collection: string;
+  private readonly meetingId: string;
+  private readonly mode: RagQueryMode;
   private readonly handlers: ChatbotRealtimeHandlers;
   private socket: WebSocket | null = null;
   private reconnectTimer: number | null = null;
@@ -43,9 +46,10 @@ export class ChatbotRealtimeClient {
   private closedManually = false;
   private hasEverConnected = false;
 
-  constructor(url: string, collection: string, handlers: ChatbotRealtimeHandlers) {
+  constructor(url: string, meetingId: string, mode: RagQueryMode, handlers: ChatbotRealtimeHandlers) {
     this.url = url;
-    this.collection = collection;
+    this.meetingId = meetingId;
+    this.mode = mode;
     this.handlers = handlers;
   }
 
@@ -75,7 +79,19 @@ export class ChatbotRealtimeClient {
       : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const ragPayload = { query: text, collection: this.collection };
+
+    let ragPayload: Record<string, string>;
+    switch (this.mode) {
+      case 'meeting':
+        ragPayload = { query: text, meeting: this.meetingId };
+        break;
+      case 'collection':
+        ragPayload = { query: text, collection: this.meetingId };
+        break;
+      case 'both':
+        ragPayload = { query: text, both: this.meetingId };
+        break;
+    }
 
     // Gọi qua proxy nội bộ (đã đổi sang /next-api để không bị Nginx chặn)
     const PROXY_URL = '/next-api/rag-proxy/query';
@@ -83,6 +99,7 @@ export class ChatbotRealtimeClient {
     console.log('[Chatbot] Sending request via proxy:', {
       requestId,
       proxy: PROXY_URL,
+      mode: this.mode,
       payload: ragPayload,
       hasAuth: !!token
     });
@@ -143,7 +160,8 @@ export class ChatbotRealtimeClient {
         proxy: PROXY_URL,
         error: err,
         question: text,
-        collection: this.collection
+        mode: this.mode,
+        meetingId: this.meetingId
       });
 
       const outgoing = {

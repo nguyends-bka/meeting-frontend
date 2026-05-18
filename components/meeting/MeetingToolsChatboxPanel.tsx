@@ -3,7 +3,7 @@
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ChatbotRealtimeClient } from '@/lib/realtime/chatboxWebSocket';
+import { ChatbotRealtimeClient, RagQueryMode } from '@/lib/realtime/chatboxWebSocket';
 
 type ChatFinalItem = {
   id: string;
@@ -74,11 +74,18 @@ export default function MeetingToolsChatbotPanel({ meetingId }: { meetingId: str
   const [draftText, setDraftText] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
   const [connected, setConnected] = useState(false);
+  const [ragMode, setRagMode] = useState<RagQueryMode>('meeting');
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const pinToBottomRef = useRef(true);
 
   const canSend = connected && question.trim().length > 0;
+  const modeLabelMap: Record<RagQueryMode, string> = {
+    meeting: 'Cuộc họp (meeting)',
+    collection: 'Tài liệu (document)',
+    both: 'Cả hai (meeting+document)',
+  };
 
   const sortedFinalized = useMemo(
     () => [...finalized].sort((a, b) => a.receivedAt - b.receivedAt),
@@ -125,7 +132,7 @@ export default function MeetingToolsChatbotPanel({ meetingId }: { meetingId: str
   }, [scrollDeps, draftText, scrollToBottom]);
 
   useEffect(() => {
-    const client = new ChatbotRealtimeClient(CHATBOT_WS_URL, meetingId, {
+    const client = new ChatbotRealtimeClient(CHATBOT_WS_URL, meetingId, ragMode, {
       onOpen: () => {
         setConnected(true);
       },
@@ -232,7 +239,7 @@ export default function MeetingToolsChatbotPanel({ meetingId }: { meetingId: str
       }
       setConnected(false);
     };
-  }, [meetingId]);
+  }, [meetingId, ragMode]);
 
   const handleSend = async (e: FormEvent) => {
     e.preventDefault();
@@ -416,6 +423,106 @@ export default function MeetingToolsChatbotPanel({ meetingId }: { meetingId: str
           Gửi
         </button>
       </form>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+        <button
+          type="button"
+          onClick={() => setModeMenuOpen((prev) => !prev)}
+          title="Chon che do truy van"
+          aria-label="Chon che do truy van"
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: 8,
+            border: '1px solid #cbd5e1',
+            background: '#ffffff',
+            color: '#0f172a',
+            fontSize: 18,
+            fontWeight: 600,
+            lineHeight: '28px',
+            cursor: 'pointer',
+          }}
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => setModeMenuOpen((prev) => !prev)}
+          title="Chon che do truy van"
+          aria-label="Chon che do truy van"
+          style={{
+            padding: '6px 12px',
+            borderRadius: 999,
+            border: '1px solid #dbeafe',
+            background: 'linear-gradient(135deg, #eff6ff 0%, #ecfeff 100%)',
+            color: '#1e3a8a',
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: 0.2,
+            boxShadow: '0 4px 10px rgba(37, 99, 235, 0.12)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            height: 28,
+            maxWidth: 260,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            cursor: 'pointer',
+          }}
+        >
+          {modeLabelMap[ragMode]}
+          <span style={{ fontSize: 10, opacity: 0.7 }}>▼</span>
+        </button>
+        {modeMenuOpen ? (
+          <div
+            role="menu"
+            style={{
+              position: 'absolute',
+              left: 0,
+              bottom: 36,
+              minWidth: 220,
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
+              background: '#ffffff',
+              boxShadow: '0 12px 30px rgba(15, 23, 42, 0.14)',
+              padding: 6,
+              zIndex: 9999,
+              pointerEvents: 'auto',
+            }}
+          >
+            {([
+              { id: 'meeting', label: 'Cuộc họp (meeting)' },
+              { id: 'collection', label: 'Tài liệu (document)' },
+              { id: 'both', label: 'Cả hai (meeting+document)' },
+            ] as const).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="menuitem"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setRagMode(item.id);
+                  setModeMenuOpen(false);
+                }}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '8px 10px',
+                  border: 'none',
+                  borderRadius: 8,
+                  background: item.id === ragMode ? 'rgba(37, 99, 235, 0.12)' : 'transparent',
+                  color: '#0f172a',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       <style jsx>{`
         .meeting-chatbot-thinking-pill {
