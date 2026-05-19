@@ -83,10 +83,10 @@ export class ChatbotRealtimeClient {
     let ragPayload: Record<string, string>;
     switch (this.mode) {
       case 'meeting':
-        ragPayload = { query: text, meeting: this.meetingId };
+        ragPayload = { query: text, collection: `meeting-${this.meetingId}`};
         break;
       case 'collection':
-        ragPayload = { query: text, collection: this.meetingId };
+        ragPayload = { query: text, collection: `docs-${this.meetingId}` };
         break;
       case 'both':
         ragPayload = { query: text, both: this.meetingId };
