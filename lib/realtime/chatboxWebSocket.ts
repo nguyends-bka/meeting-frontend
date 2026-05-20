@@ -80,16 +80,30 @@ export class ChatbotRealtimeClient {
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-    let ragPayload: Record<string, string>;
+    type RagPayload = {
+      query: string;
+      collection: string;
+      top_k?: number;
+    };
+    // let ragPayload: Record<string, string>;
+    let ragPayloads: RagPayload[];
+    
     switch (this.mode) {
       case 'meeting':
-        ragPayload = { query: text, collection: `meeting-${this.meetingId}`};
+        ragPayloads = [
+              { query: text, collection: `meeting-${this.meetingId}` }
+            ];
         break;
       case 'collection':
-        ragPayload = { query: text, collection: `docs-${this.meetingId}` };
+        ragPayloads = [
+          { query: text, collection: `docs-${this.meetingId}` }
+        ];        
         break;
       case 'both':
-        ragPayload = { query: text, both: this.meetingId };
+        ragPayloads = [
+          { query: text, collection: `meeting-${this.meetingId}`, top_k: 8 },
+          { query: text, collection: `docs-${this.meetingId}`, top_k: 8 }
+        ];
         break;
     }
 
@@ -100,50 +114,101 @@ export class ChatbotRealtimeClient {
       requestId,
       proxy: PROXY_URL,
       mode: this.mode,
-      payload: ragPayload,
+      payload: ragPayloads,
       hasAuth: !!token
     });
 
     try {
-      const res = await fetch(PROXY_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(ragPayload),
-      });
+      // const res = await fetch(PROXY_URL, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      //   },
+      //   body: JSON.stringify(ragPayloads),
+      // });
 
-      console.log('[Chatbot] Proxy response received (full log on server terminal):', {
-        requestId,
-        status: res.status,
-        statusText: res.statusText,
-        ok: res.ok,
-        contentType: res.headers.get('content-type')
-      });
+      // console.log('[Chatbot] Proxy response received (full log on server terminal):', {
+      //   requestId,
+      //   status: res.status,
+      //   statusText: res.statusText,
+      //   ok: res.ok,
+      //   contentType: res.headers.get('content-type')
+      // });
 
-      const bodyText = await res.text();
+      // const bodyText = await res.text();
+      const responses = await Promise.all(
+        ragPayloads.map(async (ragPayload) => {
+          const res = await fetch(PROXY_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify(ragPayload),
+          });
 
-      let outgoing: unknown;
-      try {
-        // Chỉ dùng để kiểm tra xem có phải JSON hợp lệ không
-        const json = bodyText ? JSON.parse(bodyText) : null;
+          const bodyText = await res.text();
+
+          console.log('[Chatbot] Proxy response received:', {
+            requestId,
+            status: res.status,
+            statusText: res.statusText,
+            ok: res.ok,
+            contentType: res.headers.get('content-type'),
+            payload: ragPayload,
+            bodyText,
+          });
+
+          return {
+            ok: res.ok,
+            status: res.status,
+            statusText: res.statusText,
+            payload: ragPayload,
+            bodyText,
+          };
+        })
+      );
+
+      // const bodyText =
+      //   responses.length === 1
+      //     ? responses[0].bodyText
+      //     : JSON.stringify(responses);
+      const bodyText =
+        responses.length === 1
+          ? responses[0].bodyText
+          : responses
+              .filter((r) => r.ok)
+              .map((r) => r.bodyText)
+              .join(','); 
+
+
+      // let outgoing: unknown;
+      // try {
+      //   // Chỉ dùng để kiểm tra xem có phải JSON hợp lệ không
+      //   const json = bodyText ? JSON.parse(bodyText) : null;
         
-        // Bọc toàn bộ nội dung (dưới dạng chuỗi string) vào field "question" như bạn yêu cầu
-        outgoing = { question: bodyText };
+      //   // Bọc toàn bộ nội dung (dưới dạng chuỗi string) vào field "question" như bạn yêu cầu
+      //   outgoing = { question: bodyText };
 
-        console.log('[Chatbot] Wrapped response body in question field:', { requestId, outgoing });
-      } catch {
-        // Non-JSON: gửi dạng object có text
-        outgoing = { text: bodyText };
+      //   console.log('[Chatbot] Wrapped response body in question field:', { requestId, outgoing });
+      // } catch {
+      //   // Non-JSON: gửi dạng object có text
+      //   outgoing = { text: bodyText };
 
-        console.log('[Chatbot] Non-JSON response body:', {
-          requestId,
-          text: bodyText,
-          length: bodyText.length
-        });
-      }
+      //   console.log('[Chatbot] Non-JSON response body:', {
+      //     requestId,
+      //     text: bodyText,
+      //     length: bodyText.length
+      //   });
+      // }
 
+      let outgoing: unknown = { question: bodyText };
+
+      console.log('[Chatbot] Wrapped response body in question field:', {
+        requestId,
+        outgoing,
+      });
       console.log('[Chatbot] Sending WebSocket message:', {
         requestId,
         dataSize: JSON.stringify(outgoing).length
