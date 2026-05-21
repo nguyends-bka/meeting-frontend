@@ -1,0 +1,67 @@
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(37, 99, 235, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+.hover-scale {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-scale:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+.animated-gradient-text {
+  background: linear-gradient(to right, #60a5fa, #a78bfa, #f472b6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% auto;
+  animation: textShine 4s linear infinite;
+}
+
+@keyframes textShine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+.premium-shadow {
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
+}
+
+.notification-item {
+  transition: all 0.2s ease;
+}
+
+.notification-item:hover {
+  background: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06) !important;
+  transform: translateX(4px);
+}
+
+.dark-theme .ant-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.ant-card-head {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6) !important;
+}
+
+.ant-card-head-title {
+  padding: 18px 0 !important;
+}
+
+.ant-btn-primary:not([disabled]):hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.home-container {
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
