@@ -310,6 +310,9 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
                 <Text strong ellipsis style={{ display: 'block', fontSize: 14, color: isDark ? '#ffffff' : '#0f172a' }}>
                   {user?.fullName}
                 </Text>
+                <Text ellipsis style={{ display: 'block', fontSize: 12, color: isDark ? '#94a3b8' : '#64748b', marginTop: 2 }}>
+                  @{user?.username}
+                </Text>
                 {isAdmin && (
                   <Tag color="red" style={{ marginTop: 4, border: 'none' }}>
                     Admin
