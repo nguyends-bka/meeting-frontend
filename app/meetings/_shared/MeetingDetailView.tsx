@@ -149,21 +149,45 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
               <div className="ac-label">Link cuộc họp</div>
               <div className="ac-val-row">
                 <div className="ac-val" style={{ color: '#2563eb' }}>{buildMeetingLink(m.id)}</div>
-                <button className="btn-copy" onClick={() => copyText(buildMeetingLink(m.id))}>Copy Link</button>
+                <Button 
+                  size="small" 
+                  type="text" 
+                  icon={<CopyOutlined />} 
+                  onClick={() => copyText(buildMeetingLink(m.id))}
+                  style={{ color: '#2563eb', fontSize: 12, fontWeight: 500 }}
+                >
+                  Sao chép
+                </Button>
               </div>
             </div>
             <div className="access-card">
               <div className="ac-label">Mã phòng (ID)</div>
               <div className="ac-val-row">
                 <div className="ac-val">{m.meetingCode}</div>
-                <button className="btn-copy" onClick={() => copyText(m.meetingCode)}>Copy ID</button>
+                <Button 
+                  size="small" 
+                  type="text" 
+                  icon={<CopyOutlined />} 
+                  onClick={() => copyText(m.meetingCode)}
+                  style={{ color: '#64748b', fontSize: 12, fontWeight: 500 }}
+                >
+                  Sao chép
+                </Button>
               </div>
             </div>
             <div className="access-card">
               <div className="ac-label">Mật khẩu (Passcode)</div>
               <div className="ac-val-row">
                 <div className="ac-val">{m.passcode}</div>
-                <button className="btn-copy" onClick={() => copyText(m.passcode)}>Copy Pass</button>
+                <Button 
+                  size="small" 
+                  type="text" 
+                  icon={<CopyOutlined />} 
+                  onClick={() => copyText(m.passcode)}
+                  style={{ color: '#64748b', fontSize: 12, fontWeight: 500 }}
+                >
+                  Sao chép
+                </Button>
               </div>
             </div>
           </div>
@@ -187,7 +211,7 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
           <div className="qa-card" onClick={() => props.openPollListModal(m)}>
             <div className="qa-icon" style={{ color: '#059669', background: '#ecfdf5' }}><CheckCircleOutlined /></div>
             <div className="qa-name">Biểu quyết</div>
-            <div className="qa-desc">Quản lý thăm dò</div>
+            <div className="qa-desc">Quản lý biểu quyết</div>
           </div>
         )}
         <div className="qa-card" onClick={() => props.openHistoryModal(m)}>
@@ -298,15 +322,33 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
         )}
       </Card>
 
-      {/* --- BOTTOM BUTTONS --- */}
-      <div className="bottom-btns">
-        <button className="btn-join" onClick={() => router.push(`/meeting/${m.id}`)}>Vào phòng họp ngay</button>
+      <div className="bottom-btns" style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
+        <Button 
+          type="primary" 
+          size="large" 
+          onClick={() => router.push(`/meeting/${m.id}`)}
+          style={{ flex: 1, height: 40, borderRadius: 8, fontSize: 14, fontWeight: 600, minWidth: 150 }}
+        >
+          Vào phòng họp ngay
+        </Button>
         {canEditMeeting(m, user, isAdmin) && (
-          <button className="btn-edit" onClick={() => props.openEditMeetingModal(m)}>Sửa thông tin</button>
+          <Button 
+            size="large" 
+            onClick={() => props.openEditMeetingModal(m)}
+            style={{ height: 40, borderRadius: 8, fontSize: 14, fontWeight: 500 }}
+          >
+            Sửa thông tin
+          </Button>
         )}
         {(isHost || isAdmin) && (
           <Popconfirm title="Xác nhận xóa cuộc họp?" description="Mọi dữ liệu sẽ bị xóa." onConfirm={() => props.handleDeleteMeeting(m.id)}>
-            <button className="btn-delete">Xóa cuộc họp</button>
+            <Button 
+              danger 
+              size="large" 
+              style={{ height: 40, borderRadius: 8, fontSize: 14, fontWeight: 500 }}
+            >
+              Xóa cuộc họp
+            </Button>
           </Popconfirm>
         )}
       </div>

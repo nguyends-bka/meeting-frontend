@@ -138,19 +138,37 @@ export function MeetingsListView({
               render: (_: any, record: MeetingListItem) => (
                 <Space direction="vertical" size={2}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <Typography.Text strong style={{ fontSize: 15, color: '#1e293b' }}>{record.title}</Typography.Text>
+                    <Typography.Text strong style={{ fontSize: 15, color: 'var(--color-body, #1e293b)' }}>{record.title}</Typography.Text>
                     {isHostForMeeting(record, user) && (
                       <Tag color="blue" style={{ border: 0, borderRadius: 12, margin: 0, fontWeight: 500 }}>Host</Tag>
                     )}
                   </div>
-                  <Typography.Text style={{ fontSize: 13, color: '#64748b' }}>
-                    Mã: <strong>{record.meetingCode}</strong> • Pass: {record.passcode} • Phòng: {record.roomName}
-                  </Typography.Text>
-                  <Typography.Text style={{ fontSize: 12, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <CalendarOutlined />
-                    {dayjs(record.createdAt).format('DD/MM/YYYY HH:mm')}
-                    {record.startedAt && ` → ${dayjs(record.startedAt).format('HH:mm')}`}
-                    {record.endedAt && ` → ${dayjs(record.endedAt).format('HH:mm')}`}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '2px 0' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--color-secondary, #64748b)' }}>
+                      <span>Mã:</span>
+                      <Typography.Text code copyable={{ text: record.meetingCode, tooltips: ['Sao chép mã', 'Đã sao chép'] }} style={{ fontSize: 12, padding: '1px 5px', margin: 0 }}>
+                        {record.meetingCode}
+                      </Typography.Text>
+                    </span>
+                    <span style={{ color: '#cbd5e1' }}>•</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--color-secondary, #64748b)' }}>
+                      <span>Mật khẩu:</span>
+                      <Typography.Text code copyable={{ text: record.passcode, tooltips: ['Sao chép mật khẩu', 'Đã sao chép'] }} style={{ fontSize: 12, padding: '1px 5px', margin: 0 }}>
+                        {record.passcode}
+                      </Typography.Text>
+                    </span>
+                  </div>
+                  <Typography.Text style={{ fontSize: 12, color: 'var(--color-muted, #94a3b8)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CalendarOutlined style={{ color: 'var(--color-muted, #94a3b8)' }} />
+                    <span>
+                      {dayjs(record.createdAt).format('DD/MM/YYYY HH:mm')}
+                      {record.startedAt && ` → ${dayjs(record.startedAt).format('HH:mm')}`}
+                      {record.endedAt && (
+                        <span style={{ marginLeft: 6, color: '#f43f5e', fontWeight: 500 }}>
+                          (Kết thúc: {dayjs(record.endedAt).format('HH:mm')})
+                        </span>
+                      )}
+                    </span>
                   </Typography.Text>
                 </Space>
               ),
@@ -159,17 +177,15 @@ export function MeetingsListView({
               title: 'Trạng thái',
               key: 'status',
               width: 180,
+              align: 'center',
               render: (_: any, record: MeetingListItem) => {
                 const s = getMeetingStatus(record);
                 return (
-                  <Space direction="vertical" size={2}>
+                  <Space direction="vertical" size={2} align="center" style={{ width: '100%' }}>
                     {getStatusBadge(s)}
-                    <Typography.Text style={{ fontSize: 12, color: '#64748b', marginTop: 4, display: 'block' }}>
-                      {record.participantCount} thành viên
-                    </Typography.Text>
                     {(record.activeParticipantCount ?? 0) > 0 && (
-                      <Typography.Text style={{ fontSize: 12, color: '#059669', fontWeight: 500 }}>
-                        ● {record.activeParticipantCount} đang online
+                      <Typography.Text style={{ fontSize: 12, color: '#059669', fontWeight: 500, marginTop: 4 }}>
+                        ● {record.activeParticipantCount} người đang họp
                       </Typography.Text>
                     )}
                   </Space>
@@ -179,8 +195,8 @@ export function MeetingsListView({
             {
               title: 'Thao tác',
               key: 'action',
-              width: 160,
-              align: 'right',
+              width: 180,
+              align: 'center',
               render: (_: any, record: MeetingListItem) => {
                 const s = getMeetingStatus(record);
                 const isHost = isHostForMeeting(record, user);
@@ -210,7 +226,7 @@ export function MeetingsListView({
                 }
                 
                 return (
-                  <Space direction="vertical" size={4} align="end">
+                  <Space size={8} align="center" style={{ justifyContent: 'center', width: '100%' }}>
                     <Button 
                       type="primary" 
                       onClick={() => openDetailModal(record)}
@@ -219,7 +235,16 @@ export function MeetingsListView({
                       Chi tiết <CaretRightOutlined />
                     </Button>
                     <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
-                      <Button size="small" type="text" icon={<MoreOutlined />} style={{ color: '#64748b' }}>Tùy chọn</Button>
+                      <Button 
+                        icon={<MoreOutlined />} 
+                        style={{ 
+                          color: '#64748b', 
+                          borderRadius: 6, 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center' 
+                        }} 
+                      />
                     </Dropdown>
                   </Space>
                 );
