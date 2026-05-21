@@ -91,12 +91,12 @@ export class ChatbotRealtimeClient {
     switch (this.mode) {
       case 'meeting':
         ragPayloads = [
-              { query: text, collection: `meeting-${this.meetingId}` }
+              { query: text, collection: `meeting-${this.meetingId}`, top_k: 10 }
             ];
         break;
       case 'collection':
         ragPayloads = [
-          { query: text, collection: `docs-${this.meetingId}` }
+          { query: text, collection: `docs-${this.meetingId}`, top_k: 10 }
         ];        
         break;
       case 'both':

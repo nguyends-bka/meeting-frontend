@@ -1,6 +1,8 @@
 export * from './admin/admin.dto';
 // Frontend DTOs for Admin domain
 
+import type { UserCountryItem, UserLanguageItem } from './user.dto';
+
 export interface AdminUser {
   id: string;
   username: string;
@@ -14,6 +16,8 @@ export interface AdminUser {
   organizationUnitName?: string | null;
   hasAvatar?: boolean;
   createdAt: string;
+  countries: UserCountryItem[];
+  languages: UserLanguageItem[];
 }
 
 export interface UpdateUserRoleRequest {

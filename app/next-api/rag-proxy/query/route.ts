@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const RAG_URL = 'https://rag.soictlab.com/query';
+// const RAG_URL = 'https://rag.soictlab.com/query';
 // const RAG_URL = 'http://localhost:3001/';
+const RAG_QUERY_URL = 'https://rag.soictlab.com/query';
+const RAG_TRANSCRIPT_QUERY_URL = 'https://rag.soictlab.com/query/transcript';
 
 export async function POST(req: NextRequest) {
   const timestamp = new Date().toISOString();
@@ -9,15 +11,24 @@ export async function POST(req: NextRequest) {
   // ── 1. Đọc body từ client ────────────────────────────────────────────────
   let body: unknown;
   try {
-    body = await req.json();
+    body = await req.json(); 
   } catch (err) {
     console.error(`[RAG Proxy] [${timestamp}] ❌ Failed to parse request body:`, err);
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
+  const bodyObj = body as { collection?: string };
+
+  const targetUrl =
+    typeof bodyObj.collection === 'string' &&
+    bodyObj.collection.startsWith('meeting-')
+      ? RAG_TRANSCRIPT_QUERY_URL
+      : RAG_QUERY_URL;
+
+
   // ── 2. Log REQUEST ra terminal ───────────────────────────────────────────
   console.log(`\n${'─'.repeat(60)}`);
-  console.log(`[RAG Proxy] [${timestamp}] 📤 REQUEST → ${RAG_URL}`);
+  console.log(`[RAG Proxy] [${timestamp}] 📤 REQUEST → ${targetUrl}`);
   console.log(`[RAG Proxy] Body:`, JSON.stringify(body, null, 2));
   console.log(`${'─'.repeat(60)}`);
 
@@ -27,7 +38,7 @@ export async function POST(req: NextRequest) {
   // ── 3. Gọi RAG API ───────────────────────────────────────────────────────
   let ragRes: Response;
   try {
-    ragRes = await fetch(RAG_URL, {
+    ragRes = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -54,7 +65,7 @@ export async function POST(req: NextRequest) {
   const statusEmoji = ragRes.ok ? '✅' : '⚠️';
   console.log(`\n${'─'.repeat(60)}`);
   console.log(
-    `[RAG Proxy] [${timestamp}] ${statusEmoji} RESPONSE ← ${RAG_URL}`,
+    `[RAG Proxy] [${timestamp}] ${statusEmoji} RESPONSE ← ${targetUrl}`,
   );
   console.log(`[RAG Proxy] Status : ${ragRes.status} ${ragRes.statusText}`);
   console.log(`[RAG Proxy] Content-Type: ${ragRes.headers.get('content-type') ?? '(none)'}`);

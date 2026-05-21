@@ -7,6 +7,8 @@ import type {
   ChangePasswordRequest,
   ChangePasswordResponse,
   OrganizationUnitOption,
+  CountryOption,
+  LanguageOption,
 } from '@/dtos/user.dto';
 
 // User domain API - React Query compatible
@@ -26,6 +28,18 @@ export const userApi = {
 
   listOrganizationUnits: async () => {
     return apiClient.request<OrganizationUnitOption[]>('/api/user/organization-units', {
+      method: 'GET',
+    });
+  },
+
+  listCountries: async () => {
+    return apiClient.request<CountryOption[]>('/api/user/countries', {
+      method: 'GET',
+    });
+  },
+
+  listLanguages: async () => {
+    return apiClient.request<LanguageOption[]>('/api/user/languages', {
       method: 'GET',
     });
   },

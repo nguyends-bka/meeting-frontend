@@ -4,10 +4,11 @@ import { authApi } from './auth/authApi';
 import { userApi } from './user/userApi';
 import { meetingApi } from './meeting/meetingApi';
 import { adminApi } from './admin/adminApi';
+import { catalogApi } from './catalog/catalogApi';
 import type { ApiResponse } from './base/apiClient';
 
 // Re-export for convenience
-export { authApi, userApi, meetingApi, adminApi };
+export { authApi, userApi, meetingApi, adminApi, catalogApi };
 export type { ApiResponse };
 
 // Legacy wrapper for backward compatibility
@@ -106,12 +107,22 @@ class ApiService {
     academicDegree?: 'TS' | 'ThS' | 'CN' | 'KS' | null;
     organizationUnitId?: string | null;
     avatar?: string | null;
+    countryCodes?: string[] | null;
+    languages?: { code: string; isPrimary: boolean }[] | null;
   }) {
     return userApi.updateProfile(request);
   }
 
   async getOrganizationUnits() {
     return userApi.listOrganizationUnits();
+  }
+
+  async getCountries() {
+    return userApi.listCountries();
+  }
+
+  async getLanguages() {
+    return userApi.listLanguages();
   }
 
   async changePassword(oldPassword: string, newPassword: string) {

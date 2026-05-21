@@ -16,6 +16,7 @@ import {
   Typography,
   Descriptions,
   Tag,
+  Radio,
 } from 'antd';
 import {
   UserOutlined,
@@ -23,8 +24,12 @@ import {
   SaveOutlined,
   ReloadOutlined,
   MailOutlined,
+  GlobalOutlined,
+  TranslationOutlined,
+  StarFilled,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import type { CountryOption, LanguageOption, UserCountryItem, UserLanguageItem } from '@/dtos/user.dto';
 
 const AVATAR_SIZE = 256;
 
@@ -81,6 +86,8 @@ type ProfileData = {
   avatar: string | null;
   hasFaceEmbedding?: boolean;
   createdAt: string;
+  countries: UserCountryItem[] | null;
+  languages: UserLanguageItem[] | null;
 };
 
 type OrganizationUnitOption = {
@@ -104,6 +111,17 @@ export default function ProfilePage() {
   const [loadingOrgUnits, setLoadingOrgUnits] = useState(false);
   const [facePreviewUrl, setFacePreviewUrl] = useState<string | null>(null);
 
+  // ── Catalog state ──────────────────────────────────────────────
+  const [countries, setCountries] = useState<CountryOption[]>([]);
+  const [languages, setLanguages] = useState<LanguageOption[]>([]);
+  const [loadingCatalogs, setLoadingCatalogs] = useState(false);
+
+  // ── Language selection state ────────────────────────────────────
+  // selectedLangCodes: danh sách codes đã chọn trong multi-select
+  const [selectedLangCodes, setSelectedLangCodes] = useState<string[]>([]);
+  // primaryLangCode: ngôn ngữ ưu tiên được chọn
+  const [primaryLangCode, setPrimaryLangCode] = useState<string | null>(null);
+
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
 
@@ -117,6 +135,7 @@ export default function ProfilePage() {
     if (isAuthenticated) {
       void loadProfile();
       void loadOrganizationUnits();
+      void loadCatalogs();
     }
   }, [isAuthenticated]);
 
@@ -124,16 +143,28 @@ export default function ProfilePage() {
     setLoadingProfile(true);
     const result = await apiService.getProfile();
     if (result.data) {
-      setProfile(result.data as ProfileData);
-      setFacePreviewUrl(result.data.avatar ? avatarBase64ToDataUrl(result.data.avatar) : null);
+      const data = result.data as ProfileData;
+      setProfile(data);
+      setFacePreviewUrl(data.avatar ? avatarBase64ToDataUrl(data.avatar) : null);
+
+      // Khởi tạo state ngôn ngữ từ profile
+      const langCodes = (data.languages ?? []).map((l) => l.code);
+      setSelectedLangCodes(langCodes);
+      const primary = (data.languages ?? []).find((l) => l.isPrimary);
+      setPrimaryLangCode(primary?.code ?? null);
+
       profileForm.setFieldsValue({
-        fullName: result.data.fullName || '',
-        email: result.data.email || '',
-        position: result.data.position || '',
-        academicRank: result.data.academicRank || undefined,
-        academicDegree: result.data.academicDegree || undefined,
-        organizationUnitId: result.data.organizationUnitId || undefined,
-        avatar: result.data.avatar || '',
+        fullName: data.fullName || '',
+        email: data.email || '',
+        position: data.position || '',
+        academicRank: data.academicRank || undefined,
+        academicDegree: data.academicDegree || undefined,
+        organizationUnitId: data.organizationUnitId || undefined,
+        avatar: data.avatar || '',
+        // countryCodes: array of codes
+        countryCodes: (data.countries ?? []).map((c) => c.code),
+        // languages: chỉ codes, primaryLang xử lý riêng bằng state
+        languageCodes: langCodes,
       });
     }
     if (result.error) {
@@ -151,6 +182,17 @@ export default function ProfilePage() {
     }
   };
 
+  const loadCatalogs = async () => {
+    setLoadingCatalogs(true);
+    const [cResult, lResult] = await Promise.all([
+      apiService.getCountries(),
+      apiService.getLanguages(),
+    ]);
+    setLoadingCatalogs(false);
+    if (cResult.data) setCountries(cResult.data as CountryOption[]);
+    if (lResult.data) setLanguages(lResult.data as LanguageOption[]);
+  };
+
   const trimOrNull = (v: unknown): string | null => {
     const s = typeof v === 'string' ? v.trim() : '';
     return s ? s : null;
@@ -165,6 +207,23 @@ export default function ProfilePage() {
       avatarRaw != null && String(avatarRaw).trim() !== '' ? String(avatarRaw).trim() : null;
     const emailVal = trimOrNull(values.email);
 
+    // Validate ngôn ngữ ưu tiên nếu có chọn ngôn ngữ
+    if (selectedLangCodes.length > 0 && !primaryLangCode) {
+      messageApi.error('Vui lòng chọn ngôn ngữ ưu tiên');
+      setUpdatingProfile(false);
+      return;
+    }
+    if (primaryLangCode && !selectedLangCodes.includes(primaryLangCode)) {
+      messageApi.error('Ngôn ngữ ưu tiên phải nằm trong danh sách ngôn ngữ đã chọn');
+      setUpdatingProfile(false);
+      return;
+    }
+
+    const languagesPayload = selectedLangCodes.map((code) => ({
+      code,
+      isPrimary: code === primaryLangCode,
+    }));
+
     const result = await apiService.updateProfileExtended({
       fullName: trimOrNull(values.fullName),
       email: emailVal ? emailVal.toLowerCase() : null,
@@ -173,6 +232,8 @@ export default function ProfilePage() {
       academicDegree: values.academicDegree ?? null,
       organizationUnitId: values.organizationUnitId ?? null,
       avatar,
+      countryCodes: values.countryCodes ?? [],
+      languages: languagesPayload,
     });
 
     setUpdatingProfile(false);
@@ -493,6 +554,116 @@ export default function ProfilePage() {
                         <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
                       )}
                     </Descriptions.Item>
+
+                    {/* ── Quốc tịch / Quốc gia ─────────────────────────── */}
+                    <Descriptions.Item label={<Space><GlobalOutlined />Quốc tịch / Quốc gia</Space>}>
+                      {showUpdateForm ? (
+                        <Form.Item name="countryCodes" style={{ margin: 0 }}>
+                          <Select
+                            mode="multiple"
+                            allowClear
+                            showSearch
+                            loading={loadingCatalogs}
+                            placeholder="Chọn quốc tịch / quốc gia"
+                            options={countries.map((c) => ({
+                              label: c.countryName,
+                              value: c.code,
+                            }))}
+                            filterOption={(input, option) =>
+                              String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      ) : (profile.countries ?? []).length > 0 ? (
+                        <Space wrap>
+                          {(profile.countries ?? []).map((c) => (
+                            <Tag key={c.code} icon={<GlobalOutlined />} color="blue">
+                              {c.countryName}
+                            </Tag>
+                          ))}
+                        </Space>
+                      ) : (
+                        <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
+                      )}
+                    </Descriptions.Item>
+
+                    {/* ── Ngôn ngữ ─────────────────────────────────────── */}
+                    <Descriptions.Item label={<Space><TranslationOutlined />Ngôn ngữ</Space>}>
+                      {showUpdateForm ? (
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                          <Form.Item name="languageCodes" style={{ margin: 0 }}>
+                            <Select
+                              mode="multiple"
+                              allowClear
+                              showSearch
+                              loading={loadingCatalogs}
+                              placeholder="Chọn ngôn ngữ"
+                              options={languages.map((l) => ({
+                                label: l.languageName,
+                                value: l.code,
+                              }))}
+                              filterOption={(input, option) =>
+                                String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                              }
+                              style={{ width: '100%' }}
+                              onChange={(codes: string[]) => {
+                                setSelectedLangCodes(codes);
+                                // Nếu ngôn ngữ ưu tiên hiện tại bị xóa khỏi danh sách → reset
+                                if (primaryLangCode && !codes.includes(primaryLangCode)) {
+                                  setPrimaryLangCode(null);
+                                }
+                              }}
+                            />
+                          </Form.Item>
+                          {/* Chọn ngôn ngữ ưu tiên */}
+                          {selectedLangCodes.length > 0 && (
+                            <div>
+                              <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+                                <StarFilled style={{ color: '#faad14', marginRight: 4 }} />
+                                Ngôn ngữ ưu tiên (bắt buộc chọn 1):
+                              </Typography.Text>
+                              <Radio.Group
+                                value={primaryLangCode}
+                                onChange={(e) => setPrimaryLangCode(e.target.value as string)}
+                              >
+                                <Space direction="vertical">
+                                  {selectedLangCodes.map((code) => {
+                                    const lang = languages.find((l) => l.code === code);
+                                    return (
+                                      <Radio key={code} value={code}>
+                                        {lang?.languageName ?? code}
+                                      </Radio>
+                                    );
+                                  })}
+                                </Space>
+                              </Radio.Group>
+                            </div>
+                          )}
+                          {selectedLangCodes.length > 0 && !primaryLangCode && (
+                            <Typography.Text type="danger" style={{ fontSize: 12 }}>
+                              Vui lòng chọn 1 ngôn ngữ ưu tiên
+                            </Typography.Text>
+                          )}
+                        </Space>
+                      ) : (profile.languages ?? []).length > 0 ? (
+                        <Space wrap>
+                          {(profile.languages ?? []).map((l) => (
+                            <Tag
+                              key={l.code}
+                              icon={l.isPrimary ? <StarFilled style={{ color: '#faad14' }} /> : <TranslationOutlined />}
+                              color={l.isPrimary ? 'gold' : 'default'}
+                            >
+                              {l.languageName}
+                              {l.isPrimary && ' (Ưu tiên)'}
+                            </Tag>
+                          ))}
+                        </Space>
+                      ) : (
+                        <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
+                      )}
+                    </Descriptions.Item>
+
                     <Descriptions.Item label="Ảnh đại diện">
                       {showUpdateForm ? (
                         <Space direction="vertical" size={8}>
@@ -573,6 +744,15 @@ export default function ProfilePage() {
                       </Button>
                       <Button onClick={() => {
                         profileForm.resetFields();
+                        // Reset lại state ngôn ngữ về giá trị từ profile
+                        if (profile) {
+                          const langCodes = (profile.languages ?? []).map((l) => l.code);
+                          setSelectedLangCodes(langCodes);
+                          const primary = (profile.languages ?? []).find((l) => l.isPrimary);
+                          setPrimaryLangCode(primary?.code ?? null);
+                          profileForm.setFieldValue('languageCodes', langCodes);
+                          profileForm.setFieldValue('countryCodes', (profile.countries ?? []).map((c) => c.code));
+                        }
                         setShowUpdateForm(false);
                       }}>
                         Hủy
