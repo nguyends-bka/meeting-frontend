@@ -79,6 +79,8 @@ export default function HomePage() {
               loading={home.loadingHome}
               schedule={home.selectedDaySchedule}
               onViewAll={() => home.router.push('/meetings')}
+              onJoin={home.joinMeetingDirectly}
+              onDetail={home.setDetailMeeting}
             />
 
             {/* Mobile-only AnalyticsChart */}

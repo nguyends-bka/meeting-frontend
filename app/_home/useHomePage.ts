@@ -340,6 +340,28 @@ export function useHomePage() {
     }
   };
 
+  const joinMeetingDirectly = useCallback(
+    async (meeting: HomeMeetingRow) => {
+      if (meeting.passcode) {
+        joinForm.setFieldsValue({
+          meetingIdOrCode: meeting.meetingCode,
+          passcode: meeting.passcode,
+        });
+        setJoinOpen(true);
+      } else {
+        const result = await apiService.joinMeetingByCode(meeting.meetingCode, '');
+        if (result.error) {
+          message.error(result.error);
+          return;
+        }
+        if (result.data) {
+          router.push(`/meeting/${result.data.meetingId}`);
+        }
+      }
+    },
+    [joinForm, message, router],
+  );
+
   // --- 1. Filtered schedule based on calendar strip ---
   const selectedDaySchedule = useMemo(() => {
     return allMeetings
@@ -411,6 +433,7 @@ export function useHomePage() {
     openHistoryModal,
     exportHistoryToExcel,
     onJoinMeeting,
+    joinMeetingDirectly,
     pendingForYou,
     greetingWord,
     selectedDate,

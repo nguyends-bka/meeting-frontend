@@ -169,6 +169,38 @@
     display: none !important;
   }
 }
+/* --- Live Pulse Dot --- */
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  display: inline-block;
+  animation: dotPulse 1.8s infinite ease-in-out;
+}
 
+@keyframes dotPulse {
+  0% {
+    transform: scale(0.85);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(0.85);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
 
-
+.schedule-row-hover {
+  transition: all 0.2s ease-in-out;
+}
+.schedule-row-hover:hover {
+  background-color: #f1f5f9 !important;
+  cursor: pointer;
+}
+.schedule-row-hover.live-meeting:hover {
+  background-color: rgba(34, 197, 94, 0.08) !important;
+}
