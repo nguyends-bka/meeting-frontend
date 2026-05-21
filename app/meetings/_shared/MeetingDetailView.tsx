@@ -88,7 +88,8 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
     return arr;
   }, [m, props.meetingCoHosts, props.meetingInvitees]);
 
-  const canManageInvitees = canManageMeetingInvitees(m, user, isAdmin);
+  const isEnded = status === 'done' || status === 'no_show';
+  const canManageInvitees = canManageMeetingInvitees(m, user, isAdmin) && !isEnded;
 
   return (
     <div className="page-detail">
@@ -102,17 +103,21 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
             <div className="detail-title">{m.title}</div>
             <div className="detail-meta-line">
               <span>Tạo lúc: {dayjs(m.createdAt).format('DD/MM/YYYY HH:mm')}</span>
-              <span className="dot-sep">•</span>
-              <span>{m.participantCount} lượt tham gia</span>
+              {status === 'live' && m.activeParticipantCount !== undefined && m.activeParticipantCount > 0 && (
+                <>
+                  <span className="dot-sep">•</span>
+                  <span style={{ color: '#059669', fontWeight: 500 }}>{m.activeParticipantCount} người đang họp</span>
+                </>
+              )}
             </div>
           </div>
           {getStatusPill()}
         </div>
 
         <div className="detail-modern-grid">
-          <div className="time-range-card">
+          <div className="time-range-card" style={isEnded && m.endedAt ? { gridTemplateColumns: '1fr auto 1fr auto 1fr' } : undefined}>
             <div>
-              <div className="section-mini-title">Bắt đầu</div>
+              <div className="section-mini-title">Bắt đầu (dự kiến)</div>
               <div className="section-mini-value">{dayjs(m.createdAt).format('HH:mm')}</div>
               <div className="section-mini-sub">{dayjs(m.createdAt).format('DD/MM/YYYY')}</div>
             </div>
@@ -128,6 +133,16 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
                 <div className="section-mini-value" style={{ color: '#94a3b8' }}>--:--</div>
               )}
             </div>
+            {isEnded && m.endedAt && (
+              <>
+                <ArrowLeftOutlined className="range-arrow" rotate={180} />
+                <div>
+                  <div className="section-mini-title" style={{ color: '#dc2626' }}>Đã kết thúc lúc</div>
+                  <div className="section-mini-value" style={{ color: '#dc2626' }}>{dayjs(m.endedAt).format('HH:mm')}</div>
+                  <div className="section-mini-sub">{dayjs(m.endedAt).format('DD/MM/YYYY')}</div>
+                </div>
+              </>
+            )}
           </div>
           
           <div className="host-modern-card">
@@ -326,12 +341,13 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
         <Button 
           type="primary" 
           size="large" 
+          disabled={isEnded}
           onClick={() => router.push(`/meeting/${m.id}`)}
           style={{ flex: 1, height: 40, borderRadius: 8, fontSize: 14, fontWeight: 600, minWidth: 150 }}
         >
-          Vào phòng họp ngay
+          {isEnded ? 'Cuộc họp đã kết thúc' : 'Vào phòng họp ngay'}
         </Button>
-        {canEditMeeting(m, user, isAdmin) && (
+        {canEditMeeting(m, user, isAdmin) && !isEnded && (
           <Button 
             size="large" 
             onClick={() => props.openEditMeetingModal(m)}

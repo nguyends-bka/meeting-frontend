@@ -99,11 +99,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
       icon: <VideoCameraOutlined />,
       label: 'Cuộc họp của tôi',
     },
-    {
-      key: '/join',
-      icon: <PlusOutlined />,
-      label: 'Tham gia cuộc họp',
-    },
+
     {
       key: '/history',
       icon: <HistoryOutlined />,
@@ -146,11 +142,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
       icon: <VideoCameraOutlined />,
       label: 'Tất cả cuộc họp',
     },
-    {
-      key: '/join',
-      icon: <PlusOutlined />,
-      label: 'Tham gia cuộc họp',
-    },
+
     {
       key: '/history',
       icon: <HistoryOutlined />,
