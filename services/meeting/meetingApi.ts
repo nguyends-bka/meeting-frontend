@@ -85,6 +85,12 @@ export const meetingApi = {
     });
   },
 
+  getById: async (meetingId: string) => {
+    return apiClient.request<MeetingListItem>(`/api/meeting/${encodeURIComponent(meetingId)}`, {
+      method: 'GET',
+    });
+  },
+
   getHistory: async (meetingId: string) => {
     return apiClient.request<MeetingHistoryItem[]>(`/api/meeting/${meetingId}/history`, {
       method: 'GET',

@@ -40,72 +40,32 @@ function MeetingsPageContent() {
     <MainLayout>
       <div className="dashboard-container">
         
-        {!state.detailMeeting ? (
-          <MeetingsListView
-            statTotal={state.meetings.length}
-            statUpcoming={state.meetingsWithStatus.filter((m: any) => m.computedStatus === 'upcoming').length}
-            statLive={state.meetingsWithStatus.filter((m: any) => m.computedStatus === 'live').length}
-            statDone={state.meetingsWithStatus.filter((m: any) => m.computedStatus === 'done').length}
-            statNoShow={state.meetingsWithStatus.filter((m: any) => m.computedStatus === 'no_show').length}
-            filterStatus={state.filterStatus}
-            setFilterStatus={state.setFilterStatus}
-            searchText={state.searchText}
-            setSearchText={state.setSearchText}
-            paginatedMeetings={state.paginatedMeetings}
-            loadingMeetings={state.loadingMeetings}
-            tablePage={state.tablePage}
-            tablePageSize={state.tablePageSize}
-            totalPages={state.totalPages}
-            filteredMeetings={state.filteredMeetings}
-            setTablePage={state.setTablePage}
-            setTablePageSize={state.setTablePageSize}
-            openDetailModal={state.setDetailMeeting}
-            openHistoryModal={state.setHistoryMeeting}
-            openEditMeetingModal={state.setEditMeetingModal}
-            openPollListModal={state.setViewPollMeeting}
-            user={user}
-            router={state.router}
-            isAdmin={isAdmin}
-          />
-        ) : (
-          <MeetingDetailView
-            detailMeeting={state.detailMeeting}
-            setDetailMeeting={state.setDetailMeeting}
-            user={user}
-            isAdmin={isAdmin}
-            router={state.router}
-            message={message}
-            openDocumentsModal={state.setDocumentsMeeting}
-            openReportModal={state.setReportMeeting}
-            openPollListModal={state.setViewPollMeeting}
-            openHistoryModal={state.setHistoryMeeting}
-            openEditMeetingModal={state.setEditMeetingModal}
-            handleDeleteMeeting={state.handleDeleteMeeting}
-            meetingRecordings={state.meetingRecordings}
-            meetingRecordingsLoading={state.meetingRecordingsLoading}
-            openRecordingPlayback={(meetingId, r) => {
-              state.setRecordingPlaybackTitle(`Bản ghi cuộc họp`);
-              state.setRecordingPlaybackModalOpen(true);
-            }}
-            onDeleteMeetingRecording={state.onDeleteMeetingRecording}
-            recordingDeletingId={state.recordingDeletingId}
-            meetingInvitees={state.meetingInvitees}
-            meetingCoHosts={state.meetingCoHosts}
-            meetingInviteesLoading={state.meetingInviteesLoading}
-            inviteUsernameInput={state.inviteUsernameInput}
-            setInviteUsernameInput={state.setInviteUsernameInput}
-            submitAddInvitee={state.submitAddInvitee}
-            addingInvitee={state.addingInvitee}
-            removeInviteeRow={state.removeInviteeRow}
-            removingInviteeUsername={state.removingInviteeUsername}
-            promoteInviteeToCoHost={state.promoteInviteeToCoHost}
-            promotingInviteeUsername={state.promotingInviteeUsername}
-            demoteCoHostToInvitee={state.demoteCoHostToInvitee}
-            demotingCoHostUsername={state.demotingCoHostUsername}
-            removeCoHostRow={state.removeCoHostRow}
-            removingCoHostUserId={state.removingCoHostUserId}
-          />
-        )}
+        <MeetingsListView
+          statTotal={state.meetings.length}
+          statUpcoming={state.meetingsWithStatus.filter((m: any) => m.computedStatus === 'upcoming').length}
+          statLive={state.meetingsWithStatus.filter((m: any) => m.computedStatus === 'live').length}
+          statDone={state.meetingsWithStatus.filter((m: any) => m.computedStatus === 'done').length}
+          statNoShow={state.meetingsWithStatus.filter((m: any) => m.computedStatus === 'no_show').length}
+          filterStatus={state.filterStatus}
+          setFilterStatus={state.setFilterStatus}
+          searchText={state.searchText}
+          setSearchText={state.setSearchText}
+          paginatedMeetings={state.paginatedMeetings}
+          loadingMeetings={state.loadingMeetings}
+          tablePage={state.tablePage}
+          tablePageSize={state.tablePageSize}
+          totalPages={state.totalPages}
+          filteredMeetings={state.filteredMeetings}
+          setTablePage={state.setTablePage}
+          setTablePageSize={state.setTablePageSize}
+          openDetailModal={(meeting) => state.router.push(`/meetings/${meeting.id}`)}
+          openHistoryModal={state.setHistoryMeeting}
+          openEditMeetingModal={state.setEditMeetingModal}
+          openPollListModal={state.setViewPollMeeting}
+          user={user}
+          router={state.router}
+          isAdmin={isAdmin}
+        />
 
       </div>
 
