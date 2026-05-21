@@ -26,6 +26,7 @@ export function useHomePage() {
   const { user, isAuthenticated, loading, isAdmin } = useAuth();
   const { message } = App.useApp();
 
+  // --- Core States ---
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -42,9 +43,10 @@ export function useHomePage() {
     createdThisWeek: number;
     joinedSessionsTotal: number;
   } | null>(null);
+
+  const [allMeetings, setAllMeetings] = useState<HomeMeetingRow[]>([]);
   const [recentMeetings, setRecentMeetings] = useState<HomeMeetingRow[]>([]);
   const [liveHighlight, setLiveHighlight] = useState<HomeMeetingRow | null>(null);
-  const [todaySchedule, setTodaySchedule] = useState<HomeMeetingRow[]>([]);
   const [detailMeeting, setDetailMeeting] = useState<HomeMeetingRow | null>(null);
   const [historyMeeting, setHistoryMeeting] = useState<HomeMeetingRow | null>(null);
   const [historyItems, setHistoryItems] = useState<HistoryEntry[]>([]);
@@ -52,6 +54,9 @@ export function useHomePage() {
   const [historyTablePage, setHistoryTablePage] = useState(1);
   const [historyTablePageSize, setHistoryTablePageSize] = useState(10);
   const [exportingHistoryExcel, setExportingHistoryExcel] = useState(false);
+
+  // --- 1. Calendar Strip States ---
+  const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs>(dayjs());
 
   const [createForm] = Form.useForm();
   const scheduleRangeWatch = Form.useWatch('scheduleRange', createForm);
@@ -110,10 +115,12 @@ export function useHomePage() {
         now.getDate(),
       ).padStart(2, '0')}`;
 
+      let rows: HomeMeetingRow[] = [];
+
       if (isAdmin) {
         const res = await adminApi.getAllMeetings();
         const meetings = (res.data ?? []) as any[];
-        const rows: HomeMeetingRow[] = meetings.map((m) => ({
+        rows = meetings.map((m) => ({
           id: m.id,
           title: m.title,
           hostName: m.hostName,
@@ -126,65 +133,28 @@ export function useHomePage() {
           startedAt: m.startedAt,
           endedAt: m.endedAt,
         }));
-        rows.sort((a, b) => {
-          const aEnded = Boolean(a.endedAt);
-          const bEnded = Boolean(b.endedAt);
-          const aLive = isMeetingLive(a);
-          const bLive = isMeetingLive(b);
-          if (aLive !== bLive) return aLive ? -1 : 1;
-          if (aEnded !== bEnded) return aEnded ? 1 : -1;
-          return +new Date(b.createdAt) - +new Date(a.createdAt);
-        });
-        setRecentMeetings(rows.slice(0, 15));
-        const weekStart = dayjs().startOf('isoWeek');
-        const createdThisWeek = rows.filter((r) => !dayjs(r.createdAt).isBefore(weekStart)).length;
-        setTodaySchedule(
-          rows
-              .filter((r) => dayjs(r.createdAt).isSame(dayjs(), 'day'))
-              .sort((a, b) => +dayjs(a.createdAt) - +dayjs(b.createdAt)),
-        );
-        setLiveHighlight(pickHeroMeeting(rows));
-
-        const active = rows.filter((r) => isMeetingLive(r)).length;
-        const todayCount = rows.filter((r) => {
-          const d = new Date(r.createdAt);
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(
-            2,
-            '0',
-          )}`;
-          return key === todayKey;
-        }).length;
-        let joinedSessionsTotal = 0;
-        const histRes = await apiService.getMyHistory();
-        if (histRes.data && Array.isArray(histRes.data)) {
-          joinedSessionsTotal = histRes.data.length;
-        }
-        setStats({
-          totalMeetings: rows.length,
-          activeMeetings: active,
-          todayMeetings: todayCount,
-          createdThisWeek,
-          joinedSessionsTotal,
-        });
-        return;
+      } else {
+        const result = await apiService.getMeetings();
+        const meetings = (result.data ?? []) as any[];
+        rows = meetings.map((m) => ({
+          id: m.id,
+          title: m.title,
+          hostName: m.hostName,
+          hostIdentity: m.hostIdentity ?? '',
+          isMeetingHost: Boolean(m.isMeetingHost),
+          meetingCode: m.meetingCode,
+          passcode: m.passcode ?? '',
+          createdAt: m.createdAt,
+          startedAt: m.startedAt,
+          endedAt: m.endedAt,
+          activeParticipantCount: m.activeParticipantCount,
+        }));
       }
 
-      const result = await apiService.getMeetings();
-      const meetings = (result.data ?? []) as any[];
-      const rows: HomeMeetingRow[] = meetings.map((m) => ({
-        id: m.id,
-        title: m.title,
-        hostName: m.hostName,
-        hostIdentity: m.hostIdentity ?? '',
-        isMeetingHost: Boolean(m.isMeetingHost),
-        meetingCode: m.meetingCode,
-        passcode: m.passcode ?? '',
-        createdAt: m.createdAt,
-        startedAt: m.startedAt,
-        endedAt: m.endedAt,
-        activeParticipantCount: m.activeParticipantCount,
-      }));
-      rows.sort((a, b) => {
+      setAllMeetings(rows);
+
+      // Sort and slice for recent meetings
+      const sortedRows = [...rows].sort((a, b) => {
         const aEnded = Boolean(a.endedAt);
         const bEnded = Boolean(b.endedAt);
         const aLive = isMeetingLive(a);
@@ -193,15 +163,11 @@ export function useHomePage() {
         if (aEnded !== bEnded) return aEnded ? 1 : -1;
         return +new Date(b.createdAt) - +new Date(a.createdAt);
       });
-      setRecentMeetings(rows.slice(0, 15));
+      setRecentMeetings(sortedRows.slice(0, 15));
+      setLiveHighlight(pickHeroMeeting(rows));
+
       const weekStart = dayjs().startOf('isoWeek');
       const createdThisWeek = rows.filter((r) => !dayjs(r.createdAt).isBefore(weekStart)).length;
-      setTodaySchedule(
-        rows
-            .filter((r) => dayjs(r.createdAt).isSame(dayjs(), 'day'))
-            .sort((a, b) => +dayjs(a.createdAt) - +dayjs(b.createdAt)),
-      );
-      setLiveHighlight(pickHeroMeeting(rows));
 
       const todayCount = rows.filter((r) => {
         const d = new Date(r.createdAt);
@@ -211,15 +177,18 @@ export function useHomePage() {
         )}`;
         return key === todayKey;
       }).length;
-      const activeUser = rows.filter((r) => isMeetingLive(r)).length;
+
+      const active = rows.filter((r) => isMeetingLive(r)).length;
+      
       let joinedSessionsTotal = 0;
       const histRes = await apiService.getMyHistory();
       if (histRes.data && Array.isArray(histRes.data)) {
         joinedSessionsTotal = histRes.data.length;
       }
+
       setStats({
         totalMeetings: rows.length,
-        activeMeetings: activeUser,
+        activeMeetings: active,
         todayMeetings: todayCount,
         createdThisWeek,
         joinedSessionsTotal,
@@ -371,11 +340,20 @@ export function useHomePage() {
     }
   };
 
+  // --- 1. Filtered schedule based on calendar strip ---
+  const selectedDaySchedule = useMemo(() => {
+    return allMeetings
+      .filter((m) => dayjs(m.createdAt).isSame(selectedDate, 'day'))
+      .sort((a, b) => +dayjs(a.createdAt) - +dayjs(b.createdAt));
+  }, [allMeetings, selectedDate]);
+
   const pendingForYou = useMemo(() => {
     if (!stats) return 0;
-    const extra = todaySchedule.filter((r) => !r.endedAt && !isMeetingLive(r)).length;
+    const extra = allMeetings.filter(
+      (r) => dayjs(r.createdAt).isSame(dayjs(), 'day') && !r.endedAt && !isMeetingLive(r)
+    ).length;
     return (stats.activeMeetings ?? 0) + extra;
-  }, [todaySchedule, stats]);
+  }, [allMeetings, stats]);
 
   const greetingWord = useMemo(() => {
     const h = dayjs().hour();
@@ -405,9 +383,10 @@ export function useHomePage() {
     createdMeeting,
     setCreatedMeeting,
     stats,
+    allMeetings,
     recentMeetings,
     liveHighlight,
-    todaySchedule,
+    selectedDaySchedule,
     detailMeeting,
     setDetailMeeting,
     historyMeeting,
@@ -434,5 +413,7 @@ export function useHomePage() {
     onJoinMeeting,
     pendingForYou,
     greetingWord,
+    selectedDate,
+    setSelectedDate,
   };
 }

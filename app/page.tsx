@@ -12,6 +12,11 @@ import CreateMeetingModal from './_home/components/CreateMeetingModal';
 import JoinMeetingModal from './_home/components/JoinMeetingModal';
 import MeetingDetailModal from './_home/components/MeetingDetailModal';
 import MeetingHistoryModal from './_home/components/MeetingHistoryModal';
+
+// New Dashboard Widgets
+import CalendarStrip from './_home/components/CalendarStrip';
+import AnalyticsChart from './_home/components/AnalyticsChart';
+
 import './_home/home.css';
 
 export default function HomePage() {
@@ -35,7 +40,8 @@ export default function HomePage() {
         }}
       >
         <Row gutter={[24, 24]}>
-          <Col xs={24} lg={24}>
+          {/* Main Left Column (2/3 width on desktop) */}
+          <Col xs={24} lg={15} xl={16}>
             <GreetingBanner
               user={home.user}
               pendingCount={home.pendingForYou}
@@ -43,12 +49,15 @@ export default function HomePage() {
               onOpenCreate={() => home.setCreateOpen(true)}
             />
 
-            {home.stats && (
-              <StatsOverview
-                stats={home.stats}
-                onRedirectHistory={() => home.router.push('/history')}
-              />
-            )}
+            {/* Mobile-only StatsOverview */}
+            <div className="hide-on-desktop" style={{ marginTop: 24 }}>
+              {home.stats && (
+                <StatsOverview
+                  stats={home.stats}
+                  onRedirectHistory={() => home.router.push('/history')}
+                />
+              )}
+            </div>
 
             {home.liveHighlight && (
               <HeroHighlight
@@ -59,11 +68,37 @@ export default function HomePage() {
               />
             )}
 
+            {/* Weekly Calendar Strip */}
+            <CalendarStrip
+              selectedDate={home.selectedDate}
+              onSelectDate={home.setSelectedDate}
+            />
+
+            {/* Selected day's schedule */}
             <TodaySchedule
               loading={home.loadingHome}
-              schedule={home.todaySchedule}
+              schedule={home.selectedDaySchedule}
               onViewAll={() => home.router.push('/meetings')}
             />
+
+            {/* Mobile-only AnalyticsChart */}
+            <div className="hide-on-desktop" style={{ marginTop: 24 }}>
+              <AnalyticsChart allMeetings={home.allMeetings} />
+            </div>
+          </Col>
+
+          {/* Sidebar Right Column (1/3 width on desktop) */}
+          <Col xs={24} lg={9} xl={8} className="hide-on-mobile">
+            {/* General Numerical Stats */}
+            {home.stats && (
+              <StatsOverview
+                stats={home.stats}
+                onRedirectHistory={() => home.router.push('/history')}
+              />
+            )}
+
+            {/* Meeting statistics chart */}
+            <AnalyticsChart allMeetings={home.allMeetings} />
           </Col>
         </Row>
       </div>

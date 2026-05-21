@@ -16,19 +16,31 @@ export default function StatsOverview({ stats, onRedirectHistory }: StatsOvervie
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
   
+  const isNarrow = !screens.lg;
   const isWideHome = Boolean(screens.xxl);
   const isCompactStats = !isWideHome && screens.lg;
-  const statScale = isCompactStats ? 0.85 : 1;
+  const statScale = isNarrow ? 0.8 : isCompactStats ? 0.85 : 1;
   const ss = (n: number) => Math.round(n * statScale);
 
   return (
     <Card
       variant="borderless"
       className="premium-shadow"
-      style={{ borderRadius: 24, marginBottom: 24, border: 'none' }}
-      title={<span style={{ fontWeight: 800, fontSize: 18, color: '#1e293b' }}>Tổng quan cá nhân</span>}
+      styles={{
+        body: { padding: isNarrow ? '16px' : '24px' }
+      }}
+      style={{
+        borderRadius: isNarrow ? 20 : 24,
+        marginBottom: isNarrow ? 16 : 24,
+        border: 'none'
+      }}
+      title={
+        <span style={{ fontWeight: 800, fontSize: isNarrow ? 15 : 18, color: '#1e293b' }}>
+          Tổng quan cá nhân
+        </span>
+      }
     >
-      <Row gutter={[16, 16]}>
+      <Row gutter={isNarrow ? [12, 12] : [16, 16]}>
         <Col xs={24} sm={12}>
           <div
             className="hover-scale"
@@ -42,8 +54,8 @@ export default function StatsOverview({ stats, onRedirectHistory }: StatsOvervie
               overflow: 'hidden'
             }}
           >
-            <div style={{ position: 'absolute', right: -10, top: -10, opacity: 0.1 }}>
-              <VideoCameraOutlined style={{ fontSize: 80, color: '#0284c7' }} />
+            <div style={{ position: 'absolute', right: -5, top: -5, opacity: 0.1 }}>
+              <VideoCameraOutlined style={{ fontSize: ss(80), color: '#0284c7' }} />
             </div>
             <VideoCameraOutlined style={{ fontSize: ss(28), color: '#0ea5e9' }} />
             <div style={{ fontSize: ss(36), fontWeight: 800, marginTop: ss(12), color: '#0369a1', lineHeight: 1 }}>
@@ -74,8 +86,8 @@ export default function StatsOverview({ stats, onRedirectHistory }: StatsOvervie
               if (e.key === 'Enter' || e.key === ' ') onRedirectHistory();
             }}
           >
-            <div style={{ position: 'absolute', right: -10, top: -10, opacity: 0.1 }}>
-              <CheckCircleOutlined style={{ fontSize: 80, color: '#16a34a' }} />
+            <div style={{ position: 'absolute', right: -5, top: -5, opacity: 0.1 }}>
+              <CheckCircleOutlined style={{ fontSize: ss(80), color: '#16a34a' }} />
             </div>
             <CheckCircleOutlined style={{ fontSize: ss(28), color: '#22c55e' }} />
             <div style={{ fontSize: ss(36), fontWeight: 800, marginTop: ss(12), color: '#14532d', lineHeight: 1 }}>

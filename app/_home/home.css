@@ -65,3 +65,110 @@
   margin: 0 auto;
   box-sizing: border-box;
 }
+
+/* --- Calendar Strip --- */
+.calendar-strip-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 4px 0;
+  overflow-x: auto;
+}
+
+.calendar-day-card {
+  flex: 1;
+  min-width: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 6px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.calendar-day-card:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+}
+
+.calendar-day-card.active {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.calendar-day-card.active .day-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.calendar-day-card.active .day-number {
+  color: #ffffff;
+}
+
+.day-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 4px;
+  letter-spacing: 0.05em;
+}
+
+.day-number {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* --- Analytics SVG Chart --- */
+.chart-container-svg {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  margin-top: 14px;
+}
+
+.chart-svg-path {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawLine 2s forwards ease-in-out;
+}
+
+@keyframes drawLine {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.chart-dot {
+  transition: r 0.2s ease, fill 0.2s ease;
+  cursor: pointer;
+}
+
+.chart-dot:hover {
+  r: 6;
+  fill: #ef4444;
+}
+
+/* --- Responsive Helpers --- */
+@media (max-width: 991px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
+@media (min-width: 992px) {
+  .hide-on-desktop {
+    display: none !important;
+  }
+}
+
+
+
