@@ -1,11 +1,16 @@
 import React from 'react';
-import { Typography, Space, Tag, Button } from 'antd';
-import { CalendarOutlined, UserOutlined, CaretRightOutlined } from '@ant-design/icons';
+import { Button } from 'antd';
+import { 
+  CalendarOutlined, 
+  UserOutlined, 
+  EnvironmentOutlined, 
+  SyncOutlined,
+  ClockCircleOutlined,
+  VideoCameraOutlined
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { HomeMeetingRow } from '../types';
-import { meetingRowStatus } from '../helpers';
-
-const { Title, Text } = Typography;
+import { meetingRowStatus, getVirtualRoom, getHostNameOnly } from '../helpers';
 
 interface HeroHighlightProps {
   meeting: HomeMeetingRow;
@@ -25,110 +30,186 @@ export default function HeroHighlight({ meeting, onJoin, onDetail, isNarrow }: H
       ? plannedEnd
       : start.add(1, 'hour');
 
-  const now = dayjs();
-  const minutesLeft = end.diff(now, 'minute');
-
   return (
     <div
-      className="hover-scale premium-shadow"
       style={{
-        borderRadius: 20,
-        padding: isNarrow ? 20 : 28,
-        marginBottom: 24,
-        background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)',
-        color: '#0f172a',
-        border: '1px solid #e2e8f0',
-        position: 'relative',
-        overflow: 'hidden'
+        background: '#ffffff',
+        borderRadius: isNarrow ? 16 : 20,
+        border: '1px solid #bfdbfe',
+        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.05)',
+        padding: isNarrow ? '12px' : '16px',
+        marginBottom: isNarrow ? 12 : 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isNarrow ? 10 : 16
       }}
     >
-      <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: isHeroLive ? '#22c55e' : '#3b82f6' }} />
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
-        <Space wrap size={[8, 8]}>
-          <Tag color={isHeroLive ? 'success' : 'processing'} style={{ margin: 0, fontWeight: 700, padding: '4px 10px', borderRadius: '6px', border: 'none', background: isHeroLive ? '#dcfce7' : '#dbeafe', color: isHeroLive ? '#166534' : '#1e40af' }}>
-            {isHeroLive ? 'ĐANG DIỄN RA' : 'SẮP DIỄN RA'}
-          </Tag>
-          <Text style={{ color: '#64748b', fontSize: 14, fontWeight: 500 }}>
-            {isHeroLive ? 'Hôm nay' : 'Dự kiến'}, {start.format('DD/MM/YYYY')}
-          </Text>
-        </Space>
-
-        {isHeroLive && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#16a34a', fontSize: 13, fontWeight: 600 }}>
-            <span className="pulse-dot" />
-            {(meeting.activeParticipantCount ?? 0) > 0
-              ? `${meeting.activeParticipantCount} người trong phòng`
-              : 'Chưa có ai vào phòng'}
-          </div>
+      {/* Card Header Title */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderBottom: '1px solid #f1f5f9',
+        paddingBottom: isNarrow ? 6 : 8
+      }}>
+        <h3 style={{
+          margin: 0,
+          fontSize: isNarrow ? 13 : 14,
+          fontWeight: 700,
+          color: '#0f172a',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6
+        }}>
+          <span className="pulse-dot" style={{ background: '#3b82f6', width: isNarrow ? 6 : 8, height: isNarrow ? 6 : 8 }} />
+          Cuộc họp tiếp theo của bạn
+        </h3>
+        {!isNarrow && (
+          <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>
+            <SyncOutlined spin={isHeroLive} style={{ marginRight: 4 }} />
+            Hệ thống tự động đồng bộ
+          </span>
         )}
       </div>
-      <Title level={2} style={{ margin: 0, color: '#0f172a', fontWeight: 800, letterSpacing: '-0.02em' }}>
-        {meeting.title}
-      </Title>
-      <div style={{ marginTop: 14, display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#475569', fontSize: 15, fontWeight: 500 }}>
-           <CalendarOutlined style={{ color: '#3b82f6' }} />
-           <span>{start.format('HH:mm')} – {end.format('HH:mm')}</span>
-           {isHeroLive && minutesLeft > 0 && (
-             <span style={{ color: '#e67e22', fontSize: 13, fontWeight: 600, marginLeft: 4 }}>
-               (Còn {minutesLeft} phút)
-             </span>
-           )}
-           {isHeroLive && minutesLeft <= 0 && (
-             <span style={{ color: '#ef4444', fontSize: 13, fontWeight: 600, marginLeft: 4 }}>
-               (Quá {Math.abs(minutesLeft)} phút)
-             </span>
-           )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#475569', fontSize: 15, fontWeight: 500 }}>
-           <UserOutlined style={{ color: '#8b5cf6' }} />
-           Host: <span style={{ color: '#1e293b', fontWeight: 600 }}>{meeting.hostName}</span>
-        </div>
-      </div>
+
+      {/* Main Content Layout */}
       <div
         style={{
-          marginTop: 20,
-          padding: 16,
-          borderRadius: 12,
-          background: 'rgba(241, 245, 249, 0.7)',
-          border: '1px dashed #cbd5e1',
           display: 'flex',
-          gap: 32,
-          alignItems: 'center'
+          flexDirection: isNarrow ? 'column' : 'row',
+          justifyContent: 'space-between',
+          alignItems: isNarrow ? 'stretch' : 'center',
+          gap: isNarrow ? 10 : 16
         }}
       >
-        <div>
-          <Text style={{ color: '#64748b', fontSize: 13, display: 'block', marginBottom: 4 }}>Mã phòng</Text>
-          <Text strong style={{ color: '#0f172a', fontSize: 18, fontFamily: 'monospace', letterSpacing: '1px' }}>
-            {meeting.meetingCode}
-          </Text>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: isNarrow ? 8 : 12 }}>
+          {/* Status Badge & Date */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: isNarrow ? '6px 8px' : 10, flexWrap: 'wrap' }}>
+            {isHeroLive ? (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                background: '#f0fdf4',
+                color: '#15803d',
+                fontSize: 9,
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                border: '1px solid #bbf7d0'
+              }}>
+                ĐANG DIỄN RA
+              </span>
+            ) : (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                background: '#dbeafe',
+                color: '#1d4ed8',
+                fontSize: 9,
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                SẮP DIỄN RA
+              </span>
+            )}
+            <span style={{ fontSize: isNarrow ? 11 : 12, color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <CalendarOutlined style={{ fontSize: 11, color: '#94a3b8' }} />
+              <span>{start.format('D/M/YYYY')}</span>
+            </span>
+            <span style={{ color: '#cbd5e1' }}>•</span>
+            <span style={{ fontSize: isNarrow ? 11 : 12, color: '#0f172a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <ClockCircleOutlined style={{ color: '#3b82f6', fontSize: 12 }} />
+              <span>{start.format('HH:mm')} - {end.format('HH:mm')}</span>
+            </span>
+          </div>
+
+          {/* Meeting Title */}
+          <h4
+            onClick={onDetail}
+            style={{
+              margin: 0,
+              fontSize: isNarrow ? 14 : 18,
+              fontWeight: 800,
+              color: '#0f172a',
+              cursor: 'pointer',
+              transition: 'color 0.2s',
+              lineHeight: 1.3
+            }}
+            className="hover-blue-text"
+          >
+            {meeting.title}
+          </h4>
+
+          {/* Metadata List */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            fontSize: isNarrow ? 11 : 12,
+            color: '#64748b'
+          }}>
+            {/* Host & Location on 1 line, Host first */}
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '2px 6px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <UserOutlined style={{ color: '#94a3b8', fontSize: 11 }} />
+                <span>
+                  Người chủ trì:{' '}
+                  <strong style={{ color: '#0f172a', fontWeight: 600 }}>
+                    {meeting.location ? meeting.hostName : getHostNameOnly(meeting.hostName)}
+                  </strong>
+                </span>
+              </span>
+              <span style={{ color: '#cbd5e1' }}>•</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <EnvironmentOutlined style={{ color: '#94a3b8', fontSize: 11 }} />
+                <span>
+                  Địa điểm:{' '}
+                  <strong style={{ color: '#0f172a', fontWeight: 600 }}>
+                    {meeting.location || getVirtualRoom(meeting.hostName, meeting.id)}
+                  </strong>
+                </span>
+              </span>
+            </div>
+          </div>
         </div>
-        <div style={{ width: 1, height: 40, background: '#cbd5e1' }} />
-        <div>
-          <Text style={{ color: '#64748b', fontSize: 13, display: 'block', marginBottom: 4 }}>Passcode</Text>
-          <Text strong style={{ color: '#0f172a', fontSize: 18, fontFamily: 'monospace', letterSpacing: '1px' }}>
-            {meeting.passcode || '—'}
-          </Text>
+
+        {/* Right Action column */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: isNarrow ? 'stretch' : 'flex-end',
+          minWidth: isNarrow ? undefined : 140,
+          flexShrink: 0
+        }}>
+          <Button
+            type="primary"
+            icon={<VideoCameraOutlined />}
+            onClick={onJoin}
+            style={{
+              width: '100%',
+              height: isNarrow ? 34 : 38,
+              borderRadius: 8,
+              fontWeight: 700,
+              fontSize: isNarrow ? 11 : 12,
+              boxShadow: '0 4px 12px rgba(34, 197, 94, 0.25)',
+              background: '#22c55e',
+              borderColor: '#22c55e',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6
+            }}
+          >
+            Vào Phòng Ngay
+          </Button>
         </div>
       </div>
-      <Space style={{ marginTop: 24 }} wrap size={16}>
-        <Button
-          type="primary"
-          size="large"
-          icon={<CaretRightOutlined />}
-          onClick={onJoin}
-          style={{ fontWeight: 600, background: 'linear-gradient(to right, #2563eb, #3b82f6)', border: 'none', height: 46, padding: '0 28px', borderRadius: 8, boxShadow: '0 4px 14px rgba(37,99,235,0.4)', animation: isHeroLive ? 'pulse-glow 2s infinite' : 'none' }}
-        >
-          Tham gia ngay
-        </Button>
-        <Button
-          size="large"
-          onClick={onDetail}
-          style={{ fontWeight: 600, color: '#475569', height: 46, padding: '0 28px', borderRadius: 8, border: '1px solid #cbd5e1' }}
-        >
-          Chi tiết
-        </Button>
-      </Space>
     </div>
   );
 }

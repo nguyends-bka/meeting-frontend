@@ -9,6 +9,8 @@ import type { MeetingListItem } from '@/dtos/meeting.dto';
 
 type AdminMeetingListItem = MeetingListItem & { participantCount: number; activeParticipantCount: number };
 
+import { getHostNameOnly, getVirtualRoom } from '@/app/_home/helpers';
+
 import {
   App,
   Button,
@@ -115,15 +117,21 @@ export default function AdminMeetingsPage() {
     },
     {
       title: 'Tên cuộc họp',
-      dataIndex: 'title',
       key: 'title',
-      render: (text: string) => <Typography.Text strong>{text}</Typography.Text>,
+      render: (_: unknown, record: MeetingListItem) => (
+        <Space direction="vertical" size={2}>
+          <Typography.Text strong>{record.title}</Typography.Text>
+          <span style={{ fontSize: 12, color: '#64748b' }}>
+            Phòng: {record.location || getVirtualRoom(record.hostName, record.id)}
+          </span>
+        </Space>
+      ),
     },
     {
       title: 'Host',
-      dataIndex: 'hostName',
       key: 'hostName',
       width: 150,
+      render: (_: unknown, record: MeetingListItem) => record.location ? record.hostName : getHostNameOnly(record.hostName),
     },
     {
       title: 'Mã cuộc họp',

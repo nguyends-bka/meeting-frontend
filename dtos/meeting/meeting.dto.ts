@@ -3,6 +3,7 @@
 export interface CreateMeetingRequest {
   title: string;
   hostName: string;
+  location?: string;
   passcode?: string;
   startAt?: number;
   estimatedEndAt?: number | null;
@@ -48,6 +49,7 @@ export interface MeetingListItem {
   id: string;
   title: string;
   hostName: string;
+  location?: string;
   hostIdentity: string;
   canManagePoll: boolean;
   /** Chủ trì gốc hoặc đồng chủ trì (theo user đang đăng nhập). */
@@ -146,6 +148,7 @@ export interface MyHistoryItem {
   duration: number | null;
   meetingCode: string;
   hostName: string;
+  location?: string;
 }
 
 /** Khớp backend PollCreateRequestDto */

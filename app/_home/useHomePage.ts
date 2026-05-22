@@ -132,6 +132,7 @@ export function useHomePage() {
           activeParticipantCount: m.activeParticipantCount,
           startedAt: m.startedAt,
           endedAt: m.endedAt,
+          location: m.location,
         }));
       } else {
         const result = await apiService.getMeetings();
@@ -148,6 +149,7 @@ export function useHomePage() {
           startedAt: m.startedAt,
           endedAt: m.endedAt,
           activeParticipantCount: m.activeParticipantCount,
+          location: m.location,
         }));
       }
 
@@ -201,7 +203,8 @@ export function useHomePage() {
   const onCreateMeeting = async () => {
     const values = await createForm.validateFields();
     const title = String(values.title || '').trim();
-    const finalHostName = String(values.hostName || '').trim() || user?.username || 'Host';
+    const baseHostName = String(values.hostName || '').trim() || user?.username || 'Host';
+    const roomName = values.selectedRoom === 'Khác' ? String(values.customRoom || '').trim() : values.selectedRoom;
     const scheduleRange = values.scheduleRange as [dayjs.Dayjs, dayjs.Dayjs] | undefined;
     const startAt = scheduleRange?.[0]?.valueOf();
     const estimatedEndAt = scheduleRange?.[1]?.valueOf();
@@ -209,7 +212,8 @@ export function useHomePage() {
     setCreating(true);
     const result = await apiService.createMeeting(
       title,
-      finalHostName,
+      baseHostName,
+      roomName,
       undefined,
       typeof startAt === 'number' ? startAt : undefined,
       typeof estimatedEndAt === 'number' ? estimatedEndAt : null,
@@ -366,7 +370,7 @@ export function useHomePage() {
   const selectedDaySchedule = useMemo(() => {
     return allMeetings
       .filter((m) => dayjs(m.createdAt).isSame(selectedDate, 'day'))
-      .sort((a, b) => +dayjs(a.createdAt) - +dayjs(b.createdAt));
+      .sort((a, b) => +dayjs(b.createdAt) - +dayjs(a.createdAt));
   }, [allMeetings, selectedDate]);
 
   const pendingForYou = useMemo(() => {

@@ -16,7 +16,6 @@ import { useHeaderActions } from '@/contexts/HeaderActionsContext';
 import { useSearchParams } from 'next/navigation';
 
 // New Dashboard Widgets
-import CalendarStrip from './_home/components/CalendarStrip';
 import AnalyticsChart from './_home/components/AnalyticsChart';
 
 import './_home/home.css';
@@ -25,6 +24,7 @@ function HomePageContent() {
   const home = useHomePage();
   const { registerActions, clearActions } = useHeaderActions();
   const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = React.useState<'timeline' | 'stats'>('timeline');
 
   // Register header action callbacks so AppHeader buttons work
   useEffect(() => {
@@ -61,27 +61,19 @@ function HomePageContent() {
         className="home-container"
         style={{
           maxWidth: home.isNarrow ? undefined : 'min(1720px, 100%)',
-          padding: home.isNarrow ? 16 : home.isWideHome ? 28 : 24,
+          padding: home.isNarrow ? 8 : home.isWideHome ? 28 : 24,
         }}
       >
-        <Row gutter={[24, 24]}>
+        {/* Full-width Greeting Banner at the top */}
+        <GreetingBanner
+          user={home.user}
+          pendingCount={home.pendingForYou}
+          isNarrow={home.isNarrow}
+        />
+
+        <Row gutter={home.isNarrow ? [12, 12] : [24, 24]}>
           {/* Main Left Column (2/3 width on desktop) */}
           <Col xs={24} lg={15} xl={16}>
-            <GreetingBanner
-              user={home.user}
-              pendingCount={home.pendingForYou}
-            />
-
-            {/* Mobile-only StatsOverview */}
-            <div className="hide-on-desktop" style={{ marginTop: 24 }}>
-              {home.stats && (
-                <StatsOverview
-                  stats={home.stats}
-                  onRedirectHistory={() => home.router.push('/history')}
-                />
-              )}
-            </div>
-
             {home.liveHighlight && (
               <HeroHighlight
                 meeting={home.liveHighlight}
@@ -91,39 +83,110 @@ function HomePageContent() {
               />
             )}
 
-            {/* Weekly Calendar Strip */}
-            <CalendarStrip
-              selectedDate={home.selectedDate}
-              onSelectDate={home.setSelectedDate}
-            />
+            {/* General Numerical Stats (show on left on desktop below HeroHighlight) */}
+            {home.stats && (
+              <div className="hide-on-mobile">
+                <StatsOverview
+                  stats={home.stats}
+                  onRedirectHistory={() => home.router.push('/history')}
+                />
+              </div>
+            )}
 
-            {/* Selected day's schedule */}
-            <TodaySchedule
-              loading={home.loadingHome}
-              schedule={home.selectedDaySchedule}
-              onViewAll={() => home.router.push('/meetings')}
-              onJoin={home.joinMeetingDirectly}
-              onDetail={home.setDetailMeeting}
-            />
-
-            {/* Mobile-only AnalyticsChart */}
-            <div className="hide-on-desktop" style={{ marginTop: 24 }}>
+            {/* Meeting statistics chart (show on left on desktop) */}
+            <div className="hide-on-mobile">
               <AnalyticsChart allMeetings={home.allMeetings} />
             </div>
           </Col>
 
           {/* Sidebar Right Column (1/3 width on desktop) */}
-          <Col xs={24} lg={9} xl={8} className="hide-on-mobile">
-            {/* General Numerical Stats */}
-            {home.stats && (
-              <StatsOverview
-                stats={home.stats}
-                onRedirectHistory={() => home.router.push('/history')}
+          <Col xs={24} lg={9} xl={8}>
+            {home.isNarrow ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Segment Switcher only on Mobile */}
+                <div style={{
+                  display: 'flex',
+                  background: '#f1f5f9',
+                  padding: 3,
+                  borderRadius: 12,
+                  marginBottom: 4
+                }}>
+                  <button
+                    onClick={() => setActiveTab('timeline')}
+                    style={{
+                      flex: 1,
+                      padding: '6px 12px',
+                      borderRadius: 9,
+                      border: 'none',
+                      background: activeTab === 'timeline' ? '#ffffff' : 'transparent',
+                      color: activeTab === 'timeline' ? '#2563eb' : '#64748b',
+                      fontWeight: activeTab === 'timeline' ? 800 : 600,
+                      fontSize: 12,
+                      boxShadow: activeTab === 'timeline' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      outline: 'none'
+                    }}
+                  >
+                    📅 Biểu lịch
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('stats')}
+                    style={{
+                      flex: 1,
+                      padding: '6px 12px',
+                      borderRadius: 9,
+                      border: 'none',
+                      background: activeTab === 'stats' ? '#ffffff' : 'transparent',
+                      color: activeTab === 'stats' ? '#2563eb' : '#64748b',
+                      fontWeight: activeTab === 'stats' ? 800 : 600,
+                      fontSize: 12,
+                      boxShadow: activeTab === 'stats' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      outline: 'none'
+                    }}
+                  >
+                    📊 Thống kê & Biểu đồ
+                  </button>
+                </div>
+
+                {activeTab === 'timeline' ? (
+                  <TodaySchedule
+                    loading={home.loadingHome}
+                    schedule={home.selectedDaySchedule}
+                    onViewAll={() => home.router.push('/calendar')}
+                    onJoin={home.joinMeetingDirectly}
+                    onDetail={home.setDetailMeeting}
+                    selectedDate={home.selectedDate}
+                    onSelectDate={home.setSelectedDate}
+                    isNarrow={home.isNarrow}
+                  />
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {home.stats && (
+                      <StatsOverview
+                        stats={home.stats}
+                        onRedirectHistory={() => home.router.push('/history')}
+                      />
+                    )}
+                    <AnalyticsChart allMeetings={home.allMeetings} />
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Desktop Layout: Render Timeline natively */
+              <TodaySchedule
+                loading={home.loadingHome}
+                schedule={home.selectedDaySchedule}
+                onViewAll={() => home.router.push('/calendar')}
+                onJoin={home.joinMeetingDirectly}
+                onDetail={home.setDetailMeeting}
+                selectedDate={home.selectedDate}
+                onSelectDate={home.setSelectedDate}
+                isNarrow={home.isNarrow}
               />
             )}
-
-            {/* Meeting statistics chart */}
-            <AnalyticsChart allMeetings={home.allMeetings} />
           </Col>
         </Row>
       </div>

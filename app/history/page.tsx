@@ -18,6 +18,7 @@ import {
 } from 'antd';
 import { HistoryOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { getHostNameOnly, getVirtualRoom } from '@/app/_home/helpers';
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -74,11 +75,14 @@ export default function HistoryPage() {
       dataIndex: 'meetingTitle',
       key: 'meetingTitle',
       render: (text: string, record: MyHistoryItem) => (
-        <Space direction="vertical" size={0}>
+        <Space direction="vertical" size={2}>
           <Typography.Text strong>{text}</Typography.Text>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Mã: {record.meetingCode} | Host: {record.hostName}
+            Mã: {record.meetingCode} | Host: {record.location ? record.hostName : getHostNameOnly(record.hostName)}
           </Typography.Text>
+          <span style={{ fontSize: 12, color: '#64748b' }}>
+            Phòng: {record.location || getVirtualRoom(record.hostName, record.meetingId)}
+          </span>
         </Space>
       ),
     },

@@ -4,6 +4,11 @@ import './globals.css';
 import { AuthProvider } from '@/lib/auth';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import ThemeProvider from '@/components/ThemeProvider';
+import viVN from 'antd/locale/vi_VN';
+import dayjs from 'dayjs';
+import 'dayjs/locale/vi';
+
+dayjs.locale('vi');
 
 export const metadata = {
   title: 'BKMeeting',
@@ -77,7 +82,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <ConfigProvider wave={{ disabled: true }}>
+        <ConfigProvider locale={viVN} wave={{ disabled: true }}>
         <AntdApp>
           <ThemeProvider>
             <AuthProvider>{children}</AuthProvider>

@@ -7,6 +7,7 @@ export interface HomeMeetingRow {
   meetingCode: string;
   passcode: string;
   createdAt: string;
+  location?: string;
   activeParticipantCount?: number;
   startedAt?: string | null;
   endedAt?: string | null;

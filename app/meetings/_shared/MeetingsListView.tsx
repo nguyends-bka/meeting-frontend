@@ -5,6 +5,7 @@ import { SearchOutlined, SettingOutlined, CalendarOutlined, PlusOutlined, MoreOu
 import dayjs from 'dayjs';
 import type { MeetingListItem } from '@/dtos/meeting.dto';
 import { getMeetingStatus, isHostForMeeting } from './helpers';
+import { getHostNameOnly, getVirtualRoom } from '@/app/_home/helpers';
 
 interface MeetingsListViewProps {
   statTotal: number;
@@ -157,6 +158,11 @@ export function MeetingsListView({
                         {record.passcode}
                       </Typography.Text>
                     </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '2px 0', fontSize: 12, color: 'var(--color-secondary, #64748b)' }}>
+                    <span>Phòng: <strong style={{ color: 'var(--color-body, #1e293b)' }}>{record.location || getVirtualRoom(record.hostName, record.id)}</strong></span>
+                    <span style={{ color: '#cbd5e1' }}>•</span>
+                    <span>Host: <strong style={{ color: 'var(--color-body, #1e293b)' }}>{record.location ? record.hostName : getHostNameOnly(record.hostName)}</strong></span>
                   </div>
                   <Typography.Text style={{ fontSize: 12, color: 'var(--color-muted, #94a3b8)', display: 'flex', alignItems: 'center', gap: 4 }}>
                     <CalendarOutlined style={{ color: 'var(--color-muted, #94a3b8)' }} />

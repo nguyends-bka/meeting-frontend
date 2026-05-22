@@ -48,6 +48,7 @@ export interface AdminMeeting {
   meetingCode: string;
   passcode: string;
   roomName: string;
+  location?: string;
   createdAt: string;
   startedAt?: string | null;
   endedAt?: string | null;

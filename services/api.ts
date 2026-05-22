@@ -28,11 +28,12 @@ class ApiService {
   async createMeeting(
     title: string,
     hostName: string,
+    location?: string,
     passcode?: string,
     startAt?: number,
     estimatedEndAt?: number | null,
   ) {
-    return meetingApi.create({ title, hostName, passcode, startAt, estimatedEndAt });
+    return meetingApi.create({ title, hostName, location, passcode, startAt, estimatedEndAt });
   }
 
   async joinMeetingByLink(meetingId: string) {

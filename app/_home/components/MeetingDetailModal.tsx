@@ -3,6 +3,7 @@ import { Modal, Card, Space, Avatar, Input, Button, Typography } from 'antd';
 import { UserOutlined, CopyOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { HomeMeetingRow } from '../types';
+import { meetingRowStatus, getHostNameOnly, getVirtualRoom } from '../helpers';
 
 const { Title, Text } = Typography;
 
@@ -21,6 +22,9 @@ export default function MeetingDetailModal({
   buildLink,
   onJoin,
 }: MeetingDetailModalProps) {
+  const status = meeting ? meetingRowStatus(meeting) : 'upcoming';
+  const isJoinable = status === 'live' || status === 'upcoming';
+
   return (
     <Modal
       open={Boolean(meeting)}
@@ -35,9 +39,68 @@ export default function MeetingDetailModal({
           <Title level={4} style={{ margin: 0 }}>
             {meeting.title}
           </Title>
-          <Text type="secondary">
-            Sắp diễn ra • {dayjs(meeting.createdAt).format('DD/MM/YYYY, HH:mm')}
-          </Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+            {status === 'live' && (
+              <span style={{
+                background: '#f0fdf4',
+                color: '#15803d',
+                fontWeight: 800,
+                fontSize: 10,
+                padding: '2px 8px',
+                borderRadius: 4,
+                border: '1px solid #bbf7d0'
+              }}>
+                ĐANG DIỄN RA
+              </span>
+            )}
+            {status === 'ended' && (
+              <span style={{
+                background: '#fffbeb',
+                color: '#d97706',
+                fontWeight: 800,
+                fontSize: 10,
+                padding: '2px 8px',
+                borderRadius: 4,
+                border: '1px solid #fde68a'
+              }}>
+                ĐÃ KẾT THÚC
+              </span>
+            )}
+            {status === 'no_show' && (
+              <span style={{
+                background: '#fef2f2',
+                color: '#b91c1c',
+                fontWeight: 800,
+                fontSize: 10,
+                padding: '2px 8px',
+                borderRadius: 4,
+                border: '1px solid #fecaca'
+              }}>
+                KHÔNG DIỄN RA
+              </span>
+            )}
+            {status === 'upcoming' && (
+              <span style={{
+                background: '#eff6ff',
+                color: '#1d4ed8',
+                fontWeight: 800,
+                fontSize: 10,
+                padding: '2px 8px',
+                borderRadius: 4,
+                border: '1px solid #bfdbfe'
+              }}>
+                SẮP DIỄN RA
+              </span>
+            )}
+            <Text type="secondary">
+              {dayjs(meeting.createdAt).format('DD/MM/YYYY, HH:mm')}
+            </Text>
+            {status === 'ended' && meeting.endedAt && (
+              <span style={{ fontSize: 13, color: '#d97706', fontWeight: 600 }}>
+                • Kết thúc lúc: {dayjs(meeting.endedAt).format('HH:mm DD/MM/YYYY')}
+              </span>
+            )}
+          </div>
 
           <Card
             style={{ marginTop: 14, borderRadius: 10, background: '#fafcff' }}
@@ -52,7 +115,7 @@ export default function MeetingDetailModal({
                 marginBottom: 12,
               }}
             >
-              <Text type="secondary">Mã tham gia:</Text>
+              <Text type="secondary">Mã cuộc họp:</Text>
               <div
                 style={{
                   display: 'inline-flex',
@@ -72,10 +135,35 @@ export default function MeetingDetailModal({
                 />
               </div>
 
-              <Text type="secondary">Host</Text>
+              <Text type="secondary">Mật khẩu phòng:</Text>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  justifySelf: 'start',
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: 6,
+                  padding: '4px 8px',
+                }}
+              >
+                <Text strong style={{ color: '#b45309', fontFamily: 'monospace' }}>{meeting.passcode || '—'}</Text>
+                {meeting.passcode && (
+                  <CopyOutlined
+                    style={{ color: '#b45309', cursor: 'pointer' }}
+                    onClick={() => void onCopy(meeting.passcode)}
+                  />
+                )}
+              </div>
+
+              <Text type="secondary">Địa điểm:</Text>
+              <Text strong>{meeting.location || getVirtualRoom(meeting.hostName, meeting.id)}</Text>
+
+              <Text type="secondary">Host:</Text>
               <Space>
                 <Avatar size={24} icon={<UserOutlined />} />
-                <Text strong>{meeting.hostName}</Text>
+                <Text strong>{meeting.location ? meeting.hostName : getHostNameOnly(meeting.hostName)}</Text>
               </Space>
             </div>
 
@@ -94,6 +182,7 @@ export default function MeetingDetailModal({
             <Button onClick={onCancel}>Đóng</Button>
             <Button
               type="primary"
+              disabled={!isJoinable}
               onClick={() => onJoin(meeting.id)}
             >
               Tham gia ngay

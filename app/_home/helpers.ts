@@ -82,3 +82,27 @@ export function formatHistoryParticipationDuration(r: HistoryEntry): string {
   }
   return '—';
 }
+
+export function getHostNameOnly(hostName: string): string {
+  if (!hostName) return '';
+  if (hostName.includes(' | ')) {
+    return hostName.split(' | ')[0];
+  }
+  return hostName;
+}
+
+export function getVirtualRoom(hostName: string, id: string): string {
+  if (!hostName) return 'Phòng Họp Trực Tuyến';
+  if (hostName.includes(' | ')) {
+    return hostName.split(' | ')[1];
+  }
+  if (hostName.includes('Phạm Minh T')) return 'Phòng Kỹ thuật 1';
+  if (hostName.includes('Nguyễn Văn A')) return 'Phòng họp trực tuyến 3';
+  if (hostName.includes('Trần Thị B')) return 'Phòng Kỹ thuật 2';
+  if (hostName.includes('Nguyên') || hostName.includes('Nguyễn')) {
+    let sum = 0;
+    for (let i = 0; i < (id || '').length; i++) sum += id.charCodeAt(i);
+    return sum % 2 === 0 ? 'Phòng họp VIP 1' : 'Phòng Hội Nghị Trực Tuyến';
+  }
+  return 'Phòng Họp Trực Tuyến';
+}

@@ -11,6 +11,7 @@ import {
   getMeetingStatus, isHostForMeeting, canManageMeetingInvitees, canEditMeeting, 
   buildMeetingLink, formatRecordingDuration, participantInitials 
 } from './helpers';
+import { getHostNameOnly, getVirtualRoom } from '@/app/_home/helpers';
 
 interface MeetingDetailViewProps {
   detailMeeting: MeetingListItem;
@@ -77,7 +78,7 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
   const combinedUsers = useMemo(() => {
     const arr: any[] = [];
     if (m.hostIdentity) {
-      arr.push({ type: 'host', key: m.hostIdentity, username: m.hostIdentity, fullName: m.hostName, roleTitle: 'Host', isHost: true });
+      arr.push({ type: 'host', key: m.hostIdentity, username: m.hostIdentity, fullName: m.location ? m.hostName : getHostNameOnly(m.hostName), roleTitle: 'Host', isHost: true });
     }
     props.meetingCoHosts.forEach(co => {
       arr.push({ type: 'co-host', key: co.hostUserId, username: co.username, fullName: co.fullName, roleTitle: 'Co-Host', isCoHost: true, userId: co.hostUserId });
@@ -148,9 +149,9 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
           <div className="host-modern-card">
             <div className="section-mini-title">Chủ tọa / Host</div>
             <div className="host-row">
-              <div className="host-avatar-mini">{participantInitials(m.hostName, m.hostIdentity)}</div>
+              <div className="host-avatar-mini">{participantInitials(m.location ? m.hostName : getHostNameOnly(m.hostName), m.hostIdentity)}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="host-name-main" title={m.hostName}>{m.hostName}</div>
+                <div className="host-name-main" title={m.location ? m.hostName : getHostNameOnly(m.hostName)}>{m.location ? m.hostName : getHostNameOnly(m.hostName)}</div>
                 <div className="host-role-sub">@{m.hostIdentity}</div>
               </div>
             </div>
@@ -203,6 +204,12 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
                 >
                   Sao chép
                 </Button>
+              </div>
+            </div>
+            <div className="access-card">
+              <div className="ac-label">Địa điểm / Phòng họp</div>
+              <div className="ac-val-row">
+                <div className="ac-val">{m.location || getVirtualRoom(m.hostName, m.id)}</div>
               </div>
             </div>
           </div>

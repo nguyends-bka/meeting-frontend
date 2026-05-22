@@ -1,7 +1,8 @@
 import React from 'react';
-import { Modal, Result, Descriptions, Space, Button, Input, Form, DatePicker, Divider, Checkbox, Typography } from 'antd';
+import { Modal, Result, Descriptions, Space, Button, Input, Form, DatePicker, Divider, Checkbox, Typography, Radio, Select } from 'antd';
 import { VideoCameraOutlined, CopyOutlined, RightCircleOutlined, CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+
 
 const { Text } = Typography;
 
@@ -109,6 +110,7 @@ export default function CreateMeetingModal({
             allowJoinBeforeHost: false,
             muteOnJoin: true,
             recordOnServer: false,
+            customRoom: '',
           }}
           onFinish={onSubmit}
           style={{ marginTop: 8 }}
@@ -131,12 +133,51 @@ export default function CreateMeetingModal({
               format="DD/MM/YYYY HH:mm"
               style={{ width: '100%' }}
               allowClear={false}
+              onCalendarChange={(dates, dateStrings, info) => {
+                if (info.range === 'start' && dates && dates[0]) {
+                  const start = dates[0];
+                  const end = start.add(1, 'hour');
+                  form.setFieldsValue({
+                    scheduleRange: [start, end],
+                  });
+                }
+              }}
             />
           </Form.Item>
-          <div style={{ marginTop: -4, marginBottom: 8 }}>
+          <div style={{ marginTop: -4, marginBottom: 16 }}>
             <Text type="secondary">Thời lượng dự kiến: </Text>
             <Text strong>{estimatedDuration}</Text>
           </div>
+
+          <Form.Item label={<Text strong>Địa điểm / Phòng họp</Text>}>
+            <Form.Item name="selectedRoom" noStyle rules={[{ required: true, message: 'Vui lòng chọn địa điểm' }]}>
+              <Radio.Group style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: 4 }}>
+                <Radio value="Phòng Hội Nghị Trực Tuyến">Phòng Hội Nghị Trực Tuyến</Radio>
+                <Radio value="Khác">Khác</Radio>
+              </Radio.Group>
+            </Form.Item>
+            
+            <Form.Item
+              noStyle
+              shouldUpdate={(prevValues, currentValues) => prevValues.selectedRoom !== currentValues.selectedRoom}
+            >
+              {({ getFieldValue }) => {
+                const selected = getFieldValue('selectedRoom');
+                if (selected === 'Khác') {
+                  return (
+                    <Form.Item 
+                      name="customRoom" 
+                      rules={[{ required: true, message: 'Vui lòng nhập tên phòng họp khác' }]}
+                      style={{ marginTop: 8, marginBottom: 0 }}
+                    >
+                      <Input size="large" placeholder="Nhập tên phòng họp khác" />
+                    </Form.Item>
+                  );
+                }
+                return null;
+              }}
+            </Form.Item>
+          </Form.Item>
 
           <Divider style={{ margin: '12px 0' }} />
           <Text strong style={{ display: 'block', marginBottom: 8 }}>
