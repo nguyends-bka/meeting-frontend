@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, Suspense } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { Row, Col } from 'antd';
 import { useHomePage } from './_home/useHomePage';
@@ -12,6 +12,8 @@ import CreateMeetingModal from './_home/components/CreateMeetingModal';
 import JoinMeetingModal from './_home/components/JoinMeetingModal';
 import MeetingDetailModal from './_home/components/MeetingDetailModal';
 import MeetingHistoryModal from './_home/components/MeetingHistoryModal';
+import { useHeaderActions } from '@/contexts/HeaderActionsContext';
+import { useSearchParams } from 'next/navigation';
 
 // New Dashboard Widgets
 import CalendarStrip from './_home/components/CalendarStrip';
@@ -19,8 +21,31 @@ import AnalyticsChart from './_home/components/AnalyticsChart';
 
 import './_home/home.css';
 
-export default function HomePage() {
+function HomePageContent() {
   const home = useHomePage();
+  const { registerActions, clearActions } = useHeaderActions();
+  const searchParams = useSearchParams();
+
+  // Register header action callbacks so AppHeader buttons work
+  useEffect(() => {
+    registerActions({
+      onOpenJoin: home.openJoinModal,
+      onOpenCreate: () => home.setCreateOpen(true),
+    });
+    return () => clearActions();
+  }, [home.openJoinModal, home.setCreateOpen, registerActions, clearActions]);
+
+  // Handle ?action=join or ?action=create from other pages
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'join') {
+      home.openJoinModal();
+      window.history.replaceState({}, '', '/');
+    } else if (action === 'create') {
+      home.setCreateOpen(true);
+      window.history.replaceState({}, '', '/');
+    }
+  }, [searchParams]);
 
   if (home.loading) {
     return <div style={{ padding: '40px', textAlign: 'center' }}>Đang tải...</div>;
@@ -45,8 +70,6 @@ export default function HomePage() {
             <GreetingBanner
               user={home.user}
               pendingCount={home.pendingForYou}
-              onOpenJoin={home.openJoinModal}
-              onOpenCreate={() => home.setCreateOpen(true)}
             />
 
             {/* Mobile-only StatsOverview */}
@@ -149,5 +172,13 @@ export default function HomePage() {
         onCancel={home.closeHistoryModal}
       />
     </MainLayout>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Đang tải...</div>}>
+      <HomePageContent />
+    </Suspense>
   );
 }

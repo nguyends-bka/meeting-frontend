@@ -11,6 +11,7 @@ interface MainLayoutProps {
 }
 
 import AppHeader from './AppHeader';
+import { HeaderActionsProvider } from '@/contexts/HeaderActionsContext';
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -41,36 +42,39 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const sidebarWidth = isMobile ? 0 : (collapsed ? 80 : sidebarExpandedWidth);
 
   return (
-    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
-      <Sidebar
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
-        isMobile={isMobile}
-        compactMode={isCompactSidebar}
-      />
-      <Layout 
-        style={{ 
-          marginLeft: sidebarWidth,
-          transition: 'margin-left 0.2s',
-          height: '100vh',
-          overflow: 'hidden',
-          minWidth: 0,
-        }}
-      >
-        <AppHeader />
-        <Content
-          style={{
-            margin: 0,
-            padding: 0,
-            height: 'calc(100% - 64px)',
-            overflow: 'auto',
-            backgroundColor: '#f3f4f6',
+    <HeaderActionsProvider>
+      <Layout style={{ height: '100vh', overflow: 'hidden' }}>
+        <Sidebar
+          collapsed={collapsed}
+          onCollapse={setCollapsed}
+          isMobile={isMobile}
+          compactMode={isCompactSidebar}
+        />
+        <Layout 
+          style={{ 
+            marginLeft: sidebarWidth,
+            transition: 'margin-left 0.2s',
+            height: '100vh',
+            overflow: 'hidden',
             minWidth: 0,
           }}
         >
-          {children}
-        </Content>
+          <AppHeader />
+          <Content
+            style={{
+              margin: 0,
+              padding: 0,
+              height: 'calc(100% - 64px)',
+              overflow: 'auto',
+              backgroundColor: '#f3f4f6',
+              minWidth: 0,
+            }}
+          >
+            {children}
+          </Content>
+        </Layout>
       </Layout>
-    </Layout>
+    </HeaderActionsProvider>
   );
 }
+

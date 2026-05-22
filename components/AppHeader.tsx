@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Layout, Badge, Popover, List, Typography, Button, Modal } from 'antd';
-import { BellOutlined, FolderOpenOutlined, ExclamationCircleOutlined, InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Layout, Badge, Popover, List, Typography, Button, Modal, Grid } from 'antd';
+import { BellOutlined, FolderOpenOutlined, ExclamationCircleOutlined, InfoCircleOutlined, ReloadOutlined, PlusOutlined, LoginOutlined } from '@ant-design/icons';
 import { meetingApi } from '@/services/api';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/navigation';
+import { useHeaderActions } from '@/contexts/HeaderActionsContext';
 
 const { Header } = Layout;
 const { Text } = Typography;
@@ -26,9 +27,29 @@ type NotificationItemWithEmpty = HomeNotificationItem | { id: 'empty'; title: st
 
 export default function AppHeader() {
   const router = useRouter();
+  const { actions } = useHeaderActions();
+  const { useBreakpoint } = Grid;
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
   const [notifications, setNotifications] = useState<HomeNotificationItem[]>([]);
   const [openedNotification, setOpenedNotification] = useState<HomeNotificationItem | null>(null);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+
+  const handleJoin = useCallback(() => {
+    if (actions.onOpenJoin) {
+      actions.onOpenJoin();
+    } else {
+      router.push('/?action=join');
+    }
+  }, [actions, router]);
+
+  const handleCreate = useCallback(() => {
+    if (actions.onOpenCreate) {
+      actions.onOpenCreate();
+    } else {
+      router.push('/?action=create');
+    }
+  }, [actions, router]);
 
   const loadNotifications = async () => {
     setLoadingNotifications(true);
@@ -200,40 +221,71 @@ export default function AppHeader() {
         <div style={{ fontSize: 18, fontWeight: 600, color: '#1e3a8a', letterSpacing: '-0.01em' }}>
           Hệ Thống Họp Trực Tuyến
         </div>
-        <Popover 
-          content={content} 
-          title={
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontWeight: 700, fontSize: 16 }}>Thông báo mới</span>
-              <Button 
-                type="text" 
-                size="small" 
-                icon={<ReloadOutlined />}
-                loading={loadingNotifications}
-                onClick={() => void loadNotifications()}
-                title="Làm mới thông báo"
-              />
-            </div>
-          } 
-          trigger="click" 
-          placement="bottomRight"
-        >
-          <Badge count={unreadCount} style={{ backgroundColor: '#ef4444' }} offset={[-4, 4]}>
-            <div style={{
-              width: 36,
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
+          <Button
+            icon={<LoginOutlined />}
+            onClick={handleJoin}
+            style={{
+              borderRadius: 8,
+              fontWeight: 500,
               height: 36,
-              borderRadius: '50%',
-              background: '#f1f5f9',
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'background 0.2s'
-            }} className="header-bell-icon">
-              <BellOutlined style={{ fontSize: 18, color: '#475569' }} />
-            </div>
-          </Badge>
-        </Popover>
+              gap: 4,
+            }}
+          >
+            {!isMobile && 'Tham gia'}
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleCreate}
+            style={{
+              borderRadius: 8,
+              fontWeight: 600,
+              height: 36,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            {!isMobile && 'Tạo cuộc họp'}
+          </Button>
+          <Popover 
+            content={content} 
+            title={
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontWeight: 700, fontSize: 16 }}>Thông báo mới</span>
+                <Button 
+                  type="text" 
+                  size="small" 
+                  icon={<ReloadOutlined />}
+                  loading={loadingNotifications}
+                  onClick={() => void loadNotifications()}
+                  title="Làm mới thông báo"
+                />
+              </div>
+            } 
+            trigger="click" 
+            placement="bottomRight"
+          >
+            <Badge count={unreadCount} style={{ backgroundColor: '#ef4444' }} offset={[-4, 4]}>
+              <div style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background: '#f1f5f9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'background 0.2s'
+              }} className="header-bell-icon">
+                <BellOutlined style={{ fontSize: 18, color: '#475569' }} />
+              </div>
+            </Badge>
+          </Popover>
+        </div>
       </Header>
 
       <Modal
