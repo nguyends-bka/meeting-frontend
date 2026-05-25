@@ -7,22 +7,24 @@ dayjs.extend(isoWeek);
 dayjs.locale('vi');
 
 export function isMeetingLive(r: HomeMeetingRow): boolean {
+  if (r.status) return r.status === 'live';
   if (r.endedAt) return false;
   const now = dayjs();
   const start = dayjs(r.createdAt);
   if (!start.isValid()) return false;
   if (now.isBefore(start)) return false;
-  const estimatedEnd = r.startedAt ? dayjs(r.startedAt) : null;
+  const estimatedEnd = r.estimatedEndAt ? dayjs(r.estimatedEndAt) : (r.startedAt ? dayjs(r.startedAt) : null);
   if (estimatedEnd && estimatedEnd.isValid()) {
     return now.isBefore(estimatedEnd) || now.isSame(estimatedEnd);
   }
   return true;
 }
 
-export function meetingRowStatus(r: HomeMeetingRow): 'live' | 'ended' | 'upcoming' | 'no_show' {
+export function meetingRowStatus(r: HomeMeetingRow): 'live' | 'ended' | 'upcoming' | 'no_show' | 'cancelled' {
+  if (r.status) return r.status;
   if (r.endedAt) return 'ended';
   const now = dayjs();
-  const estimatedEnd = r.startedAt ? dayjs(r.startedAt) : null;
+  const estimatedEnd = r.estimatedEndAt ? dayjs(r.estimatedEndAt) : (r.startedAt ? dayjs(r.startedAt) : null);
   if (
     estimatedEnd &&
     estimatedEnd.isValid() &&

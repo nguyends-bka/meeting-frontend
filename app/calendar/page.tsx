@@ -90,6 +90,8 @@ export default function CalendarPage() {
           startedAt: m.startedAt,
           endedAt: m.endedAt,
           location: m.location,
+          status: m.status,
+          estimatedEndAt: m.estimatedEndAt,
         }));
       } else {
         const result = await apiService.getMeetings();
@@ -107,6 +109,8 @@ export default function CalendarPage() {
           endedAt: m.endedAt,
           activeParticipantCount: m.activeParticipantCount,
           location: m.location,
+          status: m.status,
+          estimatedEndAt: m.estimatedEndAt,
         }));
       }
       setMeetings(rows);
@@ -706,9 +710,10 @@ export default function CalendarPage() {
                     const isLive = status === 'live';
                     const isEnded = status === 'ended';
                     const isNoShow = status === 'no_show';
-                    const isJoinable = isLive || status === 'upcoming';
+                    const isCancelled = status === 'cancelled';
+                    const isJoinable = (isLive || status === 'upcoming') && !isCancelled;
                     const start = dayjs(meet.createdAt);
-                    const plannedEnd = meet.startedAt ? dayjs(meet.startedAt) : null;
+                    const plannedEnd = meet.estimatedEndAt ? dayjs(meet.estimatedEndAt) : (meet.startedAt ? dayjs(meet.startedAt) : null);
                     const end = meet.endedAt
                       ? dayjs(meet.endedAt)
                       : plannedEnd && plannedEnd.isValid()
@@ -735,6 +740,11 @@ export default function CalendarPage() {
                       dateBorder = '#fecaca';
                       monthColor = '#b91c1c';
                       dayColor = '#ef4444';
+                    } else if (isCancelled) {
+                      dateBg = '#f3f4f6';
+                      dateBorder = '#e5e7eb';
+                      monthColor = '#6b7280';
+                      dayColor = '#9ca3af';
                     }
 
                     return (
@@ -835,6 +845,10 @@ export default function CalendarPage() {
                           ) : isNoShow ? (
                             <Tag color="error" style={{ margin: 0, padding: '4px 10px', borderRadius: 6, fontWeight: 600, background: '#fef2f2', color: '#b91c1c', borderColor: '#fecaca' }}>
                               KHÔNG DIỄN RA
+                            </Tag>
+                          ) : isCancelled ? (
+                            <Tag color="default" style={{ margin: 0, padding: '4px 10px', borderRadius: 6, fontWeight: 600, background: '#f3f4f6', color: '#6b7280', borderColor: '#e5e7eb' }}>
+                              ĐÃ HỦY
                             </Tag>
                           ) : (
                             <Tag color="processing" style={{ margin: 0, padding: '4px 10px', borderRadius: 6, fontWeight: 600, background: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' }}>

@@ -101,6 +101,7 @@ function MeetingDetailPageContent() {
           openHistoryModal={state.setHistoryMeeting}
           openEditMeetingModal={state.setEditMeetingModal}
           handleDeleteMeeting={state.handleDeleteMeeting}
+          handleCancelMeeting={state.handleCancelMeeting}
           meetingRecordings={state.meetingRecordings}
           meetingRecordingsLoading={state.meetingRecordingsLoading}
           openRecordingPlayback={(meetingId, r) => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Space, Typography, Select, Input, Table, Tag, Button, Dropdown, Row, Col, Pagination, Empty } from 'antd';
+import { Card, Space, Typography, Select, Input, Table, Tag, Button, Dropdown, Row, Col, Pagination, Empty, Modal } from 'antd';
 import type { MenuProps } from 'antd';
 import { SearchOutlined, SettingOutlined, CalendarOutlined, PlusOutlined, MoreOutlined, CaretRightOutlined, HistoryOutlined, FormOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -29,6 +29,7 @@ interface MeetingsListViewProps {
   openHistoryModal: (meeting: MeetingListItem) => void;
   openEditMeetingModal: (meeting: MeetingListItem) => void;
   openPollListModal: (meeting: MeetingListItem) => void;
+  handleCancelMeeting: (id: string) => void;
   user: any;
   router: any;
   isAdmin: boolean;
@@ -42,16 +43,32 @@ export function MeetingsListView({
   tablePage, tablePageSize, totalPages, filteredMeetings,
   setTablePage, setTablePageSize,
   openDetailModal, openHistoryModal, openEditMeetingModal, openPollListModal,
+  handleCancelMeeting,
   user, router, isAdmin
 }: MeetingsListViewProps) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, record?: MeetingListItem) => {
     switch (status) {
-      case 'upcoming': return <span className="status-pill status-pill-upcoming">Sắp diễn ra</span>;
+      case 'upcoming': {
+        if (record) {
+          const now = dayjs();
+          const start = dayjs(record.createdAt);
+          const diffMinutes = start.diff(now, 'minute');
+          if (diffMinutes > 60) {
+            return <span className="status-pill status-pill-cancelled">Đã lên lịch</span>;
+          } else if (diffMinutes > 0) {
+            return <span className="status-pill status-pill-upcoming">Sắp diễn ra</span>;
+          } else {
+            return <span className="status-pill status-pill-upcoming" style={{ background: '#fff7ed', color: '#ea580c', borderColor: '#ffedd5' }}>Chờ bắt đầu</span>;
+          }
+        }
+        return <span className="status-pill status-pill-upcoming">Sắp diễn ra</span>;
+      }
       case 'live': return <span className="status-pill status-pill-live">Đang diễn ra</span>;
       case 'done': return <span className="status-pill status-pill-done">Đã kết thúc</span>;
-      case 'no_show': return <span className="status-pill status-pill-done" style={{ opacity: 0.8 }}>Không diễn ra</span>;
+      case 'no_show': return <span className="status-pill status-pill-no_show">Không diễn ra</span>;
+      case 'cancelled': return <span className="status-pill status-pill-cancelled">Đã hủy</span>;
       default: return null;
     }
   };
@@ -188,7 +205,7 @@ export function MeetingsListView({
                 const s = getMeetingStatus(record);
                 return (
                   <Space direction="vertical" size={2} align="center" style={{ width: '100%' }}>
-                    {getStatusBadge(s)}
+                    {getStatusBadge(s, record)}
                     {(record.activeParticipantCount ?? 0) > 0 && (
                       <Typography.Text style={{ fontSize: 12, color: '#059669', fontWeight: 500, marginTop: 4 }}>
                         ● {record.activeParticipantCount} người đang họp
@@ -220,6 +237,24 @@ export function MeetingsListView({
                     icon: <FormOutlined />,
                     label: 'Sửa cuộc họp',
                     onClick: () => openEditMeetingModal(record),
+                  });
+                  items.push({
+                    key: 'cancel',
+                    icon: <span style={{ color: '#ef4444', fontWeight: 'bold' }}>✕</span>,
+                    label: <span style={{ color: '#ef4444' }}>Hủy cuộc họp</span>,
+                    danger: true,
+                    onClick: () => {
+                      Modal.confirm({
+                        title: 'Xác nhận hủy cuộc họp',
+                        content: `Bạn có chắc chắn muốn hủy cuộc họp "${record.title}" không? Hành động này không thể hoàn tác.`,
+                        okText: 'Hủy cuộc họp',
+                        okType: 'danger',
+                        cancelText: 'Quay lại',
+                        onOk: () => {
+                          handleCancelMeeting(record.id);
+                        },
+                      });
+                    },
                   });
                 }
                 if (record.canManagePoll || isHost) {

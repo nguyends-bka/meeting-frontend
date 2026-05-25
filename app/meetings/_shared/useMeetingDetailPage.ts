@@ -184,6 +184,16 @@ export function useMeetingDetailPage(meetingId: string, user: any, isAdmin: bool
     }
   };
 
+  const handleCancelMeeting = async (id: string) => {
+    const result = await meetingApi.cancelMeeting(id);
+    if (result.error) {
+      message.error(result.error);
+    } else {
+      message.success('Đã hủy cuộc họp');
+      setDetailMeeting(prev => prev ? { ...prev, status: 'cancelled' } : null);
+    }
+  };
+
   // --- MODAL STATES ---
   const [pollModalMeeting, setPollModalMeeting] = useState<MeetingListItem | null>(null);
   const [viewPollMeeting, setViewPollMeeting] = useState<MeetingListItem | null>(null);
@@ -222,6 +232,7 @@ export function useMeetingDetailPage(meetingId: string, user: any, isAdmin: bool
     removeCoHostRow,
     onDeleteMeetingRecording,
     handleDeleteMeeting,
+    handleCancelMeeting,
     
     // --- MODAL STATES ---
     pollModalMeeting, setPollModalMeeting,

@@ -62,6 +62,8 @@ export interface MeetingListItem {
   activeParticipantCount?: number;
   participantCount?: number;
   roomName?: string;
+  status?: 'upcoming' | 'live' | 'ended' | 'no_show' | 'cancelled';
+  estimatedEndAt?: string | null;
 }
 
 /** Người được host mời — cùng cấu trúc PollManagerItem (bảng + API). */

@@ -150,13 +150,26 @@ export default function TodaySchedule({
           {schedule.map((m, index) => {
             const st = meetingRowStatus(m);
             const isLive = st === 'live';
+            const now = dayjs();
             const start = dayjs(m.createdAt);
-            const plannedEnd = m.startedAt ? dayjs(m.startedAt) : null;
+            const plannedEnd = m.estimatedEndAt ? dayjs(m.estimatedEndAt) : (m.startedAt ? dayjs(m.startedAt) : null);
             const end = m.endedAt
               ? dayjs(m.endedAt)
               : plannedEnd && plannedEnd.isValid()
                 ? plannedEnd
                 : start.add(1, 'hour');
+
+            let upcomingSubState: 'scheduled' | 'near' | 'delayed' = 'scheduled';
+            if (st === 'upcoming') {
+              const diffMinutes = start.diff(now, 'minute');
+              if (diffMinutes > 60) {
+                upcomingSubState = 'scheduled';
+              } else if (diffMinutes > 0) {
+                upcomingSubState = 'near';
+              } else {
+                upcomingSubState = 'delayed';
+              }
+            }
 
             const dotColor =
               st === 'live'
@@ -165,7 +178,13 @@ export default function TodaySchedule({
                   ? '#f59e0b'
                   : st === 'no_show'
                     ? '#ef4444'
-                    : '#2563eb';
+                    : st === 'cancelled'
+                      ? '#9ca3af'
+                      : upcomingSubState === 'scheduled'
+                        ? '#9ca3af'
+                        : upcomingSubState === 'near'
+                          ? '#2563eb'
+                          : '#f97316'; // delayed
 
             const ringColor =
               st === 'live'
@@ -174,7 +193,13 @@ export default function TodaySchedule({
                   ? 'rgba(245, 158, 11, 0.2)'
                   : st === 'no_show'
                     ? 'rgba(239, 68, 68, 0.2)'
-                    : 'rgba(37, 99, 235, 0.2)';
+                    : st === 'cancelled'
+                      ? 'rgba(156, 163, 175, 0.2)'
+                      : upcomingSubState === 'scheduled'
+                        ? 'rgba(156, 163, 175, 0.2)'
+                        : upcomingSubState === 'near'
+                          ? 'rgba(37, 99, 235, 0.2)'
+                          : 'rgba(249, 115, 22, 0.2)'; // delayed
 
             return (
               <div
@@ -283,7 +308,33 @@ export default function TodaySchedule({
                         KHÔNG DIỄN RA
                       </span>
                     )}
-                    {st === 'upcoming' && (
+                    {st === 'cancelled' && (
+                      <span style={{
+                        background: '#f3f4f6',
+                        color: '#6b7280',
+                        fontWeight: 800,
+                        fontSize: 10,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        ĐÃ HỦY
+                      </span>
+                    )}
+                    {st === 'upcoming' && upcomingSubState === 'scheduled' && (
+                      <span style={{
+                        background: '#f3f4f6',
+                        color: '#6b7280',
+                        fontWeight: 800,
+                        fontSize: 10,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        ĐÃ LÊN LỊCH
+                      </span>
+                    )}
+                    {st === 'upcoming' && upcomingSubState === 'near' && (
                       <span style={{
                         background: '#eff6ff',
                         color: '#1d4ed8',
@@ -294,6 +345,19 @@ export default function TodaySchedule({
                         border: '1px solid #bfdbfe'
                       }}>
                         SẮP DIỄN RA
+                      </span>
+                    )}
+                    {st === 'upcoming' && upcomingSubState === 'delayed' && (
+                      <span style={{
+                        background: '#fff7ed',
+                        color: '#ea580c',
+                        fontWeight: 800,
+                        fontSize: 10,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        border: '1px solid #ffedd5'
+                      }}>
+                        CHỜ BẮT ĐẦU
                       </span>
                     )}
                   </div>

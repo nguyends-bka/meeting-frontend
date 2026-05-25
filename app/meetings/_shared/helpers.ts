@@ -70,7 +70,7 @@ export function participantInitials(displayName: string, username: string): stri
 // Meeting status & permissions
 // ---------------------------------------------------------------------------
 
-export type MeetingStatus = 'live' | 'done' | 'upcoming' | 'no_show';
+export type MeetingStatus = 'live' | 'done' | 'upcoming' | 'no_show' | 'cancelled';
 
 /**
  * Tính trạng thái hiển thị của cuộc họp.
@@ -78,12 +78,15 @@ export type MeetingStatus = 'live' | 'done' | 'upcoming' | 'no_show';
  * - upcoming : chưa kết thúc, chưa có ai tham gia
  * - done     : đã kết thúc, có người đã tham gia
  * - no_show  : đã kết thúc (hoặc quá lâu), không có ai tham gia
+ * - cancelled: cuộc họp bị hủy bởi host
  */
 export function getMeetingStatus(m: MeetingListItem): MeetingStatus {
+  if (m.status) {
+    if (m.status === 'ended') return 'done';
+    return m.status;
+  }
   const ended = !!m.endedAt;
   const hasParticipants = (m.activeParticipantCount ?? 0) > 0;
-  const createdAt = dayjs(m.createdAt);
-  const ageHours = dayjs().diff(createdAt, 'hour');
 
   if (!ended) {
     return hasParticipants ? 'live' : 'upcoming';

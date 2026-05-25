@@ -242,6 +242,11 @@ export const meetingApi = {
       method: 'POST',
     });
   },
+  cancelMeeting: async (meetingId: string) => {
+    return apiClient.request<unknown>(`/api/meeting/${encodeURIComponent(meetingId)}/cancel`, {
+      method: 'POST',
+    });
+  },
 
   updateMeeting: async (meetingId: string, request: UpdateMeetingRequest) => {
     return apiClient.request<MeetingListItem>(`/api/meeting/${encodeURIComponent(meetingId)}`, {

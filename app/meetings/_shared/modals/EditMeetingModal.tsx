@@ -20,7 +20,7 @@ export function EditMeetingModal({ meeting, onClose, onSuccess }: EditMeetingMod
       form.setFieldsValue({
         title: meeting.title,
         startAt: dayjs(meeting.createdAt),
-        estimatedEndAt: meeting.startedAt ? dayjs(meeting.startedAt) : null,
+        estimatedEndAt: meeting.estimatedEndAt ? dayjs(meeting.estimatedEndAt) : (meeting.startedAt ? dayjs(meeting.startedAt) : null),
       });
     } else {
       form.resetFields();

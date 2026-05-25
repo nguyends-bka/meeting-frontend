@@ -62,6 +62,7 @@ function MeetingsPageContent() {
           openHistoryModal={state.setHistoryMeeting}
           openEditMeetingModal={state.setEditMeetingModal}
           openPollListModal={state.setViewPollMeeting}
+          handleCancelMeeting={state.handleCancelMeeting}
           user={user}
           router={state.router}
           isAdmin={isAdmin}

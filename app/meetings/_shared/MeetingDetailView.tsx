@@ -28,6 +28,7 @@ interface MeetingDetailViewProps {
   openHistoryModal: (m: MeetingListItem) => void;
   openEditMeetingModal: (m: MeetingListItem) => void;
   handleDeleteMeeting: (id: string) => void;
+  handleCancelMeeting: (id: string) => void;
   
   // Recordings
   meetingRecordings: MeetingRecordingDto[];
@@ -55,7 +56,7 @@ interface MeetingDetailViewProps {
 }
 
 export function MeetingDetailView(props: MeetingDetailViewProps) {
-  const { detailMeeting: m, user, isAdmin, router, message } = props;
+  const { detailMeeting: m, user, isAdmin, router, message, handleCancelMeeting } = props;
   const isHost = isHostForMeeting(m, user);
   const status = getMeetingStatus(m);
   
@@ -70,7 +71,20 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
 
   const getStatusPill = () => {
     if (status === 'live') return <span className="status-pill status-pill-live">● Đang diễn ra</span>;
-    if (status === 'upcoming') return <span className="status-pill status-pill-upcoming">Sắp diễn ra</span>;
+    if (status === 'upcoming') {
+      const now = dayjs();
+      const start = dayjs(m.createdAt);
+      const diffMinutes = start.diff(now, 'minute');
+      if (diffMinutes > 60) {
+        return <span className="status-pill status-pill-cancelled">Đã lên lịch</span>;
+      } else if (diffMinutes > 0) {
+        return <span className="status-pill status-pill-upcoming">Sắp diễn ra</span>;
+      } else {
+        return <span className="status-pill status-pill-upcoming" style={{ background: '#fff7ed', color: '#ea580c', borderColor: '#ffedd5' }}>Chờ bắt đầu</span>;
+      }
+    }
+    if (status === 'cancelled') return <span className="status-pill status-pill-cancelled">Đã hủy</span>;
+    if (status === 'no_show') return <span className="status-pill status-pill-no_show">Không diễn ra</span>;
     return <span className="status-pill status-pill-done">Đã kết thúc</span>;
   };
 
@@ -89,7 +103,7 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
     return arr;
   }, [m, props.meetingCoHosts, props.meetingInvitees]);
 
-  const isEnded = status === 'done' || status === 'no_show';
+  const isEnded = status === 'done' || status === 'no_show' || status === 'cancelled';
   const canManageInvitees = canManageMeetingInvitees(m, user, isAdmin) && !isEnded;
 
   return (
@@ -125,7 +139,12 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
             <ArrowLeftOutlined className="range-arrow" rotate={180} />
             <div>
               <div className="section-mini-title">Kết thúc (dự kiến)</div>
-              {m.startedAt ? (
+              {m.estimatedEndAt ? (
+                <>
+                  <div className="section-mini-value">{dayjs(m.estimatedEndAt).format('HH:mm')}</div>
+                  <div className="section-mini-sub">{dayjs(m.estimatedEndAt).format('DD/MM/YYYY')}</div>
+                </>
+              ) : m.startedAt ? (
                 <>
                   <div className="section-mini-value">{dayjs(m.startedAt).format('HH:mm')}</div>
                   <div className="section-mini-sub">{dayjs(m.startedAt).format('DD/MM/YYYY')}</div>
@@ -345,15 +364,48 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
       </Card>
 
       <div className="bottom-btns" style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
-        <Button 
-          type="primary" 
-          size="large" 
-          disabled={isEnded}
-          onClick={() => router.push(`/meeting/${m.id}`)}
-          style={{ flex: 1, height: 40, borderRadius: 8, fontSize: 14, fontWeight: 600, minWidth: 150 }}
-        >
-          {isEnded ? 'Cuộc họp đã kết thúc' : 'Vào phòng họp ngay'}
-        </Button>
+        {(() => {
+          const now = dayjs();
+          const start = dayjs(m.createdAt);
+          const diffMinutes = start.diff(now, 'minute');
+          const isScheduled = status === 'upcoming' && diffMinutes > 60;
+          
+          let joinBtnText = 'Vào phòng họp ngay';
+          const isJoinDisabled = isEnded || isScheduled;
+          
+          if (status === 'cancelled') {
+            joinBtnText = 'Cuộc họp đã bị hủy';
+          } else if (status === 'no_show') {
+            joinBtnText = 'Cuộc họp đã quá hạn';
+          } else if (status === 'done') {
+            joinBtnText = 'Cuộc họp đã kết thúc';
+          } else if (isScheduled) {
+            joinBtnText = 'Chưa đến giờ họp (Lên lịch)';
+          }
+
+          return (
+            <Button 
+              type="primary" 
+              size="large" 
+              disabled={isJoinDisabled}
+              onClick={() => router.push(`/meeting/${m.id}`)}
+              style={{ 
+                flex: 1, 
+                height: 40, 
+                borderRadius: 8, 
+                fontSize: 14, 
+                fontWeight: 600, 
+                minWidth: 150,
+                background: isJoinDisabled ? '#f3f4f6' : '#22c55e',
+                borderColor: isJoinDisabled ? '#e5e7eb' : '#22c55e',
+                color: isJoinDisabled ? '#9ca3af' : '#ffffff',
+                boxShadow: isJoinDisabled ? 'none' : '0 4px 12px rgba(34, 197, 94, 0.25)',
+              }}
+            >
+              {joinBtnText}
+            </Button>
+          );
+        })()}
         {canEditMeeting(m, user, isAdmin) && !isEnded && (
           <Button 
             size="large" 
@@ -363,8 +415,19 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
             Sửa thông tin
           </Button>
         )}
-        {(isHost || isAdmin) && (
-          <Popconfirm title="Xác nhận xóa cuộc họp?" description="Mọi dữ liệu sẽ bị xóa." onConfirm={() => props.handleDeleteMeeting(m.id)}>
+        {isHost && status === 'upcoming' && (
+          <Popconfirm title="Xác nhận hủy cuộc họp?" description="Hành động này không thể hoàn tác. Trạng thái cuộc họp sẽ chuyển thành Đã hủy." onConfirm={() => handleCancelMeeting(m.id)}>
+            <Button 
+              danger 
+              size="large" 
+              style={{ height: 40, borderRadius: 8, fontSize: 14, fontWeight: 500 }}
+            >
+              Hủy cuộc họp
+            </Button>
+          </Popconfirm>
+        )}
+        {isAdmin && (
+          <Popconfirm title="Xác nhận xóa cuộc họp?" description="Mọi dữ liệu sẽ bị xóa hoàn toàn khỏi cơ sở dữ liệu." onConfirm={() => props.handleDeleteMeeting(m.id)}>
             <Button 
               danger 
               size="large" 

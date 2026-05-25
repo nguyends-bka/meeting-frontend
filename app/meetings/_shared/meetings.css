@@ -48,6 +48,8 @@
 .status-pill-upcoming { background: #fff7ed; color: #b45309; border-color: #fde68a; }
 .status-pill-live { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
 .status-pill-done { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+.status-pill-no_show { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.status-pill-cancelled { background: #f3f4f6; color: #6b7280; border-color: #e5e7eb; }
 
 /* Grid thông tin giờ + host */
 .detail-modern-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; margin-bottom: 12px; }

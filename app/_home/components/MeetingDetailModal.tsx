@@ -92,6 +92,19 @@ export default function MeetingDetailModal({
                 SẮP DIỄN RA
               </span>
             )}
+            {status === 'cancelled' && (
+              <span style={{
+                background: '#f3f4f6',
+                color: '#6b7280',
+                fontWeight: 800,
+                fontSize: 10,
+                padding: '2px 8px',
+                borderRadius: 4,
+                border: '1px solid #e5e7eb'
+              }}>
+                ĐÃ HỦY
+              </span>
+            )}
             <Text type="secondary">
               {dayjs(meeting.createdAt).format('DD/MM/YYYY, HH:mm')}
             </Text>

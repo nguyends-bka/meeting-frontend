@@ -23,12 +23,27 @@ export default function HeroHighlight({ meeting, onJoin, onDetail, isNarrow }: H
   const heroStatus = meetingRowStatus(meeting);
   const isHeroLive = heroStatus === 'live';
   const start = dayjs(meeting.createdAt);
-  const plannedEnd = meeting.startedAt ? dayjs(meeting.startedAt) : null;
+  const plannedEnd = meeting.estimatedEndAt ? dayjs(meeting.estimatedEndAt) : (meeting.startedAt ? dayjs(meeting.startedAt) : null);
   const end = meeting.endedAt
     ? dayjs(meeting.endedAt)
     : plannedEnd && plannedEnd.isValid()
       ? plannedEnd
       : start.add(1, 'hour');
+
+  const now = dayjs();
+  let upcomingSubState: 'scheduled' | 'near' | 'delayed' = 'scheduled';
+  if (heroStatus === 'upcoming') {
+    const diffMinutes = start.diff(now, 'minute');
+    if (diffMinutes > 60) {
+      upcomingSubState = 'scheduled';
+    } else if (diffMinutes > 0) {
+      upcomingSubState = 'near';
+    } else {
+      upcomingSubState = 'delayed';
+    }
+  }
+
+  const isJoinable = heroStatus === 'live' || (heroStatus === 'upcoming' && upcomingSubState !== 'scheduled');
 
   return (
     <div
@@ -101,20 +116,84 @@ export default function HeroHighlight({ meeting, onJoin, onDetail, isNarrow }: H
               }}>
                 ĐANG DIỄN RA
               </span>
+            ) : heroStatus === 'upcoming' && upcomingSubState === 'scheduled' ? (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                background: '#f3f4f6',
+                color: '#6b7280',
+                fontSize: 9,
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                border: '1px solid #e5e7eb'
+              }}>
+                ĐÃ LÊN LỊCH
+              </span>
+            ) : heroStatus === 'upcoming' && upcomingSubState === 'near' ? (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                background: '#eff6ff',
+                color: '#1d4ed8',
+                fontSize: 9,
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                border: '1px solid #bfdbfe'
+              }}>
+                SẮP DIỄN RA
+              </span>
+            ) : heroStatus === 'upcoming' && upcomingSubState === 'delayed' ? (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                background: '#fff7ed',
+                color: '#ea580c',
+                fontSize: 9,
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                border: '1px solid #ffedd5'
+              }}>
+                CHỜ BẮT ĐẦU
+              </span>
+            ) : heroStatus === 'cancelled' ? (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                background: '#f3f4f6',
+                color: '#6b7280',
+                fontSize: 9,
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                border: '1px solid #e5e7eb'
+              }}>
+                ĐÃ HỦY
+              </span>
             ) : (
               <span style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 padding: '2px 6px',
                 borderRadius: '4px',
-                background: '#dbeafe',
-                color: '#1d4ed8',
+                background: '#f3f4f6',
+                color: '#6b7280',
                 fontSize: 9,
                 fontWeight: 800,
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em'
               }}>
-                SẮP DIỄN RA
+                {heroStatus}
               </span>
             )}
             <span style={{ fontSize: isNarrow ? 11 : 12, color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -191,15 +270,17 @@ export default function HeroHighlight({ meeting, onJoin, onDetail, isNarrow }: H
             type="primary"
             icon={<VideoCameraOutlined />}
             onClick={onJoin}
+            disabled={!isJoinable}
             style={{
               width: '100%',
               height: isNarrow ? 34 : 38,
               borderRadius: 8,
               fontWeight: 700,
               fontSize: isNarrow ? 11 : 12,
-              boxShadow: '0 4px 12px rgba(34, 197, 94, 0.25)',
-              background: '#22c55e',
-              borderColor: '#22c55e',
+              boxShadow: !isJoinable ? 'none' : '0 4px 12px rgba(34, 197, 94, 0.25)',
+              background: !isJoinable ? '#e2e8f0' : '#22c55e',
+              borderColor: !isJoinable ? '#cbd5e1' : '#22c55e',
+              color: !isJoinable ? '#94a3b8' : '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

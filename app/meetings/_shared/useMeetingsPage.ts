@@ -236,6 +236,19 @@ export function useMeetingsPage(user: any, isAdmin: boolean) {
     }
   };
 
+  const handleCancelMeeting = async (id: string) => {
+    const result = await meetingApi.cancelMeeting(id);
+    if (result.error) {
+      message.error(result.error);
+    } else {
+      message.success('Đã hủy cuộc họp');
+      void loadMeetings();
+      if (detailMeeting?.id === id) {
+        setDetailMeeting(prev => prev ? { ...prev, status: 'cancelled' } : null);
+      }
+    }
+  };
+
 
   // --- MODAL STATES (Chỉ lưu trữ việc mở modal đối với meeting nào) ---
   const [pollModalMeeting, setPollModalMeeting] = useState<MeetingListItem | null>(null);
@@ -283,6 +296,7 @@ export function useMeetingsPage(user: any, isAdmin: boolean) {
     removeCoHostRow,
     onDeleteMeetingRecording,
     handleDeleteMeeting,
+    handleCancelMeeting,
     // --- MODAL STATES ---
     pollModalMeeting, setPollModalMeeting,
     viewPollMeeting, setViewPollMeeting,

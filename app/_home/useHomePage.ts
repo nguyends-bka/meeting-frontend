@@ -133,6 +133,8 @@ export function useHomePage() {
           startedAt: m.startedAt,
           endedAt: m.endedAt,
           location: m.location,
+          status: m.status,
+          estimatedEndAt: m.estimatedEndAt,
         }));
       } else {
         const result = await apiService.getMeetings();
@@ -150,6 +152,8 @@ export function useHomePage() {
           endedAt: m.endedAt,
           activeParticipantCount: m.activeParticipantCount,
           location: m.location,
+          status: m.status,
+          estimatedEndAt: m.estimatedEndAt,
         }));
       }
 

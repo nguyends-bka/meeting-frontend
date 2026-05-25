@@ -11,6 +11,8 @@ export interface HomeMeetingRow {
   activeParticipantCount?: number;
   startedAt?: string | null;
   endedAt?: string | null;
+  status?: 'upcoming' | 'live' | 'ended' | 'no_show' | 'cancelled';
+  estimatedEndAt?: string | null;
 }
 
 export interface HistoryEntry {
