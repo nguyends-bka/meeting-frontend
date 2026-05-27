@@ -70,6 +70,7 @@ export interface MeetingListItem {
 export interface MeetingInvitee {
   username: string;
   fullName: string;
+  primaryLanguage?: string | null;
 }
 
 /** Đồng chủ trì (nâng từ danh sách mời). */

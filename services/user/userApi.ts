@@ -20,6 +20,13 @@ export const userApi = {
     });
   },
 
+  lookupLanguages: async (usernames: string[]) => {
+    const q = new URLSearchParams({ usernames: usernames.join(',') });
+    return apiClient.request<Record<string, { preferredLanguage: string; languages: string[] }>>(`/api/user/lookup-languages?${q}`, {
+      method: 'GET',
+    });
+  },
+
   getProfile: async () => {
     return apiClient.request<UserProfile>('/api/user/profile', {
       method: 'GET',

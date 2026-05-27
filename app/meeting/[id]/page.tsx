@@ -15,6 +15,11 @@ import { apiService, meetingApi } from '@/services/api';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
 import { startPhysicalMicWebSocket } from '@/lib/physicalMicWebSocket';
+import {
+  startTranslationLanguageConnection,
+  stopTranslationLanguageConnection,
+  setTranslationLanguage,
+} from '@/lib/realtime/translationLanguageWebSocket';
 import { TranscriptRoomProvider, useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
 import MeetingChatHistoryHydrator from '@/components/meeting/MeetingChatHistoryHydrator';
 import { VoteRoomProvider } from '@/components/meeting/VoteRoomProvider';
@@ -495,6 +500,194 @@ function LatestTranscriptStrip() {
       </div>
     </div>
   );
+}
+
+function TranslationLanguageController({
+  meetingId,
+  hostIdentity,
+}: {
+  meetingId: string;
+  hostIdentity: string | null;
+}) {
+  const room = useRoomContext();
+  const { user } = useAuth();
+  const resolvedLanguagesRef = useRef<Record<string, { preferredLanguage: string; languages: string[] }>>({});
+
+  // Lưu các giá trị vào ref để syncLanguages đọc mà KHÔNG cần trong dependency array
+  // → tránh syncLanguages đổi reference mỗi lần prop/auth thay đổi → tránh gửi gói tin thứ 2
+  const userRef = useRef(user);
+  const hostIdentityRef = useRef(hostIdentity);
+  const meetingIdRef = useRef(meetingId);
+  useEffect(() => { userRef.current = user; }, [user]);
+  useEffect(() => { hostIdentityRef.current = hostIdentity; }, [hostIdentity]);
+  useEffect(() => { meetingIdRef.current = meetingId; }, [meetingId]);
+
+  const syncLanguages = useCallback(async () => {
+    if (!room) return;
+
+    // Đọc giá trị mới nhất từ ref (không tạo dependency)
+    const currentUser = userRef.current;
+    const currentHostIdentity = hostIdentityRef.current;
+    const currentMeetingId = meetingIdRef.current;
+
+    try {
+      // 1. Lấy danh sách người được mời
+      const inviteesRes = await meetingApi.listInvitees(currentMeetingId);
+      const invitees = inviteesRes.data || [];
+
+      // 2. Lấy danh sách người đang ở trong phòng LiveKit (local + remote participants)
+      const connectedUsernames: string[] = [];
+      if (room.localParticipant?.identity) {
+        connectedUsernames.push(room.localParticipant.identity.toLowerCase());
+      }
+      room.remoteParticipants.forEach((p) => {
+        if (p.identity) {
+          connectedUsernames.push(p.identity.toLowerCase());
+        }
+      });
+
+      // 3. Gom tất cả usernames/IDs cần tra cứu (được mời + kết nối + host + chính mình)
+      const allUsernames = new Set<string>();
+      invitees.forEach((inv) => allUsernames.add(inv.username.toLowerCase()));
+      connectedUsernames.forEach((un) => allUsernames.add(un));
+      if (currentHostIdentity) {
+        allUsernames.add(currentHostIdentity.toLowerCase());
+      }
+      if (currentUser?.username) {
+        allUsernames.add(currentUser.username.toLowerCase());
+      }
+      if (currentUser?.id) {
+        allUsernames.add(currentUser.id.toLowerCase());
+      }
+
+      // 4. Luôn xóa cache của user hiện tại để lấy lại ngôn ngữ ưu tiên mới nhất
+      if (currentUser?.username) {
+        delete resolvedLanguagesRef.current[currentUser.username.toLowerCase()];
+      }
+      if (currentUser?.id) {
+        delete resolvedLanguagesRef.current[currentUser.id.toLowerCase()];
+      }
+
+      // 5. Tìm các usernames chưa được phân giải ngôn ngữ
+      const unresolvedUsernames = Array.from(allUsernames).filter(
+        (un) => !resolvedLanguagesRef.current[un]
+      );
+
+      // Nếu có usernames chưa được phân giải ngôn ngữ, gọi API tra cứu
+      if (unresolvedUsernames.length > 0) {
+        const langMapRes = await apiService.lookupLanguages(unresolvedUsernames);
+        if (langMapRes.data) {
+          // Tạo object duy nhất cho mỗi user (fingerprint theo nội dung) để
+          // username key và GUID key cùng user cùng trỏ vào 1 object reference.
+          // Điều này giúp seenEntries.has(info) hoạt động đúng ở bước dedup.
+          const fingerPrintMap = new Map<string, { preferredLanguage: string; languages: string[] }>();
+          Object.entries(langMapRes.data).forEach(([un, data]) => {
+            const fp = `${data.preferredLanguage}|${(data.languages || []).slice().sort().join(',')}`;
+            if (!fingerPrintMap.has(fp)) {
+              fingerPrintMap.set(fp, { preferredLanguage: data.preferredLanguage, languages: data.languages || [] });
+            }
+            resolvedLanguagesRef.current[un.toLowerCase()] = fingerPrintMap.get(fp)!;
+          });
+        }
+      }
+
+      // 6. Xác định ngôn ngữ nguồn (source_language) là ngôn ngữ ưu tiên của user hiện tại
+      const myUsername = currentUser?.username?.toLowerCase();
+      const myUserId = currentUser?.id?.toLowerCase();
+      const myLang = (myUsername ? resolvedLanguagesRef.current[myUsername]?.preferredLanguage : '') ||
+                     (myUserId ? resolvedLanguagesRef.current[myUserId]?.preferredLanguage : '') ||
+                     'vi';
+
+      // 7. Tổng hợp tất cả các ngôn ngữ biết (Languages Known) của mọi thành viên
+      // Dùng seenEntries để tránh đếm trùng cùng 1 user khi cả username lẫn GUID đều có trong allUsernames
+      const destLanguages: string[] = [];
+      const seenEntries = new Set<unknown>();
+      allUsernames.forEach((un) => {
+        const unLower = un.toLowerCase();
+        const info = resolvedLanguagesRef.current[unLower];
+        if (!info) return;
+        if (seenEntries.has(info)) return;
+        seenEntries.add(info);
+        if (info.languages) {
+          info.languages.forEach((lang) => {
+            if (lang && !destLanguages.includes(lang)) {
+              destLanguages.push(lang);
+            }
+          });
+        }
+      });
+
+      // Gửi cấu hình xuống WebSocket local
+      setTranslationLanguage(myLang, destLanguages);
+    } catch (err) {
+      console.error('[TranslationController] Sync languages failed:', err);
+    }
+  // Chỉ giữ room trong deps → syncLanguages chỉ đổi khi room đổi (thực sự cần re-register LiveKit events)
+  // Mọi giá trị khác (user, hostIdentity, meetingId) được đọc từ ref bên trong callback
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room]);
+
+  // Debounce ref để tránh gọi syncLanguages quá nhiều lần liên tiếp
+  const syncDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ─── Effect 1: Vòng đời WebSocket ─── chỉ chạy 1 lần khi mount/unmount
+  // KHÔNG đặt startTranslationLanguageConnection bên trong effect phụ thuộc vào
+  // room hay syncLanguages, vì mỗi lần re-run sẽ tạo WS mới → 2 WS song song.
+  useEffect(() => {
+    startTranslationLanguageConnection();
+    return () => {
+      // Dọn debounce timer và đóng WS khi component thực sự unmount
+      if (syncDebounceRef.current) {
+        clearTimeout(syncDebounceRef.current);
+        syncDebounceRef.current = null;
+      }
+      stopTranslationLanguageConnection();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // empty deps → chỉ mount/unmount
+
+  // ─── Effect 2: Đăng ký event LiveKit + sync lần đầu ───
+  // Chạy lại khi room hoặc syncLanguages thay đổi, nhưng KHÔNG chạm vào WS.
+  useEffect(() => {
+    // Helper debounce 300ms để gom nhiều event cùng lúc thành 1 lần sync
+    const debouncedSync = () => {
+      if (syncDebounceRef.current) clearTimeout(syncDebounceRef.current);
+      syncDebounceRef.current = setTimeout(() => {
+        syncDebounceRef.current = null;
+        void syncLanguages();
+      }, 300);
+    };
+
+    // Đồng bộ ngay khi effect chạy (debounced để tránh gọi 2 lần liên tiếp)
+    debouncedSync();
+
+    if (!room) return;
+
+    // Lắng nghe các sự kiện LiveKit - chỉ sync khi có người tham gia/rời
+    const handleConnected = () => { debouncedSync(); };
+    const handleReconnected = () => { debouncedSync(); };
+    const handleParticipantConnected = () => { debouncedSync(); };
+    const handleParticipantDisconnected = () => { debouncedSync(); };
+
+    room.on(RoomEvent.Connected, handleConnected);
+    room.on(RoomEvent.Reconnected, handleReconnected);
+    room.on(RoomEvent.ParticipantConnected, handleParticipantConnected);
+    room.on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+
+    return () => {
+      // Hủy debounce timer và gỡ event listener khi re-subscribe
+      if (syncDebounceRef.current) {
+        clearTimeout(syncDebounceRef.current);
+        syncDebounceRef.current = null;
+      }
+      room.off(RoomEvent.Connected, handleConnected);
+      room.off(RoomEvent.Reconnected, handleReconnected);
+      room.off(RoomEvent.ParticipantConnected, handleParticipantConnected);
+      room.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+    };
+  }, [room, syncLanguages]);
+
+  return null;
 }
 
 export default function MeetingPage() {
@@ -1209,6 +1402,10 @@ export default function MeetingPage() {
 
                   <VideoConference />
                   <LatestTranscriptStrip />
+                  <TranslationLanguageController
+                    meetingId={currentMeetingId ?? meetingId}
+                    hostIdentity={meetingHostIdentity}
+                  />
                   <div className="meeting-side-stack">
                     <MeetingUnifiedSidePanel
                       shellRef={meetingShellRef}

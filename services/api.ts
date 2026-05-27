@@ -96,6 +96,10 @@ class ApiService {
     return userApi.getProfile();
   }
 
+  async lookupLanguages(usernames: string[]) {
+    return userApi.lookupLanguages(usernames);
+  }
+
   async updateProfile(fullName?: string, email?: string) {
     return userApi.updateProfile({ fullName, email });
   }
