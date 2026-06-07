@@ -5,12 +5,13 @@ import { useChat, useRoomContext } from '@livekit/components-react';
 import VotePanel from '@/components/meeting/VotePanel';
 import MeetingDocumentsPanel from '@/components/meeting/MeetingDocumentsPanel';
 import TranscriptPanel from '@/components/meeting/TranscriptPanel';
+import TranslationPanel from '@/components/meeting/TranslationPanel';
 import MeetingToolsChatbotPanel from '@/components/meeting/MeetingToolsChatboxPanel';
 import { useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
 import { useVoteRoom } from '@/components/meeting/VoteRoomProvider';
 import { meetingApi } from '@/services/meeting/meetingApi';
 
-export type MeetingToolsTab = 'vote' | 'documents' | 'chat' | 'chatbot' | 'transcript';
+export type MeetingToolsTab = 'vote' | 'documents' | 'chat' | 'chatbot' | 'transcript' | 'translation';
 const STATUS_MESSAGE_REGEX = /_+STATUS_+:(JOINED|LEFT):(\d+)/i;
 const MEETING_TOOLS_MIN_WIDTH = 260;
 const MEETING_TOOLS_MAX_WIDTH = 840;
@@ -34,6 +35,8 @@ export default function MeetingUnifiedSidePanel({
   setActiveTab,
   transcriptOpen,
   setTranscriptOpen,
+  translationOpen,
+  setTranslationOpen,
   voteOpen,
   setVoteOpen,
   documentsOpen,
@@ -51,6 +54,8 @@ export default function MeetingUnifiedSidePanel({
   setActiveTab: React.Dispatch<React.SetStateAction<MeetingToolsTab>>;
   transcriptOpen: boolean;
   setTranscriptOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  translationOpen: boolean;
+  setTranslationOpen: React.Dispatch<React.SetStateAction<boolean>>;
   voteOpen: boolean;
   setVoteOpen: React.Dispatch<React.SetStateAction<boolean>>;
   documentsOpen: boolean;
@@ -365,12 +370,13 @@ export default function MeetingUnifiedSidePanel({
   const closeAll = useCallback(() => {
     const shell = shellRef.current;
     setTranscriptOpen(false);
+    setTranslationOpen(false);
     setVoteOpen(false);
     setDocumentsOpen(false);
     if (chatOpen && shell) {
       clickChatToggle(shell);
     }
-  }, [shellRef, setTranscriptOpen, setVoteOpen, setDocumentsOpen, chatOpen]);
+  }, [shellRef, setTranscriptOpen, setTranslationOpen, setVoteOpen, setDocumentsOpen, chatOpen]);
 
   const onTabVote = () => {
     setActiveTab('vote');
@@ -402,6 +408,13 @@ export default function MeetingUnifiedSidePanel({
     setActiveTab('transcript');
     if (!transcriptOpen) {
       setTranscriptOpen(true);
+    }
+  };
+
+  const onTabTranslation = () => {
+    setActiveTab('translation');
+    if (!translationOpen) {
+      setTranslationOpen(true);
     }
   };
 
@@ -469,6 +482,15 @@ export default function MeetingUnifiedSidePanel({
           <button
             type="button"
             role="tab"
+            aria-selected={activeTab === 'translation'}
+            className={`meeting-unified-tab${activeTab === 'translation' ? ' is-active' : ''}`}
+            onClick={onTabTranslation}
+          >
+            Phiên dịch
+          </button>
+          <button
+            type="button"
+            role="tab"
             aria-selected={activeTab === 'vote'}
             className={`meeting-unified-tab${activeTab === 'vote' ? ' is-active' : ''}`}
             onClick={onTabVote}
@@ -532,6 +554,13 @@ export default function MeetingUnifiedSidePanel({
           hidden={activeTab !== 'transcript'}
         >
           <TranscriptPanel currentUserName={currentUserName} onClose={closeAll} />
+        </div>
+        <div
+          className="meeting-unified-panel"
+          role="tabpanel"
+          hidden={activeTab !== 'translation'}
+        >
+          <TranslationPanel currentUserName={currentUserName} onClose={closeAll} />
         </div>
       </div>
     </aside>

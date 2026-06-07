@@ -7,7 +7,8 @@ export interface LanguageSettingsPayload {
 
 export type TranslationLanguageConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
-const DEFAULT_SET_LANGUAGE_WS_URL = 'ws://127.0.0.1:9001/setlanguage';
+const DEFAULT_SET_LANGUAGE_WS_URL =
+  `${process.env.NEXT_PUBLIC_WS_BASE_URL ?? 'ws://127.0.0.1:9001'}/setlanguage`;
 
 class TranslationLanguageWebSocketManager {
   private wsUrl: string;

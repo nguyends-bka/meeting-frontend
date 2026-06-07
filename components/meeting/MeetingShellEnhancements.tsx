@@ -70,6 +70,8 @@ export default function MeetingShellEnhancements({
   shellRef,
   transcriptOpen,
   setTranscriptOpen,
+  translationOpen,
+  setTranslationOpen,
   voteOpen,
   setVoteOpen,
   documentsOpen,
@@ -87,6 +89,8 @@ export default function MeetingShellEnhancements({
   shellRef: React.RefObject<HTMLDivElement | null>;
   transcriptOpen: boolean;
   setTranscriptOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  translationOpen: boolean;
+  setTranslationOpen: React.Dispatch<React.SetStateAction<boolean>>;
   voteOpen: boolean;
   setVoteOpen: React.Dispatch<React.SetStateAction<boolean>>;
   documentsOpen: boolean;
@@ -107,6 +111,8 @@ export default function MeetingShellEnhancements({
   const prevChatOpenRef = useRef(false);
   const setTranscriptOpenRef = useRef(setTranscriptOpen);
   setTranscriptOpenRef.current = setTranscriptOpen;
+  const setTranslationOpenRef = useRef(setTranslationOpen);
+  setTranslationOpenRef.current = setTranslationOpen;
   const setVoteOpenRef = useRef(setVoteOpen);
   setVoteOpenRef.current = setVoteOpen;
   const setDocumentsOpenRef = useRef(setDocumentsOpen);
@@ -117,6 +123,8 @@ export default function MeetingShellEnhancements({
   onChatUnreadChangeRef.current = onChatUnreadChange;
   const transcriptOpenRef = useRef(transcriptOpen);
   transcriptOpenRef.current = transcriptOpen;
+  const translationOpenRef = useRef(translationOpen);
+  translationOpenRef.current = translationOpen;
   const voteOpenRef = useRef(voteOpen);
   voteOpenRef.current = voteOpen;
 
@@ -238,10 +246,11 @@ export default function MeetingShellEnhancements({
     const shell = shellRef.current;
     if (!shell) return;
     const t = transcriptOpen;
+    const tl = translationOpen;
     const v = voteOpen;
     const c = chatOpen;
     const d = documentsOpen;
-    const toolsOpen = t || v || d || c;
+    const toolsOpen = t || tl || v || d || c;
     let layout: MeetingLayoutDataset = 'neither';
 
     if (toolsOpen) layout = 'tools-only';
@@ -252,7 +261,7 @@ export default function MeetingShellEnhancements({
     } else {
       delete shell.dataset.meetingToolsTab;
     }
-  }, [shellRef, transcriptOpen, voteOpen, chatOpen, documentsOpen, activeToolsTab]);
+  }, [shellRef, transcriptOpen, translationOpen, voteOpen, chatOpen, documentsOpen, activeToolsTab]);
 
   useEffect(() => {
     updateShellLayout();
@@ -361,7 +370,7 @@ export default function MeetingShellEnhancements({
     };
 
     const toolsSideOpen = () =>
-      transcriptOpenRef.current || voteOpenRef.current || documentsOpenRef.current || chatOpenRef.current;
+      transcriptOpenRef.current || translationOpenRef.current || voteOpenRef.current || documentsOpenRef.current || chatOpenRef.current;
 
     const syncButtonUI = () => {
       if (cancelled) return;
@@ -407,6 +416,7 @@ export default function MeetingShellEnhancements({
           const isOpen = toolsSideOpen();
           if (isOpen) {
             setTranscriptOpenRef.current(false);
+            setTranslationOpenRef.current(false);
             setVoteOpenRef.current(false);
             setDocumentsOpenRef.current(false);
             if (chatOpenRef.current) {
@@ -419,6 +429,8 @@ export default function MeetingShellEnhancements({
           const tab = activeToolsTabRef.current;
           if (tab === 'transcript') {
             setTranscriptOpenRef.current(true);
+          } else if (tab === 'translation') {
+            setTranslationOpenRef.current(true);
           } else if (tab === 'documents') {
             setDocumentsOpenRef.current(true);
           } else if (tab === 'chatbot') {
@@ -509,7 +521,7 @@ export default function MeetingShellEnhancements({
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell) return;
-    const toolsOpen = voteOpen || documentsOpen || chatOpen || transcriptOpen;
+    const toolsOpen = voteOpen || documentsOpen || chatOpen || transcriptOpen || translationOpen;
     const toolsBtn = shell.querySelector('.meeting-tools-toggle') as HTMLButtonElement | null;
     if (toolsBtn) {
       if (toolsOpen) {
@@ -520,7 +532,7 @@ export default function MeetingShellEnhancements({
         toolsBtn.classList.remove('lk-button-active');
       }
     }
-  }, [shellRef, voteOpen, transcriptOpen, documentsOpen, chatOpen, activeToolsTab]);
+  }, [shellRef, voteOpen, transcriptOpen, translationOpen, documentsOpen, chatOpen, activeToolsTab]);
 
   return null;
 }

@@ -1595,7 +1595,8 @@ body.meeting-resizing-tools .meeting-unified-panel object {
   align-items: center;
   justify-content: stretch;
   gap: 2px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap; /* Cho phép xuống dòng khi thanh bên hẹp */
+  row-gap: 4px; /* Khoảng cách giữa các dòng */
   min-width: 0;
   flex: 1;
   width: 100%;
@@ -1615,7 +1616,7 @@ body.meeting-resizing-tools .meeting-unified-panel object {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  flex: 1 1 0;
+  flex: 1 1 75px; /* Có kích thước cơ bản 75px để tự động xuống dòng đẹp mắt */
   min-width: 0;
   white-space: nowrap;
 }

@@ -20,7 +20,12 @@ import {
   stopTranslationLanguageConnection,
   setTranslationLanguage,
 } from '@/lib/realtime/translationLanguageWebSocket';
+import {
+  startTranslationConnection,
+  stopTranslationConnection,
+} from '@/lib/translationWebSocket';
 import { TranscriptRoomProvider, useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
+import { TranslationRoomProvider } from '@/components/meeting/TranslationRoomProvider';
 import MeetingChatHistoryHydrator from '@/components/meeting/MeetingChatHistoryHydrator';
 import { VoteRoomProvider } from '@/components/meeting/VoteRoomProvider';
 import MeetingShellEnhancements from '@/components/meeting/MeetingShellEnhancements';
@@ -635,6 +640,7 @@ function TranslationLanguageController({
   // room hay syncLanguages, vì mỗi lần re-run sẽ tạo WS mới → 2 WS song song.
   useEffect(() => {
     startTranslationLanguageConnection();
+    startTranslationConnection();
     return () => {
       // Dọn debounce timer và đóng WS khi component thực sự unmount
       if (syncDebounceRef.current) {
@@ -642,6 +648,7 @@ function TranslationLanguageController({
         syncDebounceRef.current = null;
       }
       stopTranslationLanguageConnection();
+      stopTranslationConnection();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // empty deps → chỉ mount/unmount
@@ -720,13 +727,14 @@ export default function MeetingPage() {
   const [physicalMicWsUrl] = useState('ws://127.0.0.1:9001/audioPhisical');
   const [transcriptWsUrl] = useState('ws://127.0.0.1:9001/transcript');
   const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const [translationOpen, setTranslationOpen] = useState(false);
   const [voteOpen, setVoteOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [meetingChatOpen, setMeetingChatOpen] = useState(false);
   const [meetingChatUnread, setMeetingChatUnread] = useState(0);
   const [activeToolsTab, setActiveToolsTab] = useState<MeetingToolsTab>('chat');
 
-  const toolsSideOpen = transcriptOpen || voteOpen || documentsOpen || meetingChatOpen;
+  const toolsSideOpen = transcriptOpen || translationOpen || voteOpen || documentsOpen || meetingChatOpen;
   const meetingShellRef = useRef<HTMLDivElement>(null);
   const [hostLeaveModalOpen, setHostLeaveModalOpen] = useState(false);
   const [hostLeaveLoading, setHostLeaveLoading] = useState(false);
@@ -1379,6 +1387,8 @@ export default function MeetingPage() {
                     shellRef={meetingShellRef}
                     transcriptOpen={transcriptOpen}
                     setTranscriptOpen={setTranscriptOpen}
+                    translationOpen={translationOpen}
+                    setTranslationOpen={setTranslationOpen}
                     voteOpen={voteOpen}
                     setVoteOpen={setVoteOpen}
                     documentsOpen={documentsOpen}
@@ -1400,32 +1410,36 @@ export default function MeetingPage() {
 
                   {/** Documents side panel is rendered inside meeting-side-stack (no overlay) */}
 
-                  <VideoConference />
-                  <LatestTranscriptStrip />
-                  <TranslationLanguageController
-                    meetingId={currentMeetingId ?? meetingId}
-                    hostIdentity={meetingHostIdentity}
-                  />
-                  <div className="meeting-side-stack">
-                    <MeetingUnifiedSidePanel
-                      shellRef={meetingShellRef}
-                      visible={toolsSideOpen}
-                      activeTab={activeToolsTab}
-                      setActiveTab={setActiveToolsTab}
-                      transcriptOpen={transcriptOpen}
-                      setTranscriptOpen={setTranscriptOpen}
-                      voteOpen={voteOpen}
-                      setVoteOpen={setVoteOpen}
-                      documentsOpen={documentsOpen}
-                      setDocumentsOpen={setDocumentsOpen}
-                      chatOpen={meetingChatOpen}
-                      chatUnreadCount={meetingChatUnread}
-                      canCreatePoll={canCreatePoll}
+                  <TranslationRoomProvider>
+                    <VideoConference />
+                    <LatestTranscriptStrip />
+                    <TranslationLanguageController
                       meetingId={currentMeetingId ?? meetingId}
-                      canUpload={isHost}
-                      currentUserName={transcriptDisplayName}
+                      hostIdentity={meetingHostIdentity}
                     />
-                  </div>
+                    <div className="meeting-side-stack">
+                      <MeetingUnifiedSidePanel
+                        shellRef={meetingShellRef}
+                        visible={toolsSideOpen}
+                        activeTab={activeToolsTab}
+                        setActiveTab={setActiveToolsTab}
+                        transcriptOpen={transcriptOpen}
+                        setTranscriptOpen={setTranscriptOpen}
+                        translationOpen={translationOpen}
+                        setTranslationOpen={setTranslationOpen}
+                        voteOpen={voteOpen}
+                        setVoteOpen={setVoteOpen}
+                        documentsOpen={documentsOpen}
+                        setDocumentsOpen={setDocumentsOpen}
+                        chatOpen={meetingChatOpen}
+                        chatUnreadCount={meetingChatUnread}
+                        canCreatePoll={canCreatePoll}
+                        meetingId={currentMeetingId ?? meetingId}
+                        canUpload={isHost}
+                        currentUserName={transcriptDisplayName}
+                      />
+                    </div>
+                  </TranslationRoomProvider>
                 </div>
               </VoteRoomProvider>
             </TranscriptRoomProvider>

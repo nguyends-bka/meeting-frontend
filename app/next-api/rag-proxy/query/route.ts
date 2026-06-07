@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // const RAG_URL = 'https://rag.soictlab.com/query';
 // const RAG_URL = 'http://localhost:3001/';
-const RAG_QUERY_URL = 'https://rag.soictlab.com/query';
-const RAG_TRANSCRIPT_QUERY_URL = 'https://rag.soictlab.com/query/transcript';
+// Thực thế
+// const RAG_QUERY_URL = 'https://rag.soictlab.com/query';
+// const RAG_TRANSCRIPT_QUERY_URL = 'https://rag.soictlab.com/query/transcript';
+// Local quakcomm
+const RAG_QUERY_URL = 'http://bkmeeting.soict.io:18000/query';
+const RAG_TRANSCRIPT_QUERY_URL = 'http://bkmeeting.soict.io:18000/query/transcript';
 
 export async function POST(req: NextRequest) {
   const timestamp = new Date().toISOString();
