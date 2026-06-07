@@ -724,8 +724,90 @@ export default function MeetingPage() {
 
   const [audioSource, setAudioSource] = useState<AudioSourceMode>('real');
   const [virtualMicWsUrl, setVirtualMicWsUrl] = useState('ws://127.0.0.1:9001/audio');
-  const [physicalMicWsUrl] = useState('ws://127.0.0.1:9001/audioPhisical');
-  const [transcriptWsUrl] = useState('ws://127.0.0.1:9001/transcript');
+  const [isTranscriptFallback, setIsTranscriptFallback] = useState(false);
+  const [transcriptSessionId, setTranscriptSessionId] = useState('');
+
+  const triggerFallback = useCallback(() => {
+    setIsTranscriptFallback(true);
+    const newId = typeof window !== 'undefined' && window.crypto?.randomUUID
+      ? window.crypto.randomUUID()
+      : Math.random().toString(36).substring(2) + Date.now().toString(36);
+    setTranscriptSessionId(newId);
+  }, []);
+
+  // background probing local ASR
+  useEffect(() => {
+    if (!isTranscriptFallback) return;
+
+    let probeTimeout: ReturnType<typeof setTimeout> | null = null;
+    let isStopped = false;
+
+    const probeLocalAsr = () => {
+      if (isStopped) return;
+
+      console.log('[ASR Probe] Probing local ASR at ws://127.0.0.1:9001/transcript ...');
+      const ws = new WebSocket('ws://127.0.0.1:9001/transcript');
+      let isSettled = false;
+
+      const timeoutId = setTimeout(() => {
+        if (isSettled) return;
+        isSettled = true;
+        console.log('[ASR Probe] Probe timeout. Local ASR not ready.');
+        try {
+          ws.close();
+        } catch {}
+        scheduleNextProbe();
+      }, 3000);
+
+      ws.onopen = () => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timeoutId);
+        console.log('[ASR Probe] Local ASR connected successfully! Switching back to local.');
+        try {
+          ws.close();
+        } catch {}
+        setIsTranscriptFallback(false);
+      };
+
+      const handleFail = () => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timeoutId);
+        console.log('[ASR Probe] Local ASR connection failed.');
+        scheduleNextProbe();
+      };
+
+      ws.onerror = handleFail;
+      ws.onclose = handleFail;
+    };
+
+    const scheduleNextProbe = () => {
+      if (isStopped) return;
+      probeTimeout = setTimeout(probeLocalAsr, 60000);
+    };
+
+    // Check periodically once every 1 minute
+    probeTimeout = setTimeout(probeLocalAsr, 60000);
+
+    return () => {
+      isStopped = true;
+      if (probeTimeout) {
+        clearTimeout(probeTimeout);
+      }
+    };
+  }, [isTranscriptFallback]);
+
+  const serverAiBaseUrl = (process.env.NEXT_PUBLIC_SERVER_AI_URL || 'wss://bkmeeting.soict.io/serverai').replace(/\/+$/, '');
+
+  const currentTranscriptWsUrl = isTranscriptFallback
+    ? `${serverAiBaseUrl}/transcript?session_id=${transcriptSessionId}`
+    : 'ws://127.0.0.1:9001/transcript';
+
+  const currentPhysicalMicWsUrl = isTranscriptFallback
+    ? `${serverAiBaseUrl}/audio?session_id=${transcriptSessionId}`
+    : 'ws://127.0.0.1:9001/audioPhisical';
+
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [translationOpen, setTranslationOpen] = useState(false);
   const [voteOpen, setVoteOpen] = useState(false);
@@ -1350,13 +1432,17 @@ export default function MeetingPage() {
             {audioSource === 'real' && (
               <PhysicalMicForwarder
                 enabled={true}
-                wsUrl={physicalMicWsUrl}
+                wsUrl={currentPhysicalMicWsUrl}
                 preferredDeviceId={userChoices?.audioDeviceId ?? null}
                 onError={(message) => setRoomError(message)}
               />
             )}
 
-            <TranscriptRoomProvider wsUrl={transcriptWsUrl} meetingId={currentMeetingId ?? meetingId}>
+            <TranscriptRoomProvider
+              wsUrl={currentTranscriptWsUrl}
+              meetingId={currentMeetingId ?? meetingId}
+              onWsError={triggerFallback}
+            >
               <VoteRoomProvider meetingId={currentMeetingId ?? meetingId}>
                 <div
                   ref={meetingShellRef}

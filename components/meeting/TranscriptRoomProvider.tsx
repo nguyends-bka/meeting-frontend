@@ -82,10 +82,12 @@ export function useTranscriptRoom(): TranscriptRoomContextValue {
 export function TranscriptRoomProvider({
   wsUrl,
   meetingId,
+  onWsError,
   children,
 }: {
   wsUrl: string;
   meetingId: string;
+  onWsError?: () => void;
   children: React.ReactNode;
 }) {
   const room = useRoomContext();
@@ -164,6 +166,17 @@ export function TranscriptRoomProvider({
       } catch {
         return;
       }
+      // Chuẩn hóa định dạng tin nhắn nhận từ người khác nếu cần (trường 'transcript' -> 'text')
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.transcript && !parsed.text) {
+            parsed.text = parsed.transcript;
+          }
+        }
+        raw = JSON.stringify(parsed);
+      } catch {}
+
       setHasRoomTranscriptData(true);
       setState((prev) => applyTranscriptRaw(prev, raw));
     };
@@ -257,8 +270,10 @@ export function TranscriptRoomProvider({
       try {
         s = new WebSocket(wsUrl);
         socket = s;
-      } catch {
+      } catch (err) {
+        console.error('[Transcript] Failed to create WebSocket:', err);
         setTranscriptWsStatus('error');
+        if (onWsError) onWsError();
         reconnectTimer = setTimeout(openSocket, 2800);
         return;
       }
@@ -278,6 +293,20 @@ export function TranscriptRoomProvider({
         } else {
           raw = String(event.data);
         }
+
+        // Chuẩn hóa định dạng tin nhắn từ Server AI (trường 'transcript' -> 'text')
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            if (parsed.transcript && !parsed.text) {
+              parsed.text = parsed.transcript;
+            }
+          }
+          raw = JSON.stringify(parsed);
+        } catch {
+          // bỏ qua lỗi nếu không phải tin nhắn JSON
+        }
+
         const relaySpeaker =
           user?.fullName?.trim() ||
           room.localParticipant.name?.trim() ||
@@ -322,12 +351,14 @@ export function TranscriptRoomProvider({
       s.onerror = () => {
         if (cancelled || socket !== s) return;
         setTranscriptWsStatus('error');
+        if (onWsError) onWsError();
       };
 
       s.onclose = () => {
         if (socket === s) socket = null;
         if (cancelled) return;
         setTranscriptWsStatus('closed');
+        if (onWsError) onWsError();
         reconnectTimer = setTimeout(openSocket, 2800);
       };
     };
@@ -340,7 +371,7 @@ export function TranscriptRoomProvider({
       socket?.close();
       socket = null;
     };
-  }, [wsUrl, connectionState, room, user?.fullName, user?.id, user?.username, meetingId]);
+  }, [wsUrl, connectionState, room, user?.fullName, user?.id, user?.username, meetingId, onWsError]);
 
   const value = useMemo<TranscriptRoomContextValue>(
     () => ({
