@@ -23,4 +23,10 @@ export const authApi = {
       body: JSON.stringify(request),
     });
   },
+
+  refreshSession: async () => {
+    return apiClient.request<LoginResponse>('/api/auth/refresh-session', {
+      method: 'POST',
+    });
+  },
 };

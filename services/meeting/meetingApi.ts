@@ -511,4 +511,25 @@ export const meetingApi = {
 
     return res.blob();
   },
+
+  getMinutesSummaryStatus: async (meetingId: string) => {
+    return apiClient.request<{
+      meetingId: string;
+      status: string;
+      summaryText: string;
+      errorMessage: string | null;
+      updatedAt?: number;
+    }>(`/api/meeting/${encodeURIComponent(meetingId)}/minutes/summary/status`, {
+      method: 'GET',
+    });
+  },
+
+  triggerMinutesSummary: async (meetingId: string) => {
+    return apiClient.request<{ message: string }>(
+      `/api/meeting/${encodeURIComponent(meetingId)}/minutes/summary/trigger`,
+      {
+        method: 'POST',
+      },
+    );
+  },
 };

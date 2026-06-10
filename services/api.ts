@@ -142,6 +142,10 @@ class ApiService {
   }) {
     return userApi.registerFaceEmbedding(request);
   }
+
+  async refreshSession() {
+    return authApi.refreshSession();
+  }
 }
 
 export const apiService = new ApiService();

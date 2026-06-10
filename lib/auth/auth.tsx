@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiService } from '@/services/api';
 import { FaceRegistrationGate } from '@/components/FaceRegistrationGate';
@@ -138,6 +138,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  // Activity tracking for sliding session
+  const lastActivityRef = useRef<number>(typeof window !== 'undefined' ? Date.now() : 0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const updateActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    window.addEventListener('mousedown', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('scroll', updateActivity);
+    window.addEventListener('click', updateActivity);
+
+    return () => {
+      window.removeEventListener('mousedown', updateActivity);
+      window.removeEventListener('keydown', updateActivity);
+      window.removeEventListener('scroll', updateActivity);
+      window.removeEventListener('click', updateActivity);
+    };
+  }, []);
+
+  // Background silent refresh interval
+  useEffect(() => {
+    if (!token) return;
+
+    const getTokenExpiry = (tokenStr: string): number => {
+      try {
+        const payload = tokenStr.split('.')[1];
+        const decoded = JSON.parse(atob(payload));
+        return decoded.exp * 1000;
+      } catch {
+        return 0;
+      }
+    };
+
+    const checkAndRefreshSession = async () => {
+      const expiry = getTokenExpiry(token);
+      if (!expiry) return;
+
+      const now = Date.now();
+      const timeRemaining = expiry - now;
+
+      // If token expires in less than 90 mins, AND user was active in the last 30 mins, refresh it
+      const hasRecentActivity = (now - lastActivityRef.current) < 30 * 60 * 1000;
+
+      if (timeRemaining < 90 * 60 * 1000 && hasRecentActivity) {
+        console.log('[Auth] Token is expiring soon and user is active, refreshing session...');
+        try {
+          const res = await apiService.refreshSession();
+          if (res.data && res.data.token) {
+            setToken(res.data.token);
+            setUser(res.data.user);
+            localStorage.setItem('token', res.data.token);
+            localStorage.setItem('user', JSON.stringify(res.data.user));
+            console.log('[Auth] Session refreshed successfully.');
+          }
+        } catch (err) {
+          console.error('[Auth] Failed to refresh session:', err);
+        }
+      }
+    };
+
+    const interval = setInterval(checkAndRefreshSession, 5 * 60 * 1000); // Check every 5 minutes
+    return () => clearInterval(interval);
+  }, [token]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

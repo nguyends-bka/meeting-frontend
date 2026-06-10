@@ -201,6 +201,7 @@ export function useMeetingDetailPage(meetingId: string, user: any, isAdmin: bool
   const [editMeetingModal, setEditMeetingModal] = useState<MeetingListItem | null>(null);
   const [reportMeeting, setReportMeeting] = useState<MeetingListItem | null>(null);
   const [documentsMeeting, setDocumentsMeeting] = useState<MeetingListItem | null>(null);
+  const [summaryReportMeeting, setSummaryReportMeeting] = useState<MeetingListItem | null>(null);
   
   const [recordingPlaybackModalOpen, setRecordingPlaybackModalOpen] = useState(false);
   const [recordingPlaybackUrl, setRecordingPlaybackUrl] = useState<string | null>(null);
@@ -241,6 +242,7 @@ export function useMeetingDetailPage(meetingId: string, user: any, isAdmin: bool
     editMeetingModal, setEditMeetingModal,
     reportMeeting, setReportMeeting,
     documentsMeeting, setDocumentsMeeting,
+    summaryReportMeeting, setSummaryReportMeeting,
     recordingPlaybackModalOpen, setRecordingPlaybackModalOpen,
     recordingPlaybackUrl, setRecordingPlaybackUrl,
     recordingPlaybackTitle, setRecordingPlaybackTitle,

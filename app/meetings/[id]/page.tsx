@@ -9,6 +9,7 @@ import { useMeetingDetailPage } from '../_shared/useMeetingDetailPage';
 import { MeetingDetailView } from '../_shared/MeetingDetailView';
 import { HistoryModal } from '../_shared/modals/HistoryModal';
 import { ReportModal } from '../_shared/modals/ReportModal';
+import { SummaryReportModal } from '../_shared/modals/SummaryReportModal';
 import { EditMeetingModal } from '../_shared/modals/EditMeetingModal';
 import { DocumentsModal } from '../_shared/modals/DocumentsModal';
 import { PollListModal } from '../_shared/modals/PollListModal';
@@ -97,6 +98,7 @@ function MeetingDetailPageContent() {
           message={message}
           openDocumentsModal={state.setDocumentsMeeting}
           openReportModal={state.setReportMeeting}
+          openSummaryReportModal={state.setSummaryReportMeeting}
           openPollListModal={state.setViewPollMeeting}
           openHistoryModal={state.setHistoryMeeting}
           openEditMeetingModal={state.setEditMeetingModal}
@@ -138,6 +140,11 @@ function MeetingDetailPageContent() {
       <ReportModal
         meeting={state.reportMeeting}
         onClose={() => state.setReportMeeting(null)}
+      />
+
+      <SummaryReportModal
+        meeting={state.summaryReportMeeting}
+        onClose={() => state.setSummaryReportMeeting(null)}
       />
 
       <EditMeetingModal

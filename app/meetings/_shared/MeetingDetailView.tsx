@@ -3,7 +3,8 @@ import { Card, Space, Typography, Tag, Button, Input, Select, Table, Popconfirm 
 import { 
   ArrowLeftOutlined, CopyOutlined, LinkOutlined, PlayCircleOutlined,
   CalendarOutlined, FileWordOutlined, FileTextOutlined, HistoryOutlined,
-  HourglassOutlined, CheckCircleOutlined, DeleteOutlined, VideoCameraOutlined
+  HourglassOutlined, CheckCircleOutlined, DeleteOutlined, VideoCameraOutlined,
+  FileDoneOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { MeetingListItem, MeetingInvitee, MeetingCoHostItem, MeetingRecordingDto } from '@/dtos/meeting.dto';
@@ -24,6 +25,7 @@ interface MeetingDetailViewProps {
   // Handlers for quick actions
   openDocumentsModal: (m: MeetingListItem) => void;
   openReportModal: (m: MeetingListItem) => void;
+  openSummaryReportModal: (m: MeetingListItem) => void;
   openPollListModal: (m: MeetingListItem) => void;
   openHistoryModal: (m: MeetingListItem) => void;
   openEditMeetingModal: (m: MeetingListItem) => void;
@@ -247,6 +249,11 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
           <div className="qa-icon" style={{ color: '#d97706', background: '#fffbeb' }}><FileTextOutlined /></div>
           <div className="qa-name">Biên bản</div>
           <div className="qa-desc">Xuất biên bản họp</div>
+        </div>
+        <div className="qa-card" onClick={() => props.openSummaryReportModal(m)}>
+          <div className="qa-icon" style={{ color: '#0284c7', background: '#f0f9ff' }}><FileDoneOutlined /></div>
+          <div className="qa-name">Báo cáo</div>
+          <div className="qa-desc">Báo cáo tóm tắt AI</div>
         </div>
         {(m.canManagePoll || isHost) && (
           <div className="qa-card" onClick={() => props.openPollListModal(m)}>
