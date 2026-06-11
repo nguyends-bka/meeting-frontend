@@ -4,6 +4,7 @@ import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChatbotRealtimeClient, RagQueryMode } from '@/lib/realtime/chatboxWebSocket';
+import { useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
 
 type ChatFinalItem = {
   id: string;
@@ -69,7 +70,15 @@ const markdownComponents = {
 };
 
 export default function MeetingToolsChatbotPanel({ meetingId }: { meetingId: string }) {
+  const { isFallback, sessionId } = useTranscriptRoom();
   const clientRef = useRef<ChatbotRealtimeClient | null>(null);
+
+  const chatbotWsUrl = useMemo(() => {
+    const serverAiBaseUrl = (process.env.NEXT_PUBLIC_SERVER_AI_URL || 'wss://bkmeeting.soict.io/serverai').replace(/\/+$/, '');
+    return isFallback
+      ? `${serverAiBaseUrl}/chatbot?session_id=${sessionId}`
+      : (process.env.NEXT_PUBLIC_WS_CHATBOT_URL ?? `${process.env.NEXT_PUBLIC_WS_BASE_URL ?? 'ws://127.0.0.1:9001'}/chatbot`);
+  }, [isFallback, sessionId]);
   const [finalized, setFinalized] = useState<ChatFinalItem[]>([]);
   const [draftText, setDraftText] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
@@ -132,7 +141,7 @@ export default function MeetingToolsChatbotPanel({ meetingId }: { meetingId: str
   }, [scrollDeps, draftText, scrollToBottom]);
 
   useEffect(() => {
-    const client = new ChatbotRealtimeClient(CHATBOT_WS_URL, meetingId, ragMode, {
+    const client = new ChatbotRealtimeClient(chatbotWsUrl, meetingId, ragMode, {
       onOpen: () => {
         setConnected(true);
       },
@@ -239,7 +248,7 @@ export default function MeetingToolsChatbotPanel({ meetingId }: { meetingId: str
       }
       setConnected(false);
     };
-  }, [meetingId, ragMode]);
+  }, [meetingId, ragMode, chatbotWsUrl]);
 
   const handleSend = async (e: FormEvent) => {
     e.preventDefault();

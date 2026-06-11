@@ -15,6 +15,7 @@ class TranslationLanguageWebSocketManager {
   private status: TranslationLanguageConnectionStatus = 'disconnected';
   private ws: WebSocket | null = null;
   private reconnectTimer: number | null = null;
+  private isServerReady = false;
 
   // Lưu cấu hình ngôn ngữ gần nhất để tự động gửi lại khi kết nối lại
   private lastPayload: LanguageSettingsPayload | null = null;
@@ -25,6 +26,24 @@ class TranslationLanguageWebSocketManager {
 
   constructor(wsUrl: string) {
     this.wsUrl = wsUrl;
+  }
+
+  updateUrl(wsUrl: string) {
+    if (this.wsUrl === wsUrl) return;
+    console.log(`[WS Language] URL changed from ${this.wsUrl} to ${wsUrl}. Reconnecting...`);
+    this.wsUrl = wsUrl;
+    if (this.ws) {
+      this.ws.onclose = null;
+      try {
+        this.ws.close();
+      } catch {
+        // ignore
+      }
+      this.ws = null;
+      this.lastSentPayloadStr = null;
+      this.isServerReady = false;
+      this.connect();
+    }
   }
 
   start() {
@@ -51,6 +70,7 @@ class TranslationLanguageWebSocketManager {
     }
     this.ws = null;
     this.lastSentPayloadStr = null;
+    this.isServerReady = false;
     this.updateStatus('disconnected');
   }
 
@@ -97,15 +117,19 @@ class TranslationLanguageWebSocketManager {
     
     this.lastPayload = payload;
 
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.isServerReady) {
       this.sendPayload(payload);
     } else {
-      console.log('[WS Language] Saved language configuration to send on next connect:', payload);
+      console.log('[WS Language] Saved language configuration to send on next connect or when ready:', payload);
     }
   }
 
   private sendPayload(payload: LanguageSettingsPayload) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    if (!this.isServerReady) {
+      console.log('[WS Language] Server not ready yet. Delaying payload send.');
+      return;
+    }
     try {
       const dataStr = JSON.stringify(payload);
       if (dataStr === this.lastSentPayloadStr) {
@@ -137,11 +161,7 @@ class TranslationLanguageWebSocketManager {
     this.ws.onopen = () => {
       console.log(`[WS Language] ✅ WebSocket OPEN → ${this.wsUrl}`);
       this.updateStatus('connected');
-
-      // Tự động gửi lại cấu hình ngôn ngữ gần nhất nếu có
-      if (this.lastPayload) {
-        this.sendPayload(this.lastPayload);
-      }
+      this.isServerReady = false; // Chờ gói tin ready từ server
     };
 
     this.ws.onmessage = (event) => {
@@ -149,6 +169,16 @@ class TranslationLanguageWebSocketManager {
       console.log(`[WS Language] 📨 RECEIVE ← ${this.wsUrl}`, raw);
       try {
         const parsed = JSON.parse(raw);
+
+        // Phát hiện gói tin ready từ server
+        if (parsed && typeof parsed === 'object' && parsed.type === 'ready') {
+          console.log('[WS Language] Server reported ready. Sending cached language payload if any.');
+          this.isServerReady = true;
+          if (this.lastPayload) {
+            this.sendPayload(this.lastPayload);
+          }
+        }
+
         for (const cb of this.messageListeners) {
           try {
             cb(parsed);
@@ -175,6 +205,7 @@ class TranslationLanguageWebSocketManager {
     this.ws.onclose = () => {
       console.log(`[WS Language] 🔌 CLOSE ← ${this.wsUrl}`);
       this.lastSentPayloadStr = null;
+      this.isServerReady = false;
       this.updateStatus('disconnected');
       this.scheduleReconnect();
     };
@@ -207,7 +238,11 @@ let languageManager: TranslationLanguageWebSocketManager | null = null;
 /** Bắt đầu duy trì kết nối WebSocket tới cổng setlanguage */
 export function startTranslationLanguageConnection(wsUrl: string = DEFAULT_SET_LANGUAGE_WS_URL) {
   if (typeof window === 'undefined') return;
-  if (!languageManager) languageManager = new TranslationLanguageWebSocketManager(wsUrl);
+  if (!languageManager) {
+    languageManager = new TranslationLanguageWebSocketManager(wsUrl);
+  } else {
+    languageManager.updateUrl(wsUrl);
+  }
   languageManager.start();
 }
 
@@ -215,7 +250,6 @@ export function startTranslationLanguageConnection(wsUrl: string = DEFAULT_SET_L
 export function stopTranslationLanguageConnection() {
   if (!languageManager) return;
   languageManager.stop();
-  languageManager = null;
 }
 
 /** Lấy trạng thái kết nối hiện tại */

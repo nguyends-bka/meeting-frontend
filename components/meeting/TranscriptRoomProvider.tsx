@@ -37,6 +37,8 @@ type TranscriptRoomContextValue = TranscriptRoomState & {
   transcriptWsStatus: WsRelayStatus;
   hasRoomTranscriptData: boolean;
   chatHistory: RoomChatItem[];
+  isFallback: boolean;
+  sessionId: string;
 };
 
 const TranscriptRoomContext = createContext<TranscriptRoomContextValue | null>(null);
@@ -83,11 +85,15 @@ export function TranscriptRoomProvider({
   wsUrl,
   meetingId,
   onWsError,
+  isFallback,
+  sessionId,
   children,
 }: {
   wsUrl: string;
   meetingId: string;
   onWsError?: () => void;
+  isFallback: boolean;
+  sessionId: string;
   children: React.ReactNode;
 }) {
   const room = useRoomContext();
@@ -379,8 +385,10 @@ export function TranscriptRoomProvider({
       transcriptWsStatus,
       hasRoomTranscriptData,
       chatHistory,
+      isFallback,
+      sessionId,
     }),
-    [state, transcriptWsStatus, hasRoomTranscriptData, chatHistory],
+    [state, transcriptWsStatus, hasRoomTranscriptData, chatHistory, isFallback, sessionId],
   );
 
   return (

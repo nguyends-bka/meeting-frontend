@@ -208,12 +208,14 @@ export default function ProfilePage() {
     const emailVal = trimOrNull(values.email);
 
     // Validate ngôn ngữ ưu tiên nếu có chọn ngôn ngữ
-    if (selectedLangCodes.length > 0 && !primaryLangCode) {
+    const actualPrimaryLangCode = selectedLangCodes.length === 1 ? selectedLangCodes[0] : primaryLangCode;
+
+    if (selectedLangCodes.length > 1 && !actualPrimaryLangCode) {
       messageApi.error('Vui lòng chọn ngôn ngữ ưu tiên');
       setUpdatingProfile(false);
       return;
     }
-    if (primaryLangCode && !selectedLangCodes.includes(primaryLangCode)) {
+    if (actualPrimaryLangCode && !selectedLangCodes.includes(actualPrimaryLangCode)) {
       messageApi.error('Ngôn ngữ ưu tiên phải nằm trong danh sách ngôn ngữ đã chọn');
       setUpdatingProfile(false);
       return;
@@ -221,7 +223,7 @@ export default function ProfilePage() {
 
     const languagesPayload = selectedLangCodes.map((code) => ({
       code,
-      isPrimary: code === primaryLangCode,
+      isPrimary: code === actualPrimaryLangCode,
     }));
 
     const result = await apiService.updateProfileExtended({
@@ -609,15 +611,16 @@ export default function ProfilePage() {
                               style={{ width: '100%' }}
                               onChange={(codes: string[]) => {
                                 setSelectedLangCodes(codes);
-                                // Nếu ngôn ngữ ưu tiên hiện tại bị xóa khỏi danh sách → reset
-                                if (primaryLangCode && !codes.includes(primaryLangCode)) {
+                                if (codes.length === 1) {
+                                  setPrimaryLangCode(codes[0]);
+                                } else if (primaryLangCode && !codes.includes(primaryLangCode)) {
                                   setPrimaryLangCode(null);
                                 }
                               }}
                             />
                           </Form.Item>
                           {/* Chọn ngôn ngữ ưu tiên */}
-                          {selectedLangCodes.length > 0 && (
+                          {selectedLangCodes.length > 1 && (
                             <div>
                               <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
                                 <StarFilled style={{ color: '#faad14', marginRight: 4 }} />
@@ -640,7 +643,7 @@ export default function ProfilePage() {
                               </Radio.Group>
                             </div>
                           )}
-                          {selectedLangCodes.length > 0 && !primaryLangCode && (
+                          {selectedLangCodes.length > 1 && !primaryLangCode && (
                             <Typography.Text type="danger" style={{ fontSize: 12 }}>
                               Vui lòng chọn 1 ngôn ngữ ưu tiên
                             </Typography.Text>

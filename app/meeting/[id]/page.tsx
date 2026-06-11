@@ -516,6 +516,7 @@ function TranslationLanguageController({
 }) {
   const room = useRoomContext();
   const { user } = useAuth();
+  const { isFallback, sessionId } = useTranscriptRoom();
   const resolvedLanguagesRef = useRef<Record<string, { preferredLanguage: string; languages: string[] }>>({});
 
   // Lưu các giá trị vào ref để syncLanguages đọc mà KHÔNG cần trong dependency array
@@ -635,14 +636,25 @@ function TranslationLanguageController({
   // Debounce ref để tránh gọi syncLanguages quá nhiều lần liên tiếp
   const syncDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ─── Effect 1: Vòng đời WebSocket ─── chỉ chạy 1 lần khi mount/unmount
-  // KHÔNG đặt startTranslationLanguageConnection bên trong effect phụ thuộc vào
-  // room hay syncLanguages, vì mỗi lần re-run sẽ tạo WS mới → 2 WS song song.
+  // ─── Effect 1: Vòng đời WebSocket ─── tự động kết nối lại khi trạng thái fallback thay đổi
   useEffect(() => {
-    startTranslationLanguageConnection();
-    startTranslationConnection();
+    const serverAiBaseUrl = (process.env.NEXT_PUBLIC_SERVER_AI_URL || 'wss://bkmeeting.soict.io/serverai').replace(/\/+$/, '');
+    
+    const setLanguageWsUrl = isFallback
+      ? `${serverAiBaseUrl}/setlanguage?session_id=${sessionId}`
+      : (process.env.NEXT_PUBLIC_WS_SET_LANGUAGE_URL ?? `${process.env.NEXT_PUBLIC_WS_BASE_URL ?? 'ws://127.0.0.1:9001'}/setlanguage`);
+
+    const translationWsUrl = isFallback
+      ? `${serverAiBaseUrl}/translation?session_id=${sessionId}`
+      : (process.env.NEXT_PUBLIC_WS_TRANSLATION_URL ?? `${process.env.NEXT_PUBLIC_WS_BASE_URL ?? 'ws://127.0.0.1:9001'}/translation`);
+
+    console.log('[TranslationLanguageController] Reconnecting WebSockets due to fallback state change:', { isFallback, sessionId, setLanguageWsUrl, translationWsUrl });
+
+    startTranslationLanguageConnection(setLanguageWsUrl);
+    startTranslationConnection(translationWsUrl);
+
     return () => {
-      // Dọn debounce timer và đóng WS khi component thực sự unmount
+      // Dọn debounce timer và đóng WS khi component unmount hoặc khi reconnect
       if (syncDebounceRef.current) {
         clearTimeout(syncDebounceRef.current);
         syncDebounceRef.current = null;
@@ -650,8 +662,7 @@ function TranslationLanguageController({
       stopTranslationLanguageConnection();
       stopTranslationConnection();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // empty deps → chỉ mount/unmount
+  }, [isFallback, sessionId]);
 
   // ─── Effect 2: Đăng ký event LiveKit + sync lần đầu ───
   // Chạy lại khi room hoặc syncLanguages thay đổi, nhưng KHÔNG chạm vào WS.
@@ -1442,6 +1453,8 @@ export default function MeetingPage() {
               wsUrl={currentTranscriptWsUrl}
               meetingId={currentMeetingId ?? meetingId}
               onWsError={triggerFallback}
+              isFallback={isTranscriptFallback}
+              sessionId={transcriptSessionId}
             >
               <VoteRoomProvider meetingId={currentMeetingId ?? meetingId}>
                 <div

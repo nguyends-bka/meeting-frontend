@@ -52,6 +52,11 @@ export function useTranslationRoom(): TranslationRoomContextValue {
 function getTranslationText(data: any, preferredLanguage: string): string {
   let text = '';
   if (data && typeof data === 'object') {
+    // Bỏ qua các gói tin điều khiển của Server AI
+    if (data.type === 'ready' || data.type === 'keepalive') {
+      return '';
+    }
+
     // Gói tin dạng: { "vi": "xin chào", "en": "Hello everyone.", "zh": "大家好。" }
     const userLang = preferredLanguage.toLowerCase();
     const keys = Object.keys(data);

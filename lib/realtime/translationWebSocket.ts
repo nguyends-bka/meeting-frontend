@@ -17,6 +17,22 @@ class TranslationWebSocketManager {
     this.wsUrl = wsUrl;
   }
 
+  updateUrl(wsUrl: string) {
+    if (this.wsUrl === wsUrl) return;
+    console.log(`[WS Translation] URL changed from ${this.wsUrl} to ${wsUrl}. Reconnecting...`);
+    this.wsUrl = wsUrl;
+    if (this.ws) {
+      this.ws.onclose = null;
+      try {
+        this.ws.close();
+      } catch {
+        // ignore
+      }
+      this.ws = null;
+      this.connect();
+    }
+  }
+
   start() {
     if (this.reconnectTimer != null) return;
     this.connect();
@@ -154,14 +170,17 @@ let translationManager: TranslationWebSocketManager | null = null;
 
 export function startTranslationConnection(wsUrl: string = DEFAULT_TRANSLATION_WS_URL) {
   if (typeof window === 'undefined') return;
-  if (!translationManager) translationManager = new TranslationWebSocketManager(wsUrl);
+  if (!translationManager) {
+    translationManager = new TranslationWebSocketManager(wsUrl);
+  } else {
+    translationManager.updateUrl(wsUrl);
+  }
   translationManager.start();
 }
 
 export function stopTranslationConnection() {
   if (!translationManager) return;
   translationManager.stop();
-  translationManager = null;
 }
 
 export function getTranslationConnectionStatus(): TranslationConnectionStatus {
