@@ -124,7 +124,12 @@ export function canManageMeetingInvitees(
   if (!m) return false;
   if (isAdmin) return true;
   if (!user) return false;
-  return user.username === m.hostIdentity;
+  
+  if (isHostForMeeting(m, user)) return true;
+  if (user.username && m.hostIdentity) {
+    return user.username.toLowerCase() === m.hostIdentity.toLowerCase();
+  }
+  return false;
 }
 
 /** Tạo link tham gia cuộc họp từ meetingId. */

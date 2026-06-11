@@ -62,7 +62,7 @@ export function useMeetingDetailPage(meetingId: string, user: any, isAdmin: bool
 
   // Effect load invitees & co-hosts
   useEffect(() => {
-    if (!detailMeeting || !canManageMeetingInvitees(detailMeeting, user, isAdmin)) {
+    if (!detailMeeting) {
       setMeetingInvitees([]);
       setMeetingCoHosts([]);
       setInviteUsernameInput('');
@@ -80,7 +80,7 @@ export function useMeetingDetailPage(meetingId: string, user: any, isAdmin: bool
       if (co.data) setMeetingCoHosts(co.data);
     });
     return () => { cancelled = true; };
-  }, [detailMeeting, isAdmin, user?.id, user?.username]);
+  }, [detailMeeting]);
 
   // Effect load recordings
   useEffect(() => {
