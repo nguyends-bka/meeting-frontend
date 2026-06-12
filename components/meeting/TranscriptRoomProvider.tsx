@@ -17,7 +17,7 @@ import {
   useState,
 } from 'react';
 import { useChat, useConnectionState, useRoomContext } from '@livekit/components-react';
-import { ConnectionState, RoomEvent } from 'livekit-client';
+import { ConnectionState, RoomEvent, Track } from 'livekit-client';
 import { useAuth } from '@/lib/auth';
 import { meetingApi } from '@/services/meeting/meetingApi';
 import type { RoomChatItem, RoomTranscriptItem } from '@/dtos/meeting.dto';
@@ -291,6 +291,18 @@ export function TranscriptRoomProvider({
 
       s.onmessage = async (event) => {
         if (cancelled || socket !== s) return;
+
+        // Bỏ qua nếu micro đang tắt (muted)
+        const micPublication = room.localParticipant
+          ? Array.from(room.localParticipant.trackPublications.values()).find(
+              (pub) => pub.source === Track.Source.Microphone,
+            )
+          : null;
+        const micActive = Boolean(micPublication?.track) && !micPublication?.isMuted;
+        if (!micActive) {
+          return;
+        }
+
         let raw = '';
         if (typeof event.data === 'string') {
           raw = event.data;

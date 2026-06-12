@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { useTranscriptRoom } from '@/components/meeting/TranscriptRoomProvider';
+import { useTranslationRoom } from '@/components/meeting/TranslationRoomProvider';
+import { TranslationOutlined } from '@ant-design/icons';
 
 function formatReceivedTime(ts: number): string {
   const d = new Date(ts);
@@ -30,6 +32,8 @@ export default function TranscriptPanel({
     draftSpeaker,
   } = useTranscriptRoom();
 
+  const { finalized: translationFinalized } = useTranslationRoom();
+
   const listRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   /** Giống chat: chỉ auto-scroll xuống đáy nếu user đang ở gần đáy (hoặc đang có draft). */
@@ -39,6 +43,49 @@ export default function TranscriptPanel({
     () => [...finalized].sort((a, b) => a.receivedAt - b.receivedAt),
     [finalized],
   );
+
+  const sortedTranslations = useMemo(
+    () => [...translationFinalized].sort((a, b) => a.receivedAt - b.receivedAt),
+    [translationFinalized],
+  );
+
+  const matchedTranslations = useMemo(() => {
+    const mapping: Record<string, typeof sortedTranslations[0]> = {};
+    const usedTranslationIds = new Set<string>();
+
+    for (const transcript of sortedFinalized) {
+      let bestMatch: typeof sortedTranslations[0] | null = null;
+      let minDiff = Infinity;
+
+      for (const trans of sortedTranslations) {
+        if (usedTranslationIds.has(trans.id)) continue;
+
+        // Check speaker match if speakers exist
+        if (transcript.speaker && trans.speaker) {
+          const ts = trans.speaker.toLowerCase();
+          const tis = transcript.speaker.toLowerCase();
+          if (ts !== tis && ts !== 'bản dịch' && tis !== 'bản dịch') {
+            continue;
+          }
+        }
+
+        const diff = trans.receivedAt - transcript.receivedAt;
+        if (diff >= -5000 && diff <= 20000) {
+          const absDiff = Math.abs(diff);
+          if (absDiff < minDiff) {
+            minDiff = absDiff;
+            bestMatch = trans;
+          }
+        }
+      }
+
+      if (bestMatch) {
+        mapping[transcript.id] = bestMatch;
+        usedTranslationIds.add(bestMatch.id);
+      }
+    }
+    return mapping;
+  }, [sortedFinalized, sortedTranslations]);
 
   const scrollToBottom = useCallback((force: boolean) => {
     const el = listRef.current;
@@ -109,17 +156,29 @@ export default function TranscriptPanel({
           <div className="meeting-transcript-empty">Chưa có transcript...</div>
         ) : (
           <>
-            {sortedFinalized.map((item) => (
-              <div key={item.id} className="meeting-transcript-entry">
-                <div className="meeting-transcript-meta">
-                  <span className="meeting-transcript-speaker">
-                    {item.speaker || currentUserName || 'Current user'}
-                  </span>
-                  <span className="meeting-transcript-time">{formatReceivedTime(item.receivedAt)}</span>
+            {sortedFinalized.map((item) => {
+              const transItem = matchedTranslations[item.id];
+              return (
+                <div key={item.id} className="meeting-transcript-entry">
+                  <div className="meeting-transcript-meta">
+                    <span className="meeting-transcript-speaker">
+                      {item.speaker || currentUserName || 'Current user'}
+                    </span>
+                    <span className="meeting-transcript-time">{formatReceivedTime(item.receivedAt)}</span>
+                  </div>
+                  <div className="meeting-transcript-body">{item.text}</div>
+                  {transItem && transItem.text && (
+                    <>
+                      <div className="meeting-transcript-divider" />
+                      <div className="meeting-transcript-translation">
+                        <TranslationOutlined className="meeting-transcript-trans-icon" />
+                        <span className="meeting-transcript-trans-text">{transItem.text}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div className="meeting-transcript-body">{item.text}</div>
-              </div>
-            ))}
+              );
+            })}
             {draftText != null && draftText !== '' && (
               <div className="meeting-transcript-entry meeting-transcript-entry--draft">
                 <div className="meeting-transcript-meta">

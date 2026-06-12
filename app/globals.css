@@ -2620,6 +2620,34 @@ body.meeting-resizing-tools .meeting-unified-panel object {
   overflow-wrap: break-word;
 }
 
+.meeting-transcript-divider {
+  margin: 8px 0 6px 0;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.meeting-transcript-translation {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.meeting-transcript-trans-icon {
+  color: #9ca3af;
+  font-size: 13px;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.meeting-transcript-trans-text {
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4b5563;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
 /* Dark theme */
 .dark-theme .meeting-transcript-panel {
   background: #1f1f1f;
@@ -2645,6 +2673,18 @@ body.meeting-resizing-tools .meeting-unified-panel object {
 .dark-theme .meeting-transcript-time,
 .dark-theme .meeting-transcript-empty {
   color: rgba(255, 255, 255, 0.65);
+}
+
+.dark-theme .meeting-transcript-divider {
+  border-top-color: #434343;
+}
+
+.dark-theme .meeting-transcript-trans-text {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.dark-theme .meeting-transcript-trans-icon {
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .dark-theme .meeting-transcript-status.status-transcript-ready {

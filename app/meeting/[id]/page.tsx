@@ -276,38 +276,60 @@ function PhysicalMicForwarder({
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
 
+  // Trạng thái mong muốn của forwarder
+  const shouldBeRunning = useRef(false);
+
   // lưu stop function của session hiện tại
   const stopSenderRef = useRef<(() => Promise<void>) | null>(null);
 
-  // đảm bảo stop xong mới được start
+  // đảm bảo stop xong mới được start và ngược lại
   const lifecycleRef = useRef<Promise<void> | null>(null);
 
   const stopSender = useCallback(async () => {
+    shouldBeRunning.current = false;
+
+    // nếu đang có tiến trình start/stop khác thì đợi hoàn thành
+    if (lifecycleRef.current) {
+      await lifecycleRef.current;
+    }
+
     if (!stopSenderRef.current) return;
 
-    const stopPromise = stopSenderRef.current();
-    lifecycleRef.current = stopPromise;
+    let resolveLifecycle: () => void = () => {};
+    lifecycleRef.current = new Promise<void>((resolve) => {
+      resolveLifecycle = resolve;
+    });
 
     try {
-      await stopPromise;
+      await stopSenderRef.current();
     } catch (error) {
       console.error('Failed to stop physical mic sender:', error);
     } finally {
       stopSenderRef.current = null;
+      resolveLifecycle();
       lifecycleRef.current = null;
     }
   }, []);
 
   const startSender = useCallback(async () => {
     if (!enabled) return;
+    shouldBeRunning.current = true;
 
-    // nếu đang stop thì đợi stop xong
+    // nếu đang có tiến trình start/stop khác thì đợi hoàn thành
     if (lifecycleRef.current) {
       await lifecycleRef.current;
     }
 
+    // kiểm tra lại xem có thay đổi ý định trong thời gian chờ không
+    if (!shouldBeRunning.current) return;
+
     // nếu đã có sender đang chạy thì không start lại
     if (stopSenderRef.current) return;
+
+    let resolveLifecycle: () => void = () => {};
+    lifecycleRef.current = new Promise<void>((resolve) => {
+      resolveLifecycle = resolve;
+    });
 
     try {
       const session = await startPhysicalMicWebSocket(
@@ -315,7 +337,12 @@ function PhysicalMicForwarder({
         preferredDeviceId,
       );
 
-      stopSenderRef.current = session.stop;
+      // kiểm tra lại xem có bị tắt mic trong lúc đang kết nối không
+      if (!shouldBeRunning.current) {
+        await session.stop();
+      } else {
+        stopSenderRef.current = session.stop;
+      }
     } catch (error) {
       console.error('Physical mic forward failed:', error);
       const message =
@@ -323,6 +350,9 @@ function PhysicalMicForwarder({
           ? error.message
           : 'Không thể gửi âm thanh mic thật qua websocket';
       onErrorRef.current(message);
+    } finally {
+      resolveLifecycle();
+      lifecycleRef.current = null;
     }
   }, [enabled, preferredDeviceId, wsUrl]);
 
