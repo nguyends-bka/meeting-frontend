@@ -161,7 +161,22 @@ class TranslationLanguageWebSocketManager {
     this.ws.onopen = () => {
       console.log(`[WS Language] ✅ WebSocket OPEN → ${this.wsUrl}`);
       this.updateStatus('connected');
-      this.isServerReady = false; // Chờ gói tin ready từ server
+      
+      const isLocal =
+        this.wsUrl.startsWith('ws://127.0.0.1') ||
+        this.wsUrl.startsWith('ws://localhost') ||
+        this.wsUrl.startsWith('wss://127.0.0.1') ||
+        this.wsUrl.startsWith('wss://localhost');
+
+      if (isLocal) {
+        console.log('[WS Language] Local server detected. Setting server ready immediately.');
+        this.isServerReady = true;
+        if (this.lastPayload) {
+          this.sendPayload(this.lastPayload);
+        }
+      } else {
+        this.isServerReady = false; // Chờ gói tin ready từ server Cloud
+      }
     };
 
     this.ws.onmessage = (event) => {
