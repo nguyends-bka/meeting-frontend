@@ -53,7 +53,21 @@ export default function TranscriptPanel({
     const mapping: Record<string, typeof sortedTranslations[0]> = {};
     const usedTranslationIds = new Set<string>();
 
+    // Step 1: Match by exact ID (e.g. utterance_id)
     for (const transcript of sortedFinalized) {
+      const exactMatch = sortedTranslations.find(
+        (trans) => trans.id === transcript.id && !usedTranslationIds.has(trans.id)
+      );
+      if (exactMatch) {
+        mapping[transcript.id] = exactMatch;
+        usedTranslationIds.add(exactMatch.id);
+      }
+    }
+
+    // Step 2: Fallback to speaker & time heuristic for remaining items
+    for (const transcript of sortedFinalized) {
+      if (mapping[transcript.id]) continue; // Already matched in step 1
+
       let bestMatch: typeof sortedTranslations[0] | null = null;
       let minDiff = Infinity;
 

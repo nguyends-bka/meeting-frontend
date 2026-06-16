@@ -177,8 +177,12 @@ export function TranslationRoomProvider({
         room.localParticipant.identity?.trim() ||
         'Bản dịch';
 
+      const utteranceId = data && typeof data === 'object' && typeof data.utterance_id === 'string'
+        ? data.utterance_id
+        : crypto.randomUUID();
+
       const newItem: TranslationItem = {
-        id: crypto.randomUUID(),
+        id: utteranceId,
         speaker: relaySpeaker,
         text,
         receivedAt: Date.now(),
@@ -186,10 +190,11 @@ export function TranslationRoomProvider({
 
       setFinalized((prev) => [...prev, newItem]);
 
-      // Gửi gói tin chứa metadata (speaker + translations gốc) cho toàn phòng qua LiveKit
+      // Gửi gói tin chứa metadata (speaker + translations gốc + utterance_id) cho toàn phòng qua LiveKit
       const sharedPayload = {
         speaker: relaySpeaker,
         translations: data,
+        utterance_id: utteranceId,
       };
       publishRef.current(JSON.stringify(sharedPayload));
     };
@@ -226,12 +231,13 @@ export function TranslationRoomProvider({
         const parsed = JSON.parse(raw);
         const speaker = parsed.speaker || 'Bản dịch';
         const translations = parsed.translations;
+        const utteranceId = parsed.utterance_id || (translations && typeof translations === 'object' && translations.utterance_id) || crypto.randomUUID();
 
         const text = getTranslationText(translations, preferredLanguage);
         if (!text.trim()) return;
 
         const newItem: TranslationItem = {
-          id: crypto.randomUUID(),
+          id: utteranceId,
           speaker,
           text,
           receivedAt: Date.now(),

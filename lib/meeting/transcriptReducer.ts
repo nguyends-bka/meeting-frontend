@@ -33,14 +33,15 @@ function pickSpeaker(o: Record<string, unknown>): string | null {
 
 function tryParsePartialFinal(
   trimmed: string,
-): { type: 'partial' | 'final'; text: string; speaker: string | null } | null {
+): { type: 'partial' | 'final'; text: string; speaker: string | null; id?: string } | null {
   try {
     const o = JSON.parse(trimmed) as Record<string, unknown>;
     const type = o.type;
     const text = o.text;
     if (type !== 'partial' && type !== 'final') return null;
     if (typeof text !== 'string') return null;
-    return { type: type as 'partial' | 'final', text, speaker: pickSpeaker(o) };
+    const utteranceId = typeof o.utterance_id === 'string' ? o.utterance_id : undefined;
+    return { type: type as 'partial' | 'final', text, speaker: pickSpeaker(o), id: utteranceId };
   } catch {
     return null;
   }
@@ -73,7 +74,7 @@ export function applyTranscriptRaw(prev: TranscriptRoomState, raw: string): Tran
             finalized: [
               ...prev.finalized,
               {
-                id: crypto.randomUUID(),
+                id: parsed.id || crypto.randomUUID(),
                 text,
                 receivedAt: Date.now(),
                 speaker: parsed.speaker,
