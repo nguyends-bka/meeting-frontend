@@ -16,6 +16,7 @@ import { PollListModal } from '../_shared/modals/PollListModal';
 import { PollFormModal } from '../_shared/modals/PollFormModal';
 import { RecordingPlaybackModal } from '../_shared/modals/RecordingPlaybackModal';
 import { App } from 'antd';
+import { meetingApi } from '@/services/api';
 
 // Import CSS
 import '../_shared/meetings.css';
@@ -106,9 +107,17 @@ function MeetingDetailPageContent() {
           handleCancelMeeting={state.handleCancelMeeting}
           meetingRecordings={state.meetingRecordings}
           meetingRecordingsLoading={state.meetingRecordingsLoading}
-          openRecordingPlayback={(meetingId, r) => {
-            state.setRecordingPlaybackTitle(`Bản ghi cuộc họp`);
+          openRecordingPlayback={async (meetingId, r) => {
+            state.setRecordingPlaybackTitle(`Bản ghi cuộc họp ${new Date(r.startedAtUtc).toLocaleString('vi-VN')}`);
             state.setRecordingPlaybackModalOpen(true);
+            try {
+              const blob = await meetingApi.getRecordingFileBlob(meetingId, r.id);
+              const url = URL.createObjectURL(blob);
+              state.setRecordingPlaybackUrl(url);
+            } catch (err: any) {
+              message.error(err.message || 'Không thể tải file ghi hình');
+              state.setRecordingPlaybackModalOpen(false);
+            }
           }}
           onDeleteMeetingRecording={state.onDeleteMeetingRecording}
           recordingDeletingId={state.recordingDeletingId}

@@ -1051,7 +1051,7 @@ export default function MeetingPage() {
   const canCreatePoll = Boolean(isHost || isPollManager);
   const activeRecording = recordings.find((r) => {
     const s = (r.status || '').toLowerCase();
-    return s === 'starting' || s === 'active' || s === 'stopping';
+    return s === 'starting' || s === 'active';
   }) ?? null;
   const [optimisticStopAtMs, setOptimisticStopAtMs] = useState<number | null>(null);
   const lastRecordingIdRef = useRef<string | null>(null);
@@ -1078,10 +1078,7 @@ export default function MeetingPage() {
     if (!activeRecording?.startedAtUtc) return null;
     const startedAtMs = Date.parse(activeRecording.startedAtUtc);
     if (!Number.isFinite(startedAtMs)) return null;
-    const endMs =
-      optimisticStopAtMs ??
-      (((activeRecording.status || '').toLowerCase() === 'stopping' ? recordingNowMs : null) as number | null) ??
-      recordingNowMs;
+    const endMs = optimisticStopAtMs ?? recordingNowMs;
     const elapsedSec = Math.max(0, Math.floor((endMs - startedAtMs) / 1000));
     return formatRecordingDuration(elapsedSec);
   })();
@@ -1528,7 +1525,13 @@ export default function MeetingPage() {
                     onChatUnreadChange={setMeetingChatUnread}
                     canManageRecording={isHost}
                     recordingActive={Boolean(activeRecording)}
-                    recordingBusy={recordingActionLoading}
+                    recordingBusy={
+                      recordingActionLoading ||
+                      recordings.some((r) => {
+                        const s = (r.status || '').toLowerCase();
+                        return s === 'starting' || s === 'stopping';
+                      })
+                    }
                     onStartRecording={() => {
                       void handleStartRecording();
                     }}
