@@ -17,6 +17,7 @@ import { PollFormModal } from '../_shared/modals/PollFormModal';
 import { RecordingPlaybackModal } from '../_shared/modals/RecordingPlaybackModal';
 import { App } from 'antd';
 import { meetingApi } from '@/services/api';
+import type { MeetingRecordingDto } from '@/dtos/meeting.dto';
 
 // Import CSS
 import '../_shared/meetings.css';
@@ -38,6 +39,7 @@ function MeetingDetailPageContent() {
   const meetingId = typeof params?.id === 'string' ? params.id : '';
 
   const state = useMeetingDetailPage(meetingId, user, isAdmin);
+  const [playbackRecording, setPlaybackRecording] = React.useState<MeetingRecordingDto | null>(null);
 
   if (authLoading || state.loadingDetail) {
     return (
@@ -108,6 +110,7 @@ function MeetingDetailPageContent() {
           meetingRecordings={state.meetingRecordings}
           meetingRecordingsLoading={state.meetingRecordingsLoading}
           openRecordingPlayback={async (meetingId, r) => {
+            setPlaybackRecording(r);
             state.setRecordingPlaybackTitle(`Bản ghi cuộc họp ${new Date(r.startedAtUtc).toLocaleString('vi-VN')}`);
             state.setRecordingPlaybackModalOpen(true);
             try {
@@ -192,9 +195,12 @@ function MeetingDetailPageContent() {
           state.setRecordingPlaybackModalOpen(false);
           if (state.recordingPlaybackUrl) URL.revokeObjectURL(state.recordingPlaybackUrl);
           state.setRecordingPlaybackUrl(null);
+          setPlaybackRecording(null);
         }}
         url={state.recordingPlaybackUrl}
         title={state.recordingPlaybackTitle}
+        meetingId={meetingId}
+        recording={playbackRecording}
       />
     </MainLayout>
   );
