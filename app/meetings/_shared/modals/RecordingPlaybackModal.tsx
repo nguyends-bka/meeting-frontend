@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Modal, Input, List, Typography, Space, Spin } from 'antd';
-import { SearchOutlined, UserOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { Modal, Input, List, Typography, Spin, Button, Slider } from 'antd';
+import { SearchOutlined, UserOutlined, PlayCircleOutlined, PauseCircleOutlined, SoundOutlined } from '@ant-design/icons';
 import { meetingApi } from '@/services/api';
 import type { MeetingRecordingDto, RoomTranscriptItem } from '@/dtos/meeting.dto';
 
@@ -29,16 +29,28 @@ export function RecordingPlaybackModal({
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch room logs (transcript) when open
+  // Reset states when modal closes or opens
   useEffect(() => {
-    if (!open || !meetingId || !recording) {
+    if (!open) {
       setTranscripts([]);
       setCurrentTime(0);
       setSearchText('');
+      setIsPlaying(false);
+      setDuration(0);
+      setIsMuted(false);
+    }
+  }, [open]);
+
+  // Fetch room logs (transcript) when open
+  useEffect(() => {
+    if (!open || !meetingId || !recording) {
       return;
     }
 
@@ -78,10 +90,43 @@ export function RecordingPlaybackModal({
     loadTranscripts();
   }, [open, meetingId, recording]);
 
-  // Track video current time
+  // Sync player events with custom state
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+    }
+  };
+
+  const handlePlay = () => setIsPlaying(true);
+  const handlePause = () => setIsPlaying(false);
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play().catch(() => {});
+      }
+    }
+  };
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const handleSliderChange = (value: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = value;
+      setCurrentTime(value);
     }
   };
 
@@ -136,118 +181,124 @@ export function RecordingPlaybackModal({
       open={open}
       onCancel={onClose}
       footer={null}
-      width={1100}
+      width={700}
       destroyOnClose
       style={{ top: 40 }}
-      styles={{ body: { padding: '12px 0 0 0' } }}
+      styles={{ body: { padding: '12px 20px 20px 20px' } }}
     >
       {url ? (
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 24, flexWrap: 'wrap' }}>
-          {/* Left Column: Video Player */}
-          <div style={{ flex: '2 1 0%', minWidth: 320 }}>
-            <video
-              ref={videoRef}
-              controls
-              style={{ width: '100%', borderRadius: 8, outline: 'none', backgroundColor: '#000', maxHeight: '500px' }}
-              autoPlay
-              onTimeUpdate={handleTimeUpdate}
-            >
-              <source src={url} type="video/webm" />
-              <source src={url} type="video/mp4" />
-              Trình duyệt của bạn không hỗ trợ thẻ video.
-            </video>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: '480px' }}>
+          
+          {/* Hidden video tag for audio processing */}
+          <video
+            ref={videoRef}
+            style={{ width: 0, height: 0, position: 'absolute' }}
+            autoPlay
+            onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={handleLoadedMetadata}
+            onPlay={handlePlay}
+            onPause={handlePause}
+          >
+            <source src={url} type="video/webm" />
+            <source src={url} type="video/mp4" />
+          </video>
+
+          {/* Custom Audio Control Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, backgroundColor: '#f8fafc', padding: '10px 16px', borderRadius: 8, marginBottom: 16, border: '1px solid #e2e8f0' }}>
+            <Button
+              type="primary"
+              shape="circle"
+              icon={isPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+              onClick={togglePlay}
+              size="middle"
+            />
+            <Button
+              type="text"
+              shape="circle"
+              icon={<SoundOutlined style={{ color: isMuted ? '#ff4d4f' : 'inherit' }} />}
+              onClick={toggleMute}
+            />
+            <span style={{ fontSize: '13px', fontWeight: 500, color: '#475569', minWidth: 80 }}>
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+            <Slider
+              value={currentTime}
+              max={duration || 100}
+              onChange={handleSliderChange}
+              tooltip={{ formatter: (val) => val !== undefined ? formatTime(val) : '' }}
+              style={{ flex: 1, margin: 0 }}
+            />
           </div>
 
-          {/* Right Column: Transcript Panel */}
-          <div style={{ flex: '1 1 0%', minWidth: 320, display: 'flex', flexDirection: 'column', height: '500px', borderLeft: '1px solid #f0f0f0', paddingLeft: 20 }}>
-            <div style={{ marginBottom: 16 }}>
-              <Typography.Title level={5} style={{ margin: 0, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <ClockCircleOutlined /> Bản chép lời cuộc họp
-              </Typography.Title>
-              <Input
-                placeholder="Tìm kiếm trong video..."
-                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                allowClear
+          {/* Full-width Transcript List */}
+          <div style={{ marginBottom: 12 }}>
+            <Input
+              placeholder="Tìm kiếm trong bản chép lời..."
+              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              allowClear
+            />
+          </div>
+
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+              <Spin tip="Đang tải..." />
+            </div>
+          ) : filteredTranscripts.length > 0 ? (
+            <div
+              ref={listContainerRef}
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                paddingRight: 4,
+                scrollBehavior: 'smooth',
+              }}
+            >
+              <List
+                itemLayout="horizontal"
+                dataSource={filteredTranscripts}
+                renderItem={(item) => {
+                  const originalIndex = transcripts.findIndex(t => t.at === item.at && t.text === item.text);
+                  const isActive = originalIndex === activeIndex;
+
+                  return (
+                    <div
+                      id={`transcript-item-${originalIndex}`}
+                      onClick={() => handleSeek(item.offsetSeconds)}
+                      style={{
+                        padding: '12px 16px',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        marginBottom: 8,
+                        backgroundColor: isActive ? '#e6f7ff' : 'transparent',
+                        borderLeft: isActive ? '3px solid #1890ff' : '3px solid transparent',
+                        transition: 'all 0.2s',
+                        borderBottom: '1px solid #f0f0f0'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: isActive ? '#1890ff' : '#262626' }}>
+                          <UserOutlined style={{ marginRight: 6 }} />
+                          {item.speakerName}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#1890ff', backgroundColor: '#e6f7ff', padding: '1px 6px', borderRadius: 4, fontWeight: 500 }}>
+                          {formatTime(item.offsetSeconds)}
+                        </span>
+                      </div>
+                      <Typography.Text style={{ fontSize: '13px', color: isActive ? '#000' : '#434343' }}>
+                        {item.text}
+                      </Typography.Text>
+                    </div>
+                  );
+                }}
               />
             </div>
-
-            {loading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
-                <Spin tip="Đang tải bản chép lời..." />
-              </div>
-            ) : filteredTranscripts.length > 0 ? (
-              <div
-                ref={listContainerRef}
-                style={{
-                  flex: 1,
-                  overflowY: 'auto',
-                  paddingRight: 8,
-                  scrollBehavior: 'smooth',
-                }}
-              >
-                <List
-                  itemLayout="horizontal"
-                  dataSource={filteredTranscripts}
-                  renderItem={(item) => {
-                    const originalIndex = transcripts.findIndex(t => t.at === item.at && t.text === item.text);
-                    const isActive = originalIndex === activeIndex;
-
-                    return (
-                      <div
-                        id={`transcript-item-${originalIndex}`}
-                        onClick={() => handleSeek(item.offsetSeconds)}
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: 6,
-                          cursor: 'pointer',
-                          marginBottom: 8,
-                          backgroundColor: isActive ? '#e6f7ff' : 'transparent',
-                          borderLeft: isActive ? '3px solid #1890ff' : '3px solid transparent',
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        <Space direction="vertical" size={2} style={{ width: '100%' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '12px', fontWeight: 600, color: isActive ? '#1890ff' : '#595959' }}>
-                              <UserOutlined style={{ marginRight: 4 }} />
-                              {item.speakerName}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: '11px',
-                                color: '#1890ff',
-                                backgroundColor: '#e6f7ff',
-                                padding: '1px 6px',
-                                borderRadius: 4,
-                                fontWeight: 500
-                              }}
-                            >
-                              {formatTime(item.offsetSeconds)}
-                            </span>
-                          </div>
-                          <Typography.Text
-                            style={{
-                              fontSize: '13px',
-                              color: isActive ? '#262626' : '#595959',
-                              fontWeight: isActive ? 500 : 'normal'
-                            }}
-                          >
-                            {item.text}
-                          </Typography.Text>
-                        </Space>
-                      </div>
-                    );
-                  }}
-                />
-              </div>
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, color: '#bfbfbf' }}>
-                Không có bản chép lời nào phù hợp
-              </div>
-            )}
-          </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, color: '#bfbfbf' }}>
+              Không có bản chép lời nào phù hợp
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ textAlign: 'center', padding: 80, color: '#94a3b8' }}>
