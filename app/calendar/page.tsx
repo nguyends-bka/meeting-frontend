@@ -213,6 +213,12 @@ export default function CalendarPage() {
     });
   }, [meetings, searchTerm, statusFilter]);
 
+  // Danh sách sắp xếp mới nhất trước (dùng cho List view — không phụ thuộc tháng đang chọn)
+  const listMeetings = useMemo(
+    () => [...filteredMeetings].sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf()),
+    [filteredMeetings],
+  );
+
   const stats = useMemo(() => {
     return {
       all: meetings.length,
@@ -356,36 +362,46 @@ export default function CalendarPage() {
         >
           {/* TOOLBAR */}
           <div className="cal-toolbar">
-            {/* Left Month Navigator */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="cal-nav-group">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<LeftOutlined />}
-                  onClick={handlePrevMonth}
-                  style={{ height: 32, width: 32 }}
-                />
-                <Button
-                  type="text"
-                  size="small"
-                  onClick={handleToday}
-                  style={{ height: 32, padding: '0 12px', fontWeight: 600 }}
-                >
-                  Hôm nay
-                </Button>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<RightOutlined />}
-                  onClick={handleNextMonth}
-                  style={{ height: 32, width: 32 }}
-                />
+            {/* Left: Month navigator (chỉ ở lịch tháng) hoặc nhãn ngữ cảnh (danh sách) */}
+            {viewMode === 'month' ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className="cal-nav-group">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<LeftOutlined />}
+                    onClick={handlePrevMonth}
+                    style={{ height: 32, width: 32 }}
+                  />
+                  <Button
+                    type="text"
+                    size="small"
+                    onClick={handleToday}
+                    style={{ height: 32, padding: '0 12px', fontWeight: 600 }}
+                  >
+                    Hôm nay
+                  </Button>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<RightOutlined />}
+                    onClick={handleNextMonth}
+                    style={{ height: 32, width: 32 }}
+                  />
+                </div>
+                <Title level={4} className="cal-month-label">
+                  Tháng {currentDate.month() + 1}, {currentDate.year()}
+                </Title>
               </div>
-              <Title level={4} className="cal-month-label">
-                Tháng {currentDate.month() + 1}, {currentDate.year()}
-              </Title>
-            </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <UnorderedListOutlined style={{ color: '#2563eb', fontSize: 18 }} />
+                <Title level={4} className="cal-month-label">
+                  Danh sách cuộc họp
+                </Title>
+                <span className="cal-list-count">{listMeetings.length}</span>
+              </div>
+            )}
 
             {/* Center Search Input */}
             <div style={{ flex: 1, maxWidth: isNarrow ? '100%' : 380 }}>
@@ -530,14 +546,14 @@ export default function CalendarPage() {
             ) : (
               /* LIST VIEW */
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {filteredMeetings.length === 0 ? (
+                {listMeetings.length === 0 ? (
                   <Empty
-                    description="Không tìm thấy cuộc họp nào phù hợp với bộ lọc."
+                    description={searchTerm || statusFilter !== 'all' ? 'Không tìm thấy cuộc họp nào phù hợp với bộ lọc.' : 'Chưa có cuộc họp nào.'}
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                     style={{ padding: '40px 0' }}
                   />
                 ) : (
-                  filteredMeetings.map((meet) => {
+                  listMeetings.map((meet) => {
                     const status = meetingRowStatus(meet);
                     const isLive = status === 'live';
                     const isEnded = status === 'ended';
@@ -713,7 +729,9 @@ export default function CalendarPage() {
               </span>
             </div>
             <div>
-              💡 Click vào một ngày hoặc nhấn nút <span style={{ fontWeight: 700, color: '#3b82f6' }}>+ Tạo cuộc họp</span> ở header để lập lịch.
+              {viewMode === 'month'
+                ? <>💡 Click vào một ngày để lập lịch, hoặc nhấn <span style={{ fontWeight: 700, color: '#3b82f6' }}>+ Tạo cuộc họp</span> ở header.</>
+                : <>💡 Danh sách gồm mọi cuộc họp, sắp xếp mới nhất trước. Chuyển sang <span style={{ fontWeight: 700, color: '#3b82f6' }}>Lịch tháng</span> để xem theo ngày.</>}
             </div>
           </div>
         </Card>
