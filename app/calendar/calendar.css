@@ -1,0 +1,115 @@
+/* ============================================================
+   calendar.css – Styles cho trang Lịch cuộc họp
+   Đồng bộ phong cách với /meetings, /history, /organization, /admin
+   ============================================================ */
+
+.cal-container { padding: 24px; width: 100%; max-width: 1400px; margin: 0 auto; animation: calFadeIn 0.2s ease-out; }
+@keyframes calFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* === HEADER TRANG === */
+.cal-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.cal-page-title.ant-typography { margin: 0; font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 10px; }
+.cal-page-title .anticon { color: #2563eb; }
+.cal-page-sub.ant-typography { display: block; margin-top: 4px; font-size: 13px; color: #64748b; }
+
+/* === STAT CARDS === */
+.cal-stat-row { margin-bottom: 18px; }
+.cal-stat {
+  --c: #2563eb;
+  flex: 1; text-align: left; font-family: inherit;
+  border: 1px solid #e2e8f0; background: #fff; border-radius: 14px; padding: 14px 16px;
+  cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.03); display: flex; flex-direction: column; gap: 8px; width: 100%;
+}
+.cal-stat:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,23,42,0.08); border-color: color-mix(in srgb, var(--c) 40%, #e2e8f0); }
+.cal-stat.active { border-color: var(--c); background: color-mix(in srgb, var(--c) 5%, #fff); box-shadow: 0 0 0 1px var(--c), 0 4px 12px color-mix(in srgb, var(--c) 18%, transparent); }
+.cal-stat-top { display: flex; align-items: center; justify-content: space-between; }
+.cal-stat-label { font-size: 13px; font-weight: 600; color: #64748b; }
+.cal-stat.active .cal-stat-label { color: var(--c); }
+.cal-stat-icon { width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
+.cal-stat-bottom { display: flex; align-items: baseline; gap: 6px; }
+.cal-stat-count { font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1; }
+.cal-stat-unit { font-size: 12px; color: #94a3b8; }
+
+/* === PANEL CHÍNH === */
+.cal-panel { border-radius: 16px; box-shadow: 0 2px 8px rgba(15,23,42,0.04); border: 1px solid #e2e8f0; overflow: hidden; }
+.cal-toolbar { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cal-nav-group { display: inline-flex; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 2px; }
+.cal-month-label { margin: 0; font-weight: 700; color: #0f172a; min-width: 150px; font-size: 18px; }
+.cal-view-switch { background: #e2e8f0; padding: 2px; border-radius: 10px; display: inline-flex; }
+.cal-footer { padding: 12px 20px; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b; gap: 12px; flex-wrap: wrap; }
+
+/* === LỊCH THÁNG === */
+.cal-weekday { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; padding: 8px 0; letter-spacing: 0.05em; text-align: center; }
+.cal-cell {
+  min-height: 112px; background: #fff; border: 1px solid #f1f5f9; border-radius: 12px; padding: 10px;
+  display: flex; flex-direction: column; cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cal-cell:hover { border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(15,23,42,0.05); }
+.cal-cell.is-today { background: rgba(37,99,235,0.03); border: 2px solid #2563eb; box-shadow: 0 4px 12px rgba(37,99,235,0.08); }
+.cal-cell.is-outside { opacity: 0.4; }
+.cal-cell-daynum { font-size: 12px; font-weight: 800; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #334155; }
+.cal-cell.is-today .cal-cell-daynum { background: #2563eb; color: #fff; }
+.cal-add-btn { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #64748b; opacity: 0.5; transition: opacity 0.15s ease, background 0.15s ease; }
+.cal-cell:hover .cal-add-btn { opacity: 1; }
+.cal-add-btn:hover { background: #dbeafe; color: #2563eb; }
+.cal-event { padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+.cal-event-time { font-weight: 800; font-size: 9px; }
+.cal-event-more { font-size: 10px; color: #94a3b8; font-weight: 700; text-align: right; margin-top: 2px; }
+
+/* Màu sự kiện theo trạng thái */
+.cal-event.ev-upcoming { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
+.cal-event.ev-live { background: #ecfdf5; border: 1px solid #a7f3d0; color: #15803d; }
+.cal-event.ev-ended { background: #fff7ed; border: 1px solid #fed7aa; color: #b45309; }
+.cal-event.ev-other { background: #f1f5f9; border: 1px solid #e2e8f0; color: #475569; }
+
+/* === LIST VIEW === */
+.cal-list-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; }
+.cal-list-row:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(15,23,42,0.07); border-color: #cbd5e1; }
+.cal-list-row.is-live { border-color: #a7f3d0; background: rgba(5,150,105,0.03); }
+.cal-date-badge { width: 60px; height: 60px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid; }
+.cal-list-title.ant-typography { margin: 0; font-weight: 700; color: #0f172a; }
+.cal-list-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 13px; color: #64748b; }
+.cal-list-meta strong { color: #475569; }
+
+/* Pulse dots */
+.pulse-dot-green-custom { border-radius: 50%; animation: calPulseGreen 1.8s infinite ease-in-out; }
+@keyframes calPulseGreen { 0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(34,197,94,0.5);} 50% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(34,197,94,0);} 100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(34,197,94,0);} }
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .cal-container { padding: 16px; }
+  .cal-page-title.ant-typography { font-size: 19px; }
+  .cal-toolbar { flex-direction: column; align-items: stretch; }
+  .cal-month-label { min-width: auto; font-size: 16px; }
+  .cal-cell { min-height: 88px; padding: 7px; }
+  .cal-add-btn { opacity: 1; }
+  .cal-list-row { flex-direction: column; align-items: stretch; }
+}
+
+/* === DARK MODE (phần tử tùy biến; AntD do darkAlgorithm lo) === */
+.dark-theme .cal-page-title.ant-typography { color: #f1f5f9; }
+.dark-theme .cal-page-sub.ant-typography { color: #94a3b8; }
+.dark-theme .cal-stat { background: #1d1d1d; border-color: #303030; }
+.dark-theme .cal-stat-count { color: #f1f5f9; }
+.dark-theme .cal-panel { background: #1d1d1d; border-color: #303030; }
+.dark-theme .cal-toolbar, .dark-theme .cal-footer { background: #181818; border-color: #303030; }
+.dark-theme .cal-nav-group { background: #262626; border-color: #3f3f46; }
+.dark-theme .cal-view-switch { background: #303030; }
+.dark-theme .cal-month-label { color: #f1f5f9; }
+.dark-theme .cal-weekday { color: #94a3b8; }
+.dark-theme .cal-cell { background: #1d1d1d; border-color: #303030; }
+.dark-theme .cal-cell:hover { border-color: #475569; }
+.dark-theme .cal-cell.is-today { background: rgba(37,99,235,0.12); border-color: #3b82f6; }
+.dark-theme .cal-cell-daynum { color: #cbd5e1; }
+.dark-theme .cal-add-btn { background: #303030; color: #94a3b8; }
+.dark-theme .cal-add-btn:hover { background: rgba(37,99,235,0.25); color: #93c5fd; }
+.dark-theme .cal-list-row { background: #1d1d1d; border-color: #303030; }
+.dark-theme .cal-list-row:hover { border-color: #475569; }
+.dark-theme .cal-list-title.ant-typography { color: #f1f5f9; }
+.dark-theme .cal-list-meta { color: #94a3b8; }
+.dark-theme .cal-list-meta strong { color: #cbd5e1; }
+.dark-theme .cal-event.ev-upcoming { background: rgba(37,99,235,0.18); border-color: rgba(37,99,235,0.4); color: #93c5fd; }
+.dark-theme .cal-event.ev-live { background: rgba(5,150,105,0.2); border-color: rgba(5,150,105,0.45); color: #6ee7b7; }
+.dark-theme .cal-event.ev-ended { background: rgba(217,119,6,0.18); border-color: rgba(217,119,6,0.4); color: #fbbf24; }
+.dark-theme .cal-event.ev-other { background: #262626; border-color: #3f3f46; color: #cbd5e1; }

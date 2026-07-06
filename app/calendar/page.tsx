@@ -4,30 +4,35 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import MainLayout from '@/components/MainLayout';
-import { Card, Row, Col, Typography, Button, Input, Space, Tag, Badge, Empty, Grid, Form, App } from 'antd';
-import { 
-  CalendarOutlined, 
-  LeftOutlined, 
-  RightOutlined, 
-  PlusOutlined, 
-  SearchOutlined, 
-  AppstoreOutlined, 
+import { Card, Row, Col, Typography, Button, Input, Tag, Empty, Grid, Form, App } from 'antd';
+import {
+  CalendarOutlined,
+  LeftOutlined,
+  RightOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  AppstoreOutlined,
   UnorderedListOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
   VideoCameraOutlined,
-  UserOutlined,
-  LockOutlined,
-  CopyOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { apiService, adminApi } from '@/services/api';
 import { HomeMeetingRow } from '@/app/_home/types';
-import { isMeetingLive, meetingRowStatus, formatDurationFromScheduleRange, getHostNameOnly, getVirtualRoom } from '@/app/_home/helpers';
+import { meetingRowStatus, formatDurationFromScheduleRange, getHostNameOnly, getVirtualRoom } from '@/app/_home/helpers';
 import CreateMeetingModal from '@/app/_home/components/CreateMeetingModal';
 import MeetingDetailModal from '@/app/_home/components/MeetingDetailModal';
+import './calendar.css';
 
 const { Title, Text } = Typography;
+
+const STAT_CARDS = [
+  { key: 'all', label: 'Tất cả cuộc họp', unit: 'phiên họp', color: '#2563eb', icon: <CalendarOutlined /> },
+  { key: 'ongoing', label: 'Đang diễn ra', unit: 'đang họp', color: '#059669', icon: <VideoCameraOutlined /> },
+  { key: 'upcoming', label: 'Lên lịch sắp tới', unit: 'chờ diễn ra', color: '#2563eb', icon: <ClockCircleOutlined /> },
+  { key: 'completed', label: 'Đã hoàn thành', unit: 'đã xong', color: '#d97706', icon: <CheckCircleOutlined /> },
+] as const;
 
 export default function CalendarPage() {
   const router = useRouter();
@@ -297,204 +302,87 @@ export default function CalendarPage() {
 
   return (
     <MainLayout>
-      <div style={{ padding: isNarrow ? '16px' : '24px', maxWidth: 1400, margin: '0 auto' }}>
-        <style>{`
-          @keyframes pulse-amber {
-            0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
-            50% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
-            100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-          }
-          .pulse-dot-amber-custom {
-            border-radius: 50%;
-            animation: pulse-amber 1.8s infinite ease-in-out;
-          }
-          @keyframes pulse-green {
-            0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
-            50% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
-            100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-          }
-          .pulse-dot-green-custom {
-            border-radius: 50%;
-            animation: pulse-green 1.8s infinite ease-in-out;
-          }
-          .calendar-grid-cell {
-            position: relative;
-            transition: all 0.2s ease-in-out;
-          }
-          .calendar-grid-cell:hover {
-            border-color: #cbd5e1 !important;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-          }
-          .calendar-grid-cell .cell-add-btn {
-            opacity: 0;
-            transition: opacity 0.2s ease-in-out;
-          }
-          .calendar-grid-cell:hover .cell-add-btn {
-            opacity: 1;
-          }
-        `}</style>
-        
-        {/* TOP SUMMARY STATS CARDS */}
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={12} sm={6}>
-            <div 
-              onClick={() => setStatusFilter('all')}
-              className={`hover-scale`}
-              style={{
-                background: statusFilter === 'all' ? '#f8fafc' : '#ffffff',
-                padding: '16px',
-                borderRadius: '16px',
-                border: `1.5px solid ${statusFilter === 'all' ? '#3b82f6' : '#e2e8f0'}`,
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                height: '100%'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 13, fontWeight: 600, color: statusFilter === 'all' ? '#3b82f6' : '#64748b' }}>Tất cả cuộc họp</Text>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-                  <CalendarOutlined style={{ fontSize: 16 }} />
-                </div>
-              </div>
-              <div style={{ marginTop: 12, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>{stats.all}</span>
-                <span style={{ fontSize: 12, color: '#94a3b8' }}>phiên họp</span>
-              </div>
-            </div>
-          </Col>
-          <Col xs={12} sm={6}>
-            <div 
-              onClick={() => setStatusFilter('ongoing')}
-              className={`hover-scale`}
-              style={{
-                background: statusFilter === 'ongoing' ? '#f0fdf4' : '#ffffff',
-                padding: '16px',
-                borderRadius: '16px',
-                border: `1.5px solid ${statusFilter === 'ongoing' ? '#22c55e' : '#e2e8f0'}`,
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                height: '100%'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 13, fontWeight: 600, color: statusFilter === 'ongoing' ? '#16a34a' : '#64748b' }}>Đang diễn ra</Text>
-                <div className="pulse-dot-green-custom" style={{ width: 10, height: 10, background: '#22c55e' }} />
-              </div>
-              <div style={{ marginTop: 12, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: '#22c55e' }}>{stats.ongoing}</span>
-                <span style={{ fontSize: 12, color: '#94a3b8' }}>đang họp</span>
-              </div>
-            </div>
-          </Col>
-          <Col xs={12} sm={6}>
-            <div 
-              onClick={() => setStatusFilter('upcoming')}
-              className={`hover-scale`}
-              style={{
-                background: statusFilter === 'upcoming' ? '#eff6ff' : '#ffffff',
-                padding: '16px',
-                borderRadius: '16px',
-                border: `1.5px solid ${statusFilter === 'upcoming' ? '#3b82f6' : '#e2e8f0'}`,
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                height: '100%'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 13, fontWeight: 600, color: statusFilter === 'upcoming' ? '#3b82f6' : '#64748b' }}>Lên lịch sắp tới</Text>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
-                  <ClockCircleOutlined style={{ fontSize: 16 }} />
-                </div>
-              </div>
-              <div style={{ marginTop: 12, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: '#3b82f6' }}>{stats.upcoming}</span>
-                <span style={{ fontSize: 12, color: '#94a3b8' }}>chờ diễn ra</span>
-              </div>
-            </div>
-          </Col>
-          <Col xs={12} sm={6}>
-            <div 
-              onClick={() => setStatusFilter('completed')}
-              className={`hover-scale`}
-              style={{
-                background: statusFilter === 'completed' ? '#fffbeb' : '#ffffff',
-                padding: '16px',
-                borderRadius: '16px',
-                border: `1.5px solid ${statusFilter === 'completed' ? '#f59e0b' : '#e2e8f0'}`,
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                height: '100%'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 13, fontWeight: 600, color: statusFilter === 'completed' ? '#b45309' : '#64748b' }}>Đã hoàn thành</Text>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
-                  <CheckCircleOutlined style={{ fontSize: 16 }} />
-                </div>
-              </div>
-              <div style={{ marginTop: 12, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: '#f59e0b' }}>{stats.completed}</span>
-                <span style={{ fontSize: 12, color: '#94a3b8' }}>đã xong</span>
-              </div>
-            </div>
-          </Col>
+      <div className="cal-container">
+        {/* HEADER TRANG */}
+        <div className="cal-page-head">
+          <div>
+            <Title level={4} className="cal-page-title">
+              <CalendarOutlined /> Lịch cuộc họp
+            </Title>
+            <Text className="cal-page-sub">
+              Xem lịch theo tháng, lọc theo trạng thái và lập lịch cuộc họp mới
+            </Text>
+          </div>
+        </div>
+
+        {/* THẺ THỐNG KÊ */}
+        <Row gutter={[14, 14]} className="cal-stat-row">
+          {STAT_CARDS.map((c) => {
+            const active = statusFilter === c.key;
+            const value = stats[c.key as keyof typeof stats];
+            return (
+              <Col xs={12} sm={6} key={c.key} style={{ display: 'flex' }}>
+                <button
+                  type="button"
+                  className={`cal-stat ${active ? 'active' : ''}`}
+                  style={{ '--c': c.color } as React.CSSProperties}
+                  onClick={() => setStatusFilter(c.key)}
+                >
+                  <div className="cal-stat-top">
+                    <span className="cal-stat-label">{c.label}</span>
+                    {c.key === 'ongoing' && value > 0 ? (
+                      <span className="pulse-dot-green-custom" style={{ width: 10, height: 10, background: '#22c55e' }} />
+                    ) : (
+                      <span className="cal-stat-icon" style={{ color: c.color, background: `${c.color}14` }}>{c.icon}</span>
+                    )}
+                  </div>
+                  <div className="cal-stat-bottom">
+                    <span className="cal-stat-count" style={{ color: active ? c.color : undefined }}>{value}</span>
+                    <span className="cal-stat-unit">{c.unit}</span>
+                  </div>
+                </button>
+              </Col>
+            );
+          })}
         </Row>
 
         {/* MAIN CALENDAR PANEL */}
         <Card
           variant="borderless"
-          style={{
-            borderRadius: 24,
-            boxShadow: '0 10px 30px -10px rgba(0,0,0,0.08)',
-            border: '1px solid #e2e8f0',
-            overflow: 'hidden'
-          }}
+          className="cal-panel"
           styles={{
             body: { padding: 0 }
           }}
         >
           {/* TOOLBAR */}
-          <div style={{
-            padding: '20px 24px',
-            borderBottom: '1px solid #edf2f7',
-            background: '#f8fafc',
-            display: 'flex',
-            flexDirection: isNarrow ? 'column' : 'row',
-            justifyContent: 'space-between',
-            alignItems: isNarrow ? 'stretch' : 'center',
-            gap: 16
-          }}>
+          <div className="cal-toolbar">
             {/* Left Month Navigator */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ display: 'inline-flex', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 2, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                <Button 
-                  type="text" 
-                  size="small" 
-                  icon={<LeftOutlined />} 
-                  onClick={handlePrevMonth} 
+              <div className="cal-nav-group">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<LeftOutlined />}
+                  onClick={handlePrevMonth}
                   style={{ height: 32, width: 32 }}
                 />
-                <Button 
-                  type="text" 
-                  size="small" 
+                <Button
+                  type="text"
+                  size="small"
                   onClick={handleToday}
-                  style={{ height: 32, padding: '0 12px', fontWeight: 600, color: '#334155' }}
+                  style={{ height: 32, padding: '0 12px', fontWeight: 600 }}
                 >
                   Hôm nay
                 </Button>
-                <Button 
-                  type="text" 
-                  size="small" 
-                  icon={<RightOutlined />} 
-                  onClick={handleNextMonth} 
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<RightOutlined />}
+                  onClick={handleNextMonth}
                   style={{ height: 32, width: 32 }}
                 />
               </div>
-              <Title level={4} style={{ margin: 0, fontWeight: 800, color: '#0f172a', minWidth: 150 }}>
+              <Title level={4} className="cal-month-label">
                 Tháng {currentDate.month() + 1}, {currentDate.year()}
               </Title>
             </div>
@@ -506,14 +394,14 @@ export default function CalendarPage() {
                 prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ borderRadius: 10, height: 38 }}
+                style={{ borderRadius: 10, height: 40 }}
                 allowClear
               />
             </div>
 
             {/* Right View Switcher */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ background: '#e2e8f0', padding: 2, borderRadius: 10, display: 'inline-flex', border: '1px solid rgba(0,0,0,0.05)' }}>
+              <div className="cal-view-switch">
                 <Button
                   type={viewMode === 'month' ? 'primary' : 'text'}
                   icon={<AppstoreOutlined />}
@@ -569,11 +457,9 @@ export default function CalendarPage() {
               /* MONTH GRID VIEW */
               <div>
                 {/* Day Headers */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, textAlign: 'center', marginBottom: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, marginBottom: 8 }}>
                   {['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'].map((day) => (
-                    <div key={day} style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#64748b', padding: '8px 0', letterSpacing: '0.05em' }}>
-                      {day}
-                    </div>
+                    <div key={day} className="cal-weekday">{day}</div>
                   ))}
                 </div>
 
@@ -589,105 +475,51 @@ export default function CalendarPage() {
                       <div
                         key={`${day.dateString}-${idx}`}
                         onClick={() => handleDayClick(day.dateString)}
-                        style={{
-                          minHeight: 110,
-                          background: isToday ? 'rgba(59, 130, 246, 0.02)' : '#ffffff',
-                          border: isToday ? '2px solid #3b82f6' : '1px solid #f1f5f9',
-                          borderRadius: 12,
-                          padding: 10,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                          position: 'relative',
-                          cursor: 'pointer',
-                          opacity: day.isCurrentMonth ? 1 : 0.4,
-                          boxShadow: isToday ? '0 4px 12px rgba(59, 130, 246, 0.08)' : 'none',
-                        }}
-                        className="calendar-grid-cell"
+                        className={`cal-cell ${isToday ? 'is-today' : ''} ${day.isCurrentMonth ? '' : 'is-outside'}`}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                          <span style={{
-                            fontSize: 12,
-                            fontWeight: 800,
-                            width: 24,
-                            height: 24,
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: isToday ? '#3b82f6' : 'transparent',
-                            color: isToday ? '#ffffff' : '#334155'
-                          }}>
-                            {day.dayNumber}
-                          </span>
-                          
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<PlusOutlined style={{ fontSize: 10 }} />}
+                          <span className="cal-cell-daynum">{day.dayNumber}</span>
+                          <button
+                            type="button"
+                            className="cal-add-btn"
+                            aria-label="Tạo cuộc họp"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDayClick(day.dateString);
                             }}
-                            className="cell-add-btn"
-                            style={{ width: 20, height: 20, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9' }}
-                          />
+                          >
+                            <PlusOutlined style={{ fontSize: 10 }} />
+                          </button>
                         </div>
 
                         {/* Meetings list inside day cell */}
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflow: 'hidden' }}>
                           {dayMeetings.slice(0, 3).map((meet) => {
                             const status = meetingRowStatus(meet);
-                            const isLive = status === 'live';
-                            const isEnded = status === 'ended';
-                            
-                            let color = '#1d4ed8'; // upcoming blue
-                            let bg = '#eff6ff';
-                            let border = '#bfdbfe';
-                            if (isLive) {
-                              color = '#15803d'; // ongoing green
-                              bg = '#f0fdf4';
-                              border = '#bbf7d0';
-                            } else if (isEnded) {
-                              color = '#b45309'; // completed amber
-                              bg = '#fffbeb';
-                              border = '#fde68a';
-                            }
+                            const evClass =
+                              status === 'live' ? 'ev-live'
+                                : status === 'ended' ? 'ev-ended'
+                                  : status === 'upcoming' ? 'ev-upcoming'
+                                    : 'ev-other';
 
                             return (
                               <div
                                 key={meet.id}
+                                className={`cal-event ${evClass}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setDetailMeeting(meet);
                                 }}
-                                style={{
-                                  padding: '2px 6px',
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  background: bg,
-                                  border: `1px solid ${border}`,
-                                  borderRadius: 6,
-                                  color: color,
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 4
-                                }}
                               >
-                                {isLive && <span className="pulse-dot-green-custom" style={{ width: 6, height: 6, background: '#22c55e', flexShrink: 0 }} />}
-                                <span style={{ fontWeight: 800, fontSize: 9 }}>{dayjs(meet.createdAt).format('HH:mm')}</span>
+                                {status === 'live' && <span className="pulse-dot-green-custom" style={{ width: 6, height: 6, background: '#22c55e', flexShrink: 0 }} />}
+                                <span className="cal-event-time">{dayjs(meet.createdAt).format('HH:mm')}</span>
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{meet.title}</span>
                               </div>
                             );
                           })}
 
                           {dayMeetings.length > 3 && (
-                            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textAlign: 'right', marginTop: 2 }}>
-                              + {dayMeetings.length - 3} cuộc họp khác
-                            </div>
+                            <div className="cal-event-more">+ {dayMeetings.length - 3} cuộc họp khác</div>
                           )}
                         </div>
                       </div>
@@ -751,35 +583,11 @@ export default function CalendarPage() {
                       <div
                         key={meet.id}
                         onClick={() => setDetailMeeting(meet)}
-                        className="hover-scale"
-                        style={{
-                          display: 'flex',
-                          flexDirection: isNarrow ? 'column' : 'row',
-                          alignItems: isNarrow ? 'stretch' : 'center',
-                          justifyContent: 'space-between',
-                          gap: 16,
-                          padding: '16px 20px',
-                          border: `1px solid ${isLive ? '#fde68a' : '#e2e8f0'}`,
-                          borderRadius: 16,
-                          background: isLive ? 'rgba(245, 158, 11, 0.02)' : '#ffffff',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
+                        className={`cal-list-row ${isLive ? 'is-live' : ''}`}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
                           {/* Left calendar icon card */}
-                          <div style={{
-                            width: 60,
-                            height: 60,
-                            borderRadius: 12,
-                            background: dateBg,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                            border: `1px solid ${dateBorder}`
-                          }}>
+                          <div className="cal-date-badge" style={{ background: dateBg, borderColor: dateBorder }}>
                             <span style={{ fontSize: 9, fontWeight: 700, color: monthColor, textTransform: 'uppercase' }}>
                               {start.format('ddd')}
                             </span>
@@ -793,23 +601,17 @@ export default function CalendarPage() {
 
                           {/* Center info */}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <Title level={5} style={{ margin: 0, fontWeight: 700, color: isLive ? '#15803d' : '#0f172a' }}>
+                            <Title level={5} className="cal-list-title" style={{ color: isLive ? '#15803d' : undefined }}>
                               {meet.title}
                             </Title>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 6, fontSize: 13, color: '#64748b' }}>
+                            <div className="cal-list-meta">
                               <span style={{ fontWeight: 700, color: isLive ? '#15803d' : '#334155', display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <ClockCircleOutlined style={{ color: isLive ? '#22c55e' : '#3b82f6' }} />
                                 {start.format('HH:mm')} - {end.format('HH:mm')}
                               </span>
-                              <span>
-                                Host: <strong style={{ color: '#475569' }}>{meet.location ? meet.hostName : getHostNameOnly(meet.hostName)}</strong>
-                              </span>
-                              <span>
-                                Phòng: <strong style={{ color: '#475569' }}>{meet.location || getVirtualRoom(meet.hostName, meet.id)}</strong>
-                              </span>
-                              <span>
-                                Mã phòng: <strong style={{ color: '#475569', fontFamily: 'monospace' }}>{meet.meetingCode}</strong>
-                              </span>
+                              <span>Host: <strong>{meet.location ? meet.hostName : getHostNameOnly(meet.hostName)}</strong></span>
+                              <span>Phòng: <strong>{meet.location || getVirtualRoom(meet.hostName, meet.id)}</strong></span>
+                              <span>Mã phòng: <strong style={{ fontFamily: 'monospace' }}>{meet.meetingCode}</strong></span>
                               {isEnded && meet.endedAt && (
                                 <span style={{ color: '#d97706', fontWeight: 700 }}>
                                   Kết thúc lúc: {dayjs(meet.endedAt).format('HH:mm DD/MM/YYYY')}
@@ -832,7 +634,7 @@ export default function CalendarPage() {
                         </div>
 
                         {/* Right CTA and status */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: isNarrow ? 'flex-end' : 'flex-end', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'flex-end', flexShrink: 0 }}>
                           {isLive ? (
                             <Tag color="success" style={{ margin: 0, padding: '4px 10px', borderRadius: 6, fontWeight: 700, background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                               <span className="pulse-dot-green-custom" style={{ width: 8, height: 8, background: '#22c55e' }} />
@@ -895,29 +697,18 @@ export default function CalendarPage() {
           </div>
 
           {/* FOOTER LEGEND */}
-          <div style={{
-            padding: '12px 24px',
-            background: '#f8fafc',
-            borderTop: '1px solid #edf2f7',
-            display: 'flex',
-            flexDirection: isNarrow ? 'column' : 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            fontSize: 12,
-            color: '#64748b',
-            gap: 12
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="cal-footer">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 8, height: 8, borderRadius: 2, background: '#eff6ff', border: '1px solid #bfdbfe' }} />
                 <span>Sắp diễn ra</span>
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: '#f0fdf4', border: '1px solid #bbf7d0' }} />
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: '#ecfdf5', border: '1px solid #a7f3d0' }} />
                 <span>Đang họp</span>
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: '#fffbeb', border: '1px solid #fde68a' }} />
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: '#fff7ed', border: '1px solid #fed7aa' }} />
                 <span>Đã kết thúc</span>
               </span>
             </div>
