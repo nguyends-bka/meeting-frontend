@@ -1,7 +1,11 @@
 import React from 'react';
-import { Card, Space, Typography, Select, Input, Table, Tag, Button, Dropdown, Row, Col, Pagination, Empty, Modal } from 'antd';
+import { Card, Space, Typography, Input, Table, Tag, Button, Dropdown, Row, Col, Pagination, Empty, Modal } from 'antd';
 import type { MenuProps } from 'antd';
-import { SearchOutlined, SettingOutlined, CalendarOutlined, PlusOutlined, MoreOutlined, CaretRightOutlined, HistoryOutlined, FormOutlined } from '@ant-design/icons';
+import {
+  SearchOutlined, SettingOutlined, CalendarOutlined, MoreOutlined, CaretRightOutlined,
+  HistoryOutlined, FormOutlined, AppstoreOutlined, ClockCircleOutlined, PlayCircleOutlined,
+  CheckCircleOutlined, StopOutlined, VideoCameraOutlined, EnvironmentOutlined, UserOutlined
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { MeetingListItem } from '@/dtos/meeting.dto';
 import { getMeetingStatus, isHostForMeeting } from './helpers';
@@ -35,6 +39,14 @@ interface MeetingsListViewProps {
   isAdmin: boolean;
 }
 
+const STAT_ITEMS = [
+  { key: 'all', title: 'Tất cả', color: '#2563eb', icon: <AppstoreOutlined /> },
+  { key: 'upcoming', title: 'Sắp tới', color: '#d97706', icon: <ClockCircleOutlined /> },
+  { key: 'live', title: 'Đang diễn ra', color: '#059669', icon: <PlayCircleOutlined />, isBlink: true },
+  { key: 'done', title: 'Đã xong', color: '#475569', icon: <CheckCircleOutlined /> },
+  { key: 'no_show', title: 'Không diễn ra', color: '#94a3b8', icon: <StopOutlined /> },
+] as const;
+
 export function MeetingsListView({
   statTotal, statUpcoming, statLive, statDone, statNoShow,
   filterStatus, setFilterStatus,
@@ -47,6 +59,10 @@ export function MeetingsListView({
   user, router, isAdmin
 }: MeetingsListViewProps) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  const counts: Record<string, number> = {
+    all: statTotal, upcoming: statUpcoming, live: statLive, done: statDone, no_show: statNoShow,
+  };
 
   const getStatusBadge = (status: string, record?: MeetingListItem) => {
     switch (status) {
@@ -65,7 +81,7 @@ export function MeetingsListView({
         }
         return <span className="status-pill status-pill-upcoming">Sắp diễn ra</span>;
       }
-      case 'live': return <span className="status-pill status-pill-live">Đang diễn ra</span>;
+      case 'live': return <span className="status-pill status-pill-live"><span className="live-dot" />Đang diễn ra</span>;
       case 'done': return <span className="status-pill status-pill-done">Đã kết thúc</span>;
       case 'no_show': return <span className="status-pill status-pill-no_show">Không diễn ra</span>;
       case 'cancelled': return <span className="status-pill status-pill-cancelled">Đã hủy</span>;
@@ -73,41 +89,59 @@ export function MeetingsListView({
     }
   };
 
+  // Màu avatar theo trạng thái để mắt dễ quét
+  const avatarStyleFor = (status: string): React.CSSProperties => {
+    switch (status) {
+      case 'live': return { background: '#ecfdf5', color: '#059669' };
+      case 'upcoming': return { background: '#fff7ed', color: '#d97706' };
+      case 'no_show': return { background: '#fef2f2', color: '#dc2626' };
+      default: return { background: '#f1f5f9', color: '#64748b' };
+    }
+  };
+
   return (
     <>
-      {/* CỘT THỐNG KÊ (Thay thế media query grid bằng Row/Col) */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        {[
-          { key: 'all', title: 'Tất cả', count: statTotal, color: '#2563eb' },
-          { key: 'upcoming', title: 'Sắp tới', count: statUpcoming, color: '#d97706' },
-          { key: 'live', title: 'Đang diễn ra', count: statLive, color: '#059669', isBlink: true },
-          { key: 'done', title: 'Đã xong', count: statDone, color: '#475569' },
-          { key: 'no_show', title: 'Không diễn ra', count: statNoShow, color: '#94a3b8' },
-        ].map(item => (
-          <Col xs={12} sm={8} lg={4} key={item.key} style={{ display: 'flex' }}>
-            <Card
-              className="stat-card"
-              hoverable
-              onClick={() => setFilterStatus(item.key as any)}
-              style={{
-                flex: 1,
-                borderColor: filterStatus === item.key ? item.color : '#e2e8f0',
-                background: filterStatus === item.key ? `${item.color}0a` : '#fff',
-                boxShadow: filterStatus === item.key ? `0 0 0 1px ${item.color}33` : 'none',
-                cursor: 'pointer'
-              }}
-              styles={{ body: { padding: '14px 16px', display: 'flex', flexDirection: 'column' } }}
-            >
-              <div style={{ fontSize: 13, color: '#64748b', fontWeight: 500, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                {item.isBlink && filterStatus === item.key && (
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, animation: 'blink 1.5s infinite' }} />
-                )}
-                {item.title}
-              </div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#1e293b', lineHeight: 1 }}>{item.count}</div>
-            </Card>
-          </Col>
-        ))}
+      {/* HEADER TRANG */}
+      <div className="meetings-page-head">
+        <div>
+          <Typography.Title level={4} className="meetings-page-title">Tất cả cuộc họp</Typography.Title>
+          <Typography.Text className="meetings-page-sub">
+            Quản lý, theo dõi và truy cập nhanh các cuộc họp của bạn
+          </Typography.Text>
+        </div>
+        <div className="meetings-total-badge">
+          <VideoCameraOutlined />
+          <span><strong>{statTotal}</strong> cuộc họp</span>
+        </div>
+      </div>
+
+      {/* CỘT THỐNG KÊ */}
+      <Row gutter={[14, 14]} style={{ marginBottom: 18 }}>
+        {STAT_ITEMS.map(item => {
+          const active = filterStatus === item.key;
+          const isBlink = 'isBlink' in item && item.isBlink;
+          return (
+            <Col xs={12} sm={8} lg={Math.floor(24 / STAT_ITEMS.length) || 4} key={item.key} style={{ display: 'flex' }}>
+              <button
+                type="button"
+                className={`stat-card ${active ? 'active' : ''}`}
+                onClick={() => setFilterStatus(item.key as any)}
+                style={{
+                  '--stat-color': item.color,
+                } as React.CSSProperties}
+              >
+                <div className="stat-card-top">
+                  <span className="stat-icon" style={{ color: item.color, background: `${item.color}14` }}>
+                    {item.icon}
+                  </span>
+                  {isBlink && counts[item.key] > 0 && <span className="stat-live-dot" />}
+                </div>
+                <div className="stat-count">{counts[item.key]}</div>
+                <div className="stat-title">{item.title}</div>
+              </button>
+            </Col>
+          );
+        })}
       </Row>
 
       {/* FILTER BAR */}
@@ -119,7 +153,7 @@ export function MeetingsListView({
             allowClear
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            style={{ borderRadius: 8, height: 38 }}
+            style={{ borderRadius: 10, height: 40 }}
           />
         </div>
         <div className="filter-chip-row">
@@ -127,7 +161,7 @@ export function MeetingsListView({
             Tất cả
           </div>
           <div className={`filter-chip ${filterStatus === 'live' ? 'active' : ''}`} onClick={() => setFilterStatus('live')}>
-            <span style={{ color: filterStatus === 'live' ? '#059669' : '#10b981', fontSize: 14 }}>●</span> Live
+            <span className="chip-live-dot" /> Đang diễn ra
           </div>
           <div className={`filter-chip ${filterStatus === 'upcoming' ? 'active' : ''}`} onClick={() => setFilterStatus('upcoming')}>
             <CalendarOutlined /> Sắp tới
@@ -136,7 +170,7 @@ export function MeetingsListView({
             Đã xong
           </div>
           <div className={`filter-chip ${filterStatus === 'no_show' ? 'active' : ''}`} onClick={() => setFilterStatus('no_show')}>
-            Không ai tham gia
+            Không diễn ra
           </div>
         </div>
       </div>
@@ -149,66 +183,84 @@ export function MeetingsListView({
           loading={loadingMeetings}
           pagination={false}
           scroll={{ x: 'max-content' }}
+          className="meetings-table"
+          locale={{
+            emptyText: (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={
+                  <span style={{ color: '#94a3b8' }}>
+                    {searchText ? 'Không tìm thấy cuộc họp phù hợp' : 'Chưa có cuộc họp nào'}
+                  </span>
+                }
+                style={{ padding: '40px 0' }}
+              />
+            ),
+          }}
           columns={[
             {
               title: 'Tên cuộc họp',
               key: 'info',
-              render: (_: any, record: MeetingListItem) => (
-                <Space direction="vertical" size={2}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <Typography.Text strong style={{ fontSize: 15, color: 'var(--color-body, #1e293b)' }}>{record.title}</Typography.Text>
-                    {isHostForMeeting(record, user) && (
-                      <Tag color="blue" style={{ border: 0, borderRadius: 12, margin: 0, fontWeight: 500 }}>Host</Tag>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '2px 0' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--color-secondary, #64748b)' }}>
-                      <span>Mã:</span>
-                      <Typography.Text code copyable={{ text: record.meetingCode, tooltips: ['Sao chép mã', 'Đã sao chép'] }} style={{ fontSize: 12, padding: '1px 5px', margin: 0 }}>
-                        {record.meetingCode}
-                      </Typography.Text>
-                    </span>
-                    <span style={{ color: '#cbd5e1' }}>•</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--color-secondary, #64748b)' }}>
-                      <span>Mật khẩu:</span>
-                      <Typography.Text code copyable={{ text: record.passcode, tooltips: ['Sao chép mật khẩu', 'Đã sao chép'] }} style={{ fontSize: 12, padding: '1px 5px', margin: 0 }}>
-                        {record.passcode}
-                      </Typography.Text>
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '2px 0', fontSize: 12, color: 'var(--color-secondary, #64748b)' }}>
-                    <span>Phòng: <strong style={{ color: 'var(--color-body, #1e293b)' }}>{record.location || getVirtualRoom(record.hostName, record.id)}</strong></span>
-                    <span style={{ color: '#cbd5e1' }}>•</span>
-                    <span>Host: <strong style={{ color: 'var(--color-body, #1e293b)' }}>{record.location ? record.hostName : getHostNameOnly(record.hostName)}</strong></span>
-                  </div>
-                  <Typography.Text style={{ fontSize: 12, color: 'var(--color-muted, #94a3b8)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <CalendarOutlined style={{ color: 'var(--color-muted, #94a3b8)' }} />
-                    <span>
-                      {dayjs(record.createdAt).format('DD/MM/YYYY HH:mm')}
-                      {record.startedAt && ` → ${dayjs(record.startedAt).format('HH:mm')}`}
-                      {record.endedAt && (
-                        <span style={{ marginLeft: 6, color: '#f43f5e', fontWeight: 500 }}>
-                          (Kết thúc: {dayjs(record.endedAt).format('HH:mm')})
+              render: (_: any, record: MeetingListItem) => {
+                const s = getMeetingStatus(record);
+                const title = record.title || 'Cuộc họp';
+                return (
+                  <div className="mtg-row">
+                    <div className="mtg-avatar" style={avatarStyleFor(s)}>
+                      {title.trim().charAt(0).toUpperCase() || 'M'}
+                    </div>
+                    <Space direction="vertical" size={3} style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <Typography.Text strong style={{ fontSize: 15, color: 'var(--color-body, #1e293b)' }}>{title}</Typography.Text>
+                        {isHostForMeeting(record, user) && (
+                          <Tag color="blue" style={{ border: 0, borderRadius: 12, margin: 0, fontWeight: 500, fontSize: 11, lineHeight: '18px' }}>Host</Tag>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span className="mtg-meta-label">Mã:</span>
+                        <Typography.Text code copyable={{ text: record.meetingCode, tooltips: ['Sao chép mã', 'Đã sao chép'] }} style={{ fontSize: 12, padding: '1px 6px', margin: 0 }}>
+                          {record.meetingCode}
+                        </Typography.Text>
+                        <span className="mtg-dot">•</span>
+                        <span className="mtg-meta-label">Mật khẩu:</span>
+                        <Typography.Text code copyable={{ text: record.passcode, tooltips: ['Sao chép mật khẩu', 'Đã sao chép'] }} style={{ fontSize: 12, padding: '1px 6px', margin: 0 }}>
+                          {record.passcode}
+                        </Typography.Text>
+                      </div>
+                      <div className="mtg-meta-line">
+                        <span className="mtg-meta-chip"><EnvironmentOutlined /> {record.location || getVirtualRoom(record.hostName, record.id)}</span>
+                        <span className="mtg-meta-chip"><UserOutlined /> {record.location ? record.hostName : getHostNameOnly(record.hostName)}</span>
+                      </div>
+                      <div className="mtg-meta-line mtg-time">
+                        <CalendarOutlined />
+                        <span>
+                          {dayjs(record.createdAt).format('DD/MM/YYYY HH:mm')}
+                          {record.startedAt && ` → ${dayjs(record.startedAt).format('HH:mm')}`}
+                          {record.endedAt && (
+                            <span style={{ marginLeft: 6, color: '#f43f5e', fontWeight: 500 }}>
+                              (Kết thúc: {dayjs(record.endedAt).format('HH:mm')})
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                  </Typography.Text>
-                </Space>
-              ),
+                      </div>
+                    </Space>
+                  </div>
+                );
+              },
             },
             {
               title: 'Trạng thái',
               key: 'status',
-              width: 180,
+              width: 170,
               align: 'center',
               render: (_: any, record: MeetingListItem) => {
                 const s = getMeetingStatus(record);
                 return (
-                  <Space direction="vertical" size={2} align="center" style={{ width: '100%' }}>
+                  <Space direction="vertical" size={4} align="center" style={{ width: '100%' }}>
                     {getStatusBadge(s, record)}
                     {(record.activeParticipantCount ?? 0) > 0 && (
-                      <Typography.Text style={{ fontSize: 12, color: '#059669', fontWeight: 500, marginTop: 4 }}>
-                        ● {record.activeParticipantCount} người đang họp
+                      <Typography.Text style={{ fontSize: 12, color: '#059669', fontWeight: 500 }}>
+                        {record.activeParticipantCount} người đang họp
                       </Typography.Text>
                     )}
                   </Space>
@@ -218,7 +270,7 @@ export function MeetingsListView({
             {
               title: 'Thao tác',
               key: 'action',
-              width: 180,
+              width: 170,
               align: 'center',
               render: (_: any, record: MeetingListItem) => {
                 const s = getMeetingStatus(record);
@@ -265,26 +317,26 @@ export function MeetingsListView({
                     onClick: () => openPollListModal(record),
                   });
                 }
-                
+
                 return (
                   <Space size={8} align="center" style={{ justifyContent: 'center', width: '100%' }}>
-                    <Button 
-                      type="primary" 
+                    <Button
+                      type="primary"
                       onClick={() => openDetailModal(record)}
-                      style={{ borderRadius: 6, fontWeight: 500 }}
+                      style={{ borderRadius: 8, fontWeight: 500 }}
                     >
                       Chi tiết <CaretRightOutlined />
                     </Button>
                     <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
-                      <Button 
-                        icon={<MoreOutlined />} 
-                        style={{ 
-                          color: '#64748b', 
-                          borderRadius: 6, 
-                          display: 'inline-flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center' 
-                        }} 
+                      <Button
+                        icon={<MoreOutlined />}
+                        style={{
+                          color: '#64748b',
+                          borderRadius: 8,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
                       />
                     </Dropdown>
                   </Space>

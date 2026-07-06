@@ -11,19 +11,59 @@
 .dashboard-container { padding: 24px; width: 100%; animation: fadeIn 0.2s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
+/* === HEADER TRANG === */
+.meetings-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.meetings-page-title.ant-typography { margin: 0; font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; }
+.meetings-page-sub.ant-typography { display: block; margin-top: 4px; font-size: 13px; color: #64748b; }
+.meetings-total-badge { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 10px; background: #f1f5f9; color: #475569; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.meetings-total-badge strong { color: #0f172a; font-weight: 700; }
+.meetings-total-badge .anticon { color: #2563eb; }
+
+/* === STAT CARDS === */
+.stat-card { flex: 1; text-align: left; font-family: inherit; border: 1px solid #e2e8f0; background: #fff; border-radius: 14px; padding: 14px 16px; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; box-shadow: 0 1px 2px rgba(15,23,42,0.03); position: relative; display: flex; flex-direction: column; gap: 2px; }
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,23,42,0.08); border-color: color-mix(in srgb, var(--stat-color) 40%, #e2e8f0); }
+.stat-card.active { border-color: var(--stat-color); background: color-mix(in srgb, var(--stat-color) 5%, #fff); box-shadow: 0 0 0 1px var(--stat-color), 0 4px 12px color-mix(in srgb, var(--stat-color) 18%, transparent); }
+.stat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.stat-icon { width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.stat-count { font-size: 26px; font-weight: 700; color: #0f172a; line-height: 1.1; }
+.stat-title { font-size: 13px; font-weight: 500; color: #64748b; }
+.stat-live-dot { width: 9px; height: 9px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 0 rgba(16,185,129,0.5); animation: livePulse 1.8s infinite; }
+@keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); } 70% { box-shadow: 0 0 0 7px rgba(16,185,129,0); } 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); } }
+
 /* === FILTER BAR === */
-.filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
 .search-input-wrapper { flex: 1; min-width: 250px; }
 .filter-chip-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.filter-chip { height: 36px; padding: 0 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex: 0 0 auto; }
-.filter-chip:hover { border-color: #2563eb; color: #2563eb; }
+.filter-chip { height: 40px; padding: 0 15px; border: 1px solid #e2e8f0; border-radius: 10px; background: white; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex: 0 0 auto; }
+.filter-chip:hover { border-color: #93c5fd; color: #2563eb; background: #f8fafc; }
 .filter-chip.active { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; font-weight: 600; }
+.chip-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block; box-shadow: 0 0 0 3px rgba(16,185,129,0.15); }
 
 /* === TABLE === */
-.table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: visible; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
+.table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(15,23,42,0.04); }
+.meetings-table .ant-table-thead > tr > th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid #e2e8f0; }
+.meetings-table .ant-table-tbody > tr > td { border-bottom: 1px solid #f1f5f9; padding-top: 14px; padding-bottom: 14px; }
+.meetings-table .ant-table-tbody > tr:last-child > td { border-bottom: none; }
+.meetings-table .ant-table-tbody > tr:hover > td { background: #f8fafc; }
+
+/* Ô thông tin cuộc họp */
+.mtg-row { display: flex; align-items: flex-start; gap: 12px; }
+.mtg-avatar { width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; margin-top: 2px; }
+.mtg-meta-label { font-size: 12px; color: #64748b; }
+.mtg-dot { color: #cbd5e1; }
+.mtg-meta-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: #64748b; }
+.mtg-meta-chip { display: inline-flex; align-items: center; gap: 5px; }
+.mtg-meta-chip .anticon { color: #94a3b8; }
+.mtg-meta-chip strong { color: #1e293b; }
+.mtg-time { color: #94a3b8; }
+.mtg-time .anticon { color: #94a3b8; }
+
 .meetings-pagination { display: flex; align-items: center; flex-wrap: nowrap; white-space: nowrap; margin: 0; }
 .meetings-pagination .ant-pagination-options { margin-inline-start: 6px; }
 .meetings-pagination .ant-select-selector { min-width: 72px; }
+
+/* Live dot trong pill trạng thái */
+.status-pill .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #059669; box-shadow: 0 0 0 0 rgba(5,150,105,0.5); animation: livePulse 1.8s infinite; }
 
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
@@ -141,6 +181,13 @@
 
 @media (max-width: 768px) {
   .dashboard-container { padding: 16px; }
+  .meetings-page-title.ant-typography { font-size: 19px; }
+  .meetings-total-badge { height: 34px; padding: 0 12px; }
+  .stat-card { padding: 12px 13px; border-radius: 12px; }
+  .stat-icon { width: 30px; height: 30px; font-size: 14px; }
+  .stat-count { font-size: 22px; }
+  .stat-title { font-size: 12px; }
+  .mtg-avatar { width: 34px; height: 34px; font-size: 14px; }
   .detail-header-modern { padding: 14px 12px; }
   .detail-top { flex-direction: column; align-items: stretch; }
   .status-pill { align-self: flex-start; }
