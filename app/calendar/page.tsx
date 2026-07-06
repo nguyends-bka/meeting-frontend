@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import MainLayout from '@/components/MainLayout';
-import { Card, Row, Col, Typography, Button, Input, Tag, Empty, Grid, Form, App } from 'antd';
+import { Card, Row, Col, Typography, Button, Input, Tag, Empty, Grid, Form, App, DatePicker } from 'antd';
 import {
   CalendarOutlined,
   LeftOutlined,
@@ -47,6 +47,7 @@ export default function CalendarPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // all, ongoing, upcoming, completed
   const [viewMode, setViewMode] = useState<'month' | 'list'>('month');
+  const [listDate, setListDate] = useState<dayjs.Dayjs | null>(null); // null = Tất cả (dùng cho List view)
   const [meetings, setMeetings] = useState<HomeMeetingRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -213,11 +214,13 @@ export default function CalendarPage() {
     });
   }, [meetings, searchTerm, statusFilter]);
 
-  // Danh sách sắp xếp mới nhất trước (dùng cho List view — không phụ thuộc tháng đang chọn)
-  const listMeetings = useMemo(
-    () => [...filteredMeetings].sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf()),
-    [filteredMeetings],
-  );
+  // Danh sách cho List view: lọc theo ngày (nếu chọn), sắp xếp mới nhất trước
+  const listMeetings = useMemo(() => {
+    const base = listDate
+      ? filteredMeetings.filter((m) => dayjs(m.createdAt).isSame(listDate, 'day'))
+      : filteredMeetings;
+    return [...base].sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf());
+  }, [filteredMeetings, listDate]);
 
   const stats = useMemo(() => {
     return {
@@ -394,12 +397,29 @@ export default function CalendarPage() {
                 </Title>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <UnorderedListOutlined style={{ color: '#2563eb', fontSize: 18 }} />
-                <Title level={4} className="cal-month-label">
-                  Danh sách cuộc họp
+                <Title level={4} className="cal-month-label" style={{ minWidth: 'auto' }}>
+                  {listDate ? `Ngày ${listDate.format('DD/MM/YYYY')}` : 'Tất cả cuộc họp'}
                 </Title>
                 <span className="cal-list-count">{listMeetings.length}</span>
+                <div className="cal-list-datefilter">
+                  <button
+                    type="button"
+                    className={`cal-date-toggle ${listDate === null ? 'active' : ''}`}
+                    onClick={() => setListDate(null)}
+                  >
+                    Tất cả
+                  </button>
+                  <DatePicker
+                    value={listDate}
+                    onChange={(d) => setListDate(d)}
+                    format="DD/MM/YYYY"
+                    placeholder="Chọn ngày"
+                    allowClear
+                    style={{ borderRadius: 8, height: 34 }}
+                  />
+                </div>
               </div>
             )}
 
@@ -548,7 +568,13 @@ export default function CalendarPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {listMeetings.length === 0 ? (
                   <Empty
-                    description={searchTerm || statusFilter !== 'all' ? 'Không tìm thấy cuộc họp nào phù hợp với bộ lọc.' : 'Chưa có cuộc họp nào.'}
+                    description={
+                      listDate
+                        ? `Không có cuộc họp nào trong ngày ${listDate.format('DD/MM/YYYY')}.`
+                        : searchTerm || statusFilter !== 'all'
+                          ? 'Không tìm thấy cuộc họp nào phù hợp với bộ lọc.'
+                          : 'Chưa có cuộc họp nào.'
+                    }
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                     style={{ padding: '40px 0' }}
                   />
@@ -731,7 +757,7 @@ export default function CalendarPage() {
             <div>
               {viewMode === 'month'
                 ? <>💡 Click vào một ngày để lập lịch, hoặc nhấn <span style={{ fontWeight: 700, color: '#3b82f6' }}>+ Tạo cuộc họp</span> ở header.</>
-                : <>💡 Danh sách gồm mọi cuộc họp, sắp xếp mới nhất trước. Chuyển sang <span style={{ fontWeight: 700, color: '#3b82f6' }}>Lịch tháng</span> để xem theo ngày.</>}
+                : <>💡 Chọn <span style={{ fontWeight: 700, color: '#3b82f6' }}>Tất cả</span> để xem mọi cuộc họp (mới nhất trước), hoặc chọn một ngày để lọc.</>}
             </div>
           </div>
         </Card>
