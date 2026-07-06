@@ -205,3 +205,45 @@
   .filter-chip-row::-webkit-scrollbar { display: none; }
   .section-title-sm { margin: 12px 0 6px; }
 }
+
+/* === DARK MODE (chỉ cho phần tử tùy biến; AntD component do darkAlgorithm lo) === */
+.dark-theme .meetings-page-title.ant-typography { color: #f1f5f9; }
+.dark-theme .meetings-page-sub.ant-typography { color: #94a3b8; }
+.dark-theme .meetings-total-badge { background: #1d1d1d; color: #cbd5e1; }
+.dark-theme .meetings-total-badge strong { color: #f1f5f9; }
+.dark-theme .stat-card { background: #1d1d1d; border-color: #303030; box-shadow: none; }
+.dark-theme .stat-count { color: #f1f5f9; }
+.dark-theme .stat-title { color: #94a3b8; }
+.dark-theme .filter-chip { background: #1d1d1d; border-color: #303030; color: #cbd5e1; }
+.dark-theme .filter-chip:hover { background: #262626; border-color: #3b82f6; color: #93c5fd; }
+.dark-theme .filter-chip.active { background: rgba(37,99,235,0.18); border-color: #3b82f6; color: #93c5fd; }
+.dark-theme .mtg-meta-label, .dark-theme .mtg-meta-line { color: #94a3b8; }
+.dark-theme .mtg-meta-chip strong { color: #e5e7eb; }
+.dark-theme .mtg-dot { color: #475569; }
+
+/* Trang chi tiết cuộc họp */
+.dark-theme .detail-back { color: #94a3b8; }
+.dark-theme .detail-back:hover { background: #1d1d1d; color: #93c5fd; }
+.dark-theme .detail-header,
+.dark-theme .qa-card,
+.dark-theme .participants-card { background: #1d1d1d; border-color: #303030; }
+.dark-theme .detail-title,
+.dark-theme .section-mini-value,
+.dark-theme .host-name-main,
+.dark-theme .join-info-title,
+.dark-theme .ib-value,
+.dark-theme .ac-val,
+.dark-theme .qa-name,
+.dark-theme .p-name { color: #e5e7eb; }
+.dark-theme .time-range-card,
+.dark-theme .host-modern-card,
+.dark-theme .access-card,
+.dark-theme .access-card-modern,
+.dark-theme .info-block { background: #262626; border-color: #303030; }
+.dark-theme .btn-copy { background: #262626; border-color: #3f3f46; color: #cbd5e1; }
+.dark-theme .btn-copy:hover { background: rgba(37,99,235,0.18); border-color: #3b82f6; color: #93c5fd; }
+.dark-theme .p-row { border-bottom-color: #303030; }
+.dark-theme .p-invite-bar { background: #262626; border-top-color: #303030; }
+.dark-theme .btn-edit { background: #262626; border-color: #3f3f46; color: #e5e7eb; }
+.dark-theme .btn-edit:hover { background: #303030; }
+.dark-theme .detail-divider { border-top-color: #303030; }

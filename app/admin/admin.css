@@ -63,11 +63,12 @@
   .admin-search { max-width: 100%; }
 }
 
-/* === DARK MODE === */
-.dark-theme .admin-stat, .dark-theme .admin-card { background: #1f1f1f !important; border-color: #3f3f46 !important; }
-.dark-theme .admin-stat-count, .dark-theme .admin-page-title.ant-typography { color: #f1f5f9 !important; }
-.dark-theme .admin-table .ant-table { background: #1f1f1f !important; color: #e5e7eb !important; }
-.dark-theme .admin-table .ant-table-thead > tr > th { background: #262626 !important; color: #d1d5db !important; border-bottom: 1px solid #3f3f46 !important; }
-.dark-theme .admin-table .ant-table-tbody > tr > td { border-bottom: 1px solid #3f3f46 !important; background: #1f1f1f !important; color: #e5e7eb !important; }
-.dark-theme .admin-table .ant-table-tbody > tr:hover > td { background: #30363f !important; }
-.dark-theme .au-name { color: #e5e7eb !important; }
+/* === DARK MODE (chỉ cho phần tử tùy biến; AntD component do darkAlgorithm lo) === */
+.dark-theme .admin-stat { background: #1d1d1d; border-color: #303030; }
+.dark-theme .admin-stat-count { color: #f1f5f9; }
+.dark-theme .admin-stat-label { color: #94a3b8; }
+.dark-theme .admin-page-title.ant-typography { color: #f1f5f9; }
+.dark-theme .admin-page-sub.ant-typography { color: #94a3b8; }
+.dark-theme .admin-table .ant-table-thead > tr > th { text-transform: uppercase; }
+.dark-theme .au-name { color: #e5e7eb; }
+.dark-theme .au-avatar { background: rgba(37,99,235,0.22); color: #93c5fd; }

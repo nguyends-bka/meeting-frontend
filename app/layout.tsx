@@ -2,9 +2,9 @@ import '@livekit/components-styles';
 import 'antd/dist/reset.css';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth';
-import { App as AntdApp, ConfigProvider } from 'antd';
+import { App as AntdApp } from 'antd';
 import ThemeProvider from '@/components/ThemeProvider';
-import viVN from 'antd/locale/vi_VN';
+import ThemeConfigProvider from '@/components/ThemeConfigProvider';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 
@@ -82,13 +82,13 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <ConfigProvider locale={viVN} wave={{ disabled: true }}>
-        <AntdApp>
-          <ThemeProvider>
-            <AuthProvider>{children}</AuthProvider>
-          </ThemeProvider>
-        </AntdApp>
-        </ConfigProvider>
+        <ThemeConfigProvider>
+          <AntdApp>
+            <ThemeProvider>
+              <AuthProvider>{children}</AuthProvider>
+            </ThemeProvider>
+          </AntdApp>
+        </ThemeConfigProvider>
       </body>
     </html>
   );

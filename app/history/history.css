@@ -62,3 +62,15 @@
   .h-avatar { width: 34px; height: 34px; font-size: 14px; }
   .history-search-wrap { max-width: 100%; }
 }
+
+/* === DARK MODE (chỉ cho phần tử tùy biến; AntD component do darkAlgorithm lo) === */
+.dark-theme .history-stat { background: #1d1d1d; border-color: #303030; }
+.dark-theme .history-stat-count { color: #f1f5f9; }
+.dark-theme .history-stat-label { color: #94a3b8; }
+.dark-theme .history-page-title.ant-typography { color: #f1f5f9; }
+.dark-theme .history-page-sub.ant-typography { color: #94a3b8; }
+.dark-theme .h-title { color: #e5e7eb; }
+.dark-theme .h-time { color: #e5e7eb; }
+.dark-theme .h-avatar { background: rgba(37,99,235,0.22); color: #93c5fd; }
+.dark-theme .h-code { background: #303030; color: #cbd5e1; }
+.dark-theme .h-duration { background: rgba(37,99,235,0.2); color: #93c5fd; }

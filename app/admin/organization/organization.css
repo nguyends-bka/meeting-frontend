@@ -62,20 +62,16 @@
   .action-buttons { opacity: 1; }
 }
 
-/* === DARK MODE === */
-.dark-theme .org-stat,
-.dark-theme .org-card { background: #1f1f1f !important; border-color: #3f3f46 !important; }
-.dark-theme .org-stat-count { color: #f1f5f9 !important; }
-.dark-theme .org-page-title.ant-typography { color: #f1f5f9 !important; }
-.dark-theme .org-table .ant-table { background: #1f1f1f !important; color: #e5e7eb !important; }
-.dark-theme .org-table .ant-table-thead > tr > th { background: #262626 !important; color: #d1d5db !important; border-bottom: 1px solid #3f3f46 !important; }
-.dark-theme .org-table .ant-table-placeholder > td { background: #1f1f1f !important; }
-.dark-theme .custom-table-row td { border-bottom: 1px solid #3f3f46 !important; color: #e5e7eb !important; background: #1f1f1f !important; }
-.dark-theme .custom-table-row:hover, .dark-theme .custom-table-row:hover > td { background-color: #30363f !important; }
-.dark-theme .action-btn { color: #93c5fd !important; }
-.dark-theme .action-btn.view-btn:hover { color: #bfdbfe !important; background-color: rgba(59,130,246,0.22) !important; }
-.dark-theme .action-btn.edit-btn:hover { color: #fbbf24 !important; background-color: rgba(245,158,11,0.2) !important; }
-.dark-theme .action-btn.lock-btn:hover, .dark-theme .action-btn.remove-btn:hover { color: #f87171 !important; background-color: rgba(239,68,68,0.2) !important; }
-.dark-theme .action-btn.unlock-btn:hover { color: #34d399 !important; background-color: rgba(16,185,129,0.2) !important; }
-.dark-theme .org-unit-icon-box { background: #334155 !important; color: #cbd5e1 !important; }
+/* === DARK MODE (chỉ cho phần tử tùy biến; AntD component do darkAlgorithm lo) === */
+.dark-theme .org-stat { background: #1d1d1d; border-color: #303030; }
+.dark-theme .org-stat-count { color: #f1f5f9; }
+.dark-theme .org-stat-label { color: #94a3b8; }
+.dark-theme .org-page-title.ant-typography { color: #f1f5f9; }
+.dark-theme .org-page-sub.ant-typography { color: #94a3b8; }
+.dark-theme .action-btn { color: #93c5fd; }
+.dark-theme .action-btn.view-btn:hover { color: #bfdbfe; background-color: rgba(59,130,246,0.22); }
+.dark-theme .action-btn.edit-btn:hover { color: #fbbf24; background-color: rgba(245,158,11,0.2); }
+.dark-theme .action-btn.lock-btn:hover, .dark-theme .action-btn.remove-btn:hover { color: #f87171; background-color: rgba(239,68,68,0.2); }
+.dark-theme .action-btn.unlock-btn:hover { color: #34d399; background-color: rgba(16,185,129,0.2); }
+.dark-theme .org-unit-icon-box { background: #334155; color: #cbd5e1; }
 .dark-theme .org-empty-state { color: #94a3b8; }
