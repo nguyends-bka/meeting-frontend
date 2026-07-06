@@ -1,0 +1,81 @@
+/* ============================================================
+   organization.css – Styles cho trang Quản lý Cơ cấu tổ chức
+   Đồng bộ phong cách với /meetings và /history
+   ============================================================ */
+
+.org-container { padding: 24px; width: 100%; max-width: 1200px; margin: 0 auto; animation: orgFadeIn 0.2s ease-out; }
+@keyframes orgFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* === HEADER TRANG === */
+.org-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.org-page-title.ant-typography { margin: 0; font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 10px; }
+.org-page-title .anticon { color: #2563eb; }
+.org-page-sub.ant-typography { display: block; margin-top: 4px; font-size: 13px; color: #64748b; }
+
+/* === STAT CARDS === */
+.org-stat-row { margin-bottom: 18px; }
+.org-stat { flex: 1; border: 1px solid #e2e8f0; background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 1px 2px rgba(15,23,42,0.03); transition: transform 0.15s ease, box-shadow 0.15s ease; display: flex; align-items: center; gap: 14px; height: 100%; }
+.org-stat:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,23,42,0.07); }
+.org-stat-icon { width: 44px; height: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.org-stat-count { font-size: 24px; font-weight: 700; color: #0f172a; line-height: 1.1; }
+.org-stat-label { font-size: 13px; font-weight: 500; color: #64748b; margin-top: 2px; }
+
+/* === CARD chung === */
+.org-card { border-radius: 14px; box-shadow: 0 2px 8px rgba(15,23,42,0.04); border: 1px solid #e2e8f0; }
+
+/* === TABLE === */
+.org-unit-icon-box { display: flex; align-items: center; justify-content: center; }
+.org-table .ant-table-thead > tr > th {
+  background: #f8fafc !important;
+  color: #64748b !important;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+.org-table .ant-table-cell::before { display: none !important; }
+.org-table .ant-table-container table > thead > tr:first-child > th:first-child { border-start-start-radius: 12px; }
+.org-table .ant-table-container table > thead > tr:first-child > th:last-child { border-start-end-radius: 12px; }
+.custom-table-row td { border-bottom: 1px solid #f1f5f9 !important; }
+.custom-table-row:hover, .custom-table-row:hover > td { background-color: #f8fafc !important; }
+
+/* Action buttons – luôn hiển thị (kể cả mobile), làm nổi khi hover */
+.action-buttons { display: flex; gap: 4px; justify-content: flex-end; opacity: 0.65; transition: opacity 0.2s ease; }
+.custom-table-row:hover .action-buttons { opacity: 1; }
+.action-btn { color: #94a3b8 !important; border-radius: 8px !important; }
+.action-btn.view-btn:hover { color: #2563eb !important; background-color: #eff6ff !important; }
+.action-btn.edit-btn:hover { color: #d97706 !important; background-color: #fffbeb !important; }
+.action-btn.lock-btn:hover { color: #dc2626 !important; background-color: #fef2f2 !important; }
+.action-btn.unlock-btn:hover { color: #059669 !important; background-color: #ecfdf5 !important; }
+.action-btn.remove-btn:hover { color: #dc2626 !important; background-color: #fef2f2 !important; }
+
+.org-empty-state { color: #64748b; font-size: 14px; padding: 24px 0; text-align: center; }
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .org-container { padding: 16px; }
+  .org-page-title.ant-typography { font-size: 19px; }
+  .org-stat { padding: 13px; gap: 12px; }
+  .org-stat-icon { width: 38px; height: 38px; font-size: 17px; }
+  .org-stat-count { font-size: 21px; }
+  .action-buttons { opacity: 1; }
+}
+
+/* === DARK MODE === */
+.dark-theme .org-stat,
+.dark-theme .org-card { background: #1f1f1f !important; border-color: #3f3f46 !important; }
+.dark-theme .org-stat-count { color: #f1f5f9 !important; }
+.dark-theme .org-page-title.ant-typography { color: #f1f5f9 !important; }
+.dark-theme .org-table .ant-table { background: #1f1f1f !important; color: #e5e7eb !important; }
+.dark-theme .org-table .ant-table-thead > tr > th { background: #262626 !important; color: #d1d5db !important; border-bottom: 1px solid #3f3f46 !important; }
+.dark-theme .org-table .ant-table-placeholder > td { background: #1f1f1f !important; }
+.dark-theme .custom-table-row td { border-bottom: 1px solid #3f3f46 !important; color: #e5e7eb !important; background: #1f1f1f !important; }
+.dark-theme .custom-table-row:hover, .dark-theme .custom-table-row:hover > td { background-color: #30363f !important; }
+.dark-theme .action-btn { color: #93c5fd !important; }
+.dark-theme .action-btn.view-btn:hover { color: #bfdbfe !important; background-color: rgba(59,130,246,0.22) !important; }
+.dark-theme .action-btn.edit-btn:hover { color: #fbbf24 !important; background-color: rgba(245,158,11,0.2) !important; }
+.dark-theme .action-btn.lock-btn:hover, .dark-theme .action-btn.remove-btn:hover { color: #f87171 !important; background-color: rgba(239,68,68,0.2) !important; }
+.dark-theme .action-btn.unlock-btn:hover { color: #34d399 !important; background-color: rgba(16,185,129,0.2) !important; }
+.dark-theme .org-unit-icon-box { background: #334155 !important; color: #cbd5e1 !important; }
+.dark-theme .org-empty-state { color: #94a3b8; }

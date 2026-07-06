@@ -9,6 +9,7 @@ import {
   Col,
   Form,
   Input,
+  Modal,
   Row,
   Select,
   Space,
@@ -16,7 +17,6 @@ import {
   Table,
   Tag,
   Typography,
-  Avatar,
   Divider,
   Tooltip,
 } from 'antd';
@@ -33,11 +33,17 @@ import {
   CheckCircleOutlined,
   StopOutlined,
   DeleteOutlined,
+  LockOutlined,
+  UnlockOutlined,
+  ClusterOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import type { OrganizationUnitItem, OrganizationUnitUpsertRequest } from '@/dtos/organization.dto';
 import { organizationApi } from '@/services/organization/organizationApi';
+import './organization.css';
 
-const { Title, Text, Link } = Typography;
+const { Title, Text } = Typography;
 
 type OrgUnit = {
   id: string;
@@ -48,7 +54,20 @@ type OrgUnit = {
   description: string;
   isActive: boolean;
   memberCount: number;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 };
+
+/** Tổng nhân sự của một đơn vị bao gồm toàn bộ cây con */
+function countSubtreeMembers(units: OrgUnit[], rootId: string): number {
+  const directChildren = units.filter((u) => u.parentId === rootId);
+  return directChildren.reduce(
+    (sum, c) => sum + c.memberCount + countSubtreeMembers(units, c.id),
+    0,
+  );
+}
 
 type FormUnit = {
   id?: string;
@@ -87,6 +106,10 @@ export default function OrganizationPage() {
     description: x.description ?? '',
     isActive: x.isActive,
     memberCount: x.memberCount,
+    createdAt: x.createdAt,
+    updatedAt: x.updatedAt,
+    createdBy: x.createdBy ?? null,
+    updatedBy: x.updatedBy ?? null,
   }), []);
 
   const loadUnits = useCallback(async () => {
@@ -125,10 +148,53 @@ export default function OrganizationPage() {
     await loadUnits();
   };
 
+  const handleDelete = (unit: OrgUnit) => {
+    const childCount = units.filter((u) => u.parentId === unit.id).length;
+    if (childCount > 0) {
+      message.warning(`Không thể xóa "${unit.name}" vì còn ${childCount} đơn vị trực thuộc. Vui lòng xóa hoặc chuyển các đơn vị con trước.`);
+      return;
+    }
+    Modal.confirm({
+      title: 'Xác nhận xóa đơn vị',
+      icon: <ExclamationCircleOutlined style={{ color: '#dc2626' }} />,
+      content: (
+        <span>
+          Bạn có chắc chắn muốn xóa vĩnh viễn đơn vị <strong>{unit.name}</strong> ({unit.code})?
+          {unit.memberCount > 0 && (
+            <div style={{ marginTop: 8, color: '#b45309' }}>
+              Đơn vị này đang có {unit.memberCount} nhân sự.
+            </div>
+          )}
+          <div style={{ marginTop: 8, color: '#94a3b8', fontSize: 13 }}>Hành động này không thể hoàn tác.</div>
+        </span>
+      ),
+      okText: 'Xóa đơn vị',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        const res = await organizationApi.remove(unit.id);
+        if (res.error) {
+          message.error(res.error);
+          return Promise.reject();
+        }
+        message.success(`Đã xóa đơn vị "${unit.name}"`);
+        await loadUnits();
+      },
+    });
+  };
+
   const selectedUnit = useMemo(
     () => units.find((u) => u.id === selectedId) ?? null,
     [units, selectedId],
   );
+
+  const stats = useMemo(() => {
+    const total = units.length;
+    const active = units.filter((u) => u.isActive).length;
+    const locked = total - active;
+    const totalMembers = units.reduce((sum, u) => sum + u.memberCount, 0);
+    return { total, active, locked, totalMembers };
+  }, [units]);
 
   const orderedUnits = useMemo(() => buildOrderedUnits(units), [units]);
 
@@ -204,33 +270,41 @@ export default function OrganizationPage() {
     {
       title: <Text type="secondary" style={{ fontSize: 12 }}>THAO TÁC</Text>,
       key: 'actions',
-      width: 140,
+      width: 170,
       align: 'right',
       render: (_v, record) => (
-        <div className="action-buttons" style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+        <div className="action-buttons">
           <Tooltip title="Chi tiết">
-            <Button 
-              type="text" 
-              icon={<EyeOutlined />} 
-              onClick={() => { setSelectedId(record.id); setMode('detail'); }} 
-              className="action-btn view-btn" 
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={() => { setSelectedId(record.id); setMode('detail'); }}
+              className="action-btn view-btn"
             />
           </Tooltip>
           <Tooltip title="Sửa">
-            <Button 
-              type="text" 
-              icon={<EditOutlined />} 
-              onClick={() => { setSelectedId(record.id); setMode('form'); }} 
-              className="action-btn edit-btn" 
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => { setSelectedId(record.id); setMode('form'); }}
+              className="action-btn edit-btn"
             />
           </Tooltip>
-          <Tooltip title={record.isActive ? "Khóa" : "Mở khóa"}>
-            <Button 
-              type="text" 
-              icon={record.isActive ? <DeleteOutlined /> : <CheckCircleOutlined />} 
+          <Tooltip title={record.isActive ? "Khóa đơn vị" : "Mở khóa"}>
+            <Button
+              type="text"
+              icon={record.isActive ? <LockOutlined /> : <UnlockOutlined />}
               loading={togglingId === record.id}
-              onClick={() => handleToggleStatus(record.id)} 
-              className={`action-btn ${record.isActive ? 'delete-btn' : 'unlock-btn'}`} 
+              onClick={() => handleToggleStatus(record.id)}
+              className={`action-btn ${record.isActive ? 'lock-btn' : 'unlock-btn'}`}
+            />
+          </Tooltip>
+          <Tooltip title="Xóa đơn vị">
+            <Button
+              type="text"
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
+              className="action-btn remove-btn"
             />
           </Tooltip>
         </div>
@@ -264,58 +338,91 @@ export default function OrganizationPage() {
     setSelectedId(null);
   };
 
+  const statItems = [
+    { label: 'Tổng đơn vị', value: stats.total, icon: <ClusterOutlined />, color: '#2563eb' },
+    { label: 'Đang hoạt động', value: stats.active, icon: <CheckCircleOutlined />, color: '#059669' },
+    { label: 'Đã khóa', value: stats.locked, icon: <LockOutlined />, color: '#64748b' },
+    { label: 'Tổng nhân sự', value: stats.totalMembers, icon: <TeamOutlined />, color: '#7c3aed' },
+  ];
+
   return (
     <MainLayout>
-      <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
-        
+      <div className="org-container">
+
         {/* LIST MODE */}
         {mode === 'list' && (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-               <Title level={3} style={{ margin: 0, color: '#1e293b' }}>Quản lý Cơ cấu tổ chức</Title>
+            <div className="org-page-head">
+              <div>
+                <Title level={4} className="org-page-title">
+                  <ApartmentOutlined /> Quản lý Cơ cấu tổ chức
+                </Title>
+                <Text className="org-page-sub">
+                  Quản lý cây đơn vị, phân cấp trực thuộc và nhân sự của tổ chức
+                </Text>
+              </div>
+              <Button
+                type="primary"
+                size="large"
+                icon={<PlusOutlined />}
+                style={{ borderRadius: 10 }}
+                onClick={() => {
+                  setSelectedId(null);
+                  setMode('form');
+                }}
+              >
+                Thêm đơn vị
+              </Button>
             </div>
-            
+
+            {/* THẺ THỐNG KÊ */}
+            <Row gutter={[14, 14]} className="org-stat-row">
+              {statItems.map((s) => (
+                <Col xs={12} lg={6} key={s.label} style={{ display: 'flex' }}>
+                  <div className="org-stat">
+                    <span className="org-stat-icon" style={{ color: s.color, background: `${s.color}14` }}>
+                      {s.icon}
+                    </span>
+                    <div>
+                      <div className="org-stat-count">{s.value}</div>
+                      <div className="org-stat-label">{s.label}</div>
+                    </div>
+                  </div>
+                </Col>
+              ))}
+            </Row>
+
             <Card
               variant="borderless"
-              style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0' }}
+              className="org-card"
               styles={{ body: { padding: '20px' } }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-                <Input 
-                  placeholder="Tìm kiếm đơn vị..." 
-                  prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />} 
-                  style={{ width: 320, borderRadius: 8 }} 
-                  size="large"
+              <div style={{ marginBottom: 16 }}>
+                <Input
+                  placeholder="Tìm kiếm theo tên hoặc mã đơn vị..."
+                  prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                  allowClear
+                  style={{ maxWidth: 360, borderRadius: 10, height: 40 }}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<PlusOutlined />}
-                  style={{ borderRadius: 8 }}
-                  onClick={() => {
-                    setSelectedId(null);
-                    setMode('form');
-                  }}
-                >
-                  Thêm đơn vị
-                </Button>
               </div>
-              
-              <Table 
-                rowKey="id" 
-                columns={columns} 
-                dataSource={filteredUnits} 
+
+              <Table
+                rowKey="id"
+                className="org-table"
+                columns={columns}
+                dataSource={filteredUnits}
                 loading={loading}
+                scroll={{ x: 'max-content' }}
                 locale={{
                   emptyText: (
                     <div className="org-empty-state">
-                      Không tìm thấy đơn vị phù hợp
+                      {searchTerm ? 'Không tìm thấy đơn vị phù hợp' : 'Chưa có đơn vị nào'}
                     </div>
                   ),
                 }}
-                pagination={false} 
+                pagination={false}
                 size="middle"
                 rowClassName={() => 'custom-table-row'}
               />
@@ -326,11 +433,15 @@ export default function OrganizationPage() {
         {/* FORM MODE */}
         {mode === 'form' && (
           <>
-            {/* Tiêu đề trang đưa ra ngoài Card để giống thiết kế Ảnh 1 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-               <Title level={3} style={{ margin: 0, color: '#1e293b' }}>
-                 {selectedUnit ? 'Sửa thông tin Đơn vị' : 'Thêm mới Đơn vị'}
-               </Title>
+            <div className="org-page-head">
+              <div>
+                <Title level={4} className="org-page-title">
+                  {selectedUnit ? 'Sửa thông tin đơn vị' : 'Thêm mới đơn vị'}
+                </Title>
+                <Text className="org-page-sub">
+                  {selectedUnit ? 'Cập nhật thông tin và vị trí của đơn vị trong cây tổ chức' : 'Khai báo một đơn vị mới và gắn vào cây tổ chức'}
+                </Text>
+              </div>
             </div>
             {/* Thu hẹp kích thước Card form lại (680px) và căn giữa */}
             <div style={{ maxWidth: 680, margin: '0 auto' }}>
@@ -348,8 +459,11 @@ export default function OrganizationPage() {
         {/* DETAIL MODE */}
         {mode === 'detail' && selectedUnit && (
           <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-               <Title level={3} style={{ margin: 0, color: '#1e293b' }}>Chi tiết Đơn vị</Title>
+             <div className="org-page-head">
+               <div>
+                 <Title level={4} className="org-page-title">Chi tiết đơn vị</Title>
+                 <Text className="org-page-sub">Thông tin chi tiết, phân cấp và nhân sự của đơn vị</Text>
+               </div>
             </div>
             <OrganizationDetail
               unit={selectedUnit}
@@ -360,124 +474,6 @@ export default function OrganizationPage() {
           </div>
         )}
       </div>
-
-      {/* CSS tùy chỉnh ẩn viền dọc bảng theo mẫu thiết kế & Hiệu ứng Hover Tool */}
-      <style dangerouslySetInnerHTML={{__html: `
-        .custom-table-row td {
-          border-bottom: 1px solid #f0f0f0 !important;
-        }
-        .ant-table-wrapper .ant-table-container table > thead > tr:first-child > th:first-child {
-          border-start-start-radius: 8px;
-        }
-        .ant-table-wrapper .ant-table-container table > thead > tr:first-child > th:last-child {
-          border-start-end-radius: 8px;
-        }
-        .ant-table-thead > tr > th {
-          background: #fafafa !important;
-          border-bottom: 1px solid #f0f0f0 !important;
-        }
-        .ant-table-cell::before {
-          display: none !important;
-        }
-        
-        /* Hiệu ứng hiển thị Action Button khi Hover Row */
-        .action-buttons {
-          opacity: 0;
-          transition: opacity 0.2s ease-in-out;
-        }
-        .custom-table-row:hover .action-buttons {
-          opacity: 1;
-        }
-        .custom-table-row:hover {
-          background-color: #f0f5ff !important;
-        }
-        .custom-table-row:hover > td {
-          background-color: #f0f5ff !important;
-        }
-        
-        /* Chỉnh màu cho từng loại nút khi hover */
-        .action-btn {
-          color: #94a3b8 !important; /* Xám nhạt mặc định */
-          border-radius: 6px !important;
-        }
-        .action-btn.view-btn:hover {
-          color: #2563eb !important; 
-          background-color: #eff6ff !important;
-        }
-        .action-btn.edit-btn:hover {
-          color: #d97706 !important; 
-          background-color: #fffbeb !important;
-        }
-        .action-btn.delete-btn:hover {
-          color: #dc2626 !important; 
-          background-color: #fef2f2 !important;
-        }
-        .action-btn.unlock-btn:hover {
-          color: #059669 !important; 
-          background-color: #ecfdf5 !important;
-        }
-
-        /* Dark mode fixes for table readability */
-        .dark-theme .ant-table-wrapper .ant-table {
-          background: #1f1f1f !important;
-          color: #e5e7eb !important;
-        }
-        .dark-theme .ant-table-wrapper .ant-table-placeholder > td {
-          background: #1f1f1f !important;
-        }
-        .dark-theme .ant-table-wrapper .ant-empty-description {
-          color: #94a3b8 !important;
-        }
-        .org-empty-state {
-          color: #64748b;
-          font-size: 14px;
-          padding: 20px 0;
-        }
-        .dark-theme .org-empty-state {
-          color: #94a3b8;
-        }
-        .dark-theme .ant-table-wrapper .ant-table-thead > tr > th {
-          background: #262626 !important;
-          color: #d1d5db !important;
-          border-bottom: 1px solid #3f3f46 !important;
-        }
-        .dark-theme .custom-table-row td {
-          border-bottom: 1px solid #3f3f46 !important;
-          color: #e5e7eb !important;
-          background: #1f1f1f !important;
-        }
-        .dark-theme .custom-table-row:hover,
-        .dark-theme .custom-table-row:hover > td,
-        .dark-theme .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td {
-          background-color: #30363f !important;
-        }
-        .dark-theme .ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td {
-          background: #30363f !important;
-        }
-        .dark-theme .action-btn {
-          color: #93c5fd !important;
-        }
-        .dark-theme .action-btn.view-btn:hover {
-          color: #bfdbfe !important;
-          background-color: rgba(59, 130, 246, 0.22) !important;
-        }
-        .dark-theme .action-btn.edit-btn:hover {
-          color: #fbbf24 !important;
-          background-color: rgba(245, 158, 11, 0.2) !important;
-        }
-        .dark-theme .action-btn.delete-btn:hover {
-          color: #f87171 !important;
-          background-color: rgba(239, 68, 68, 0.2) !important;
-        }
-        .dark-theme .action-btn.unlock-btn:hover {
-          color: #34d399 !important;
-          background-color: rgba(16, 185, 129, 0.2) !important;
-        }
-        .dark-theme .org-unit-icon-box {
-          background: #334155 !important;
-          color: #cbd5e1 !important;
-        }
-      `}} />
     </MainLayout>
   );
 }
@@ -730,6 +726,7 @@ function OrganizationDetail({
 }) {
   const parent = allUnits.find((u) => u.id === unit.parentId) ?? null;
   const children = allUnits.filter((u) => u.parentId === unit.id);
+  const subtreeMembers = countSubtreeMembers(allUnits, unit.id);
 
   return (
     <>
@@ -832,11 +829,11 @@ function OrganizationDetail({
             )}
           </Card>
 
-          {/* 2 Card thống kê */}
+          {/* 2 Card thống kê – số liệu thật từ dữ liệu tổ chức */}
           <Row gutter={24}>
             <Col span={12}>
               <Card
-                variant="borderless" 
+                variant="borderless"
                 style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', textAlign: 'center', height: '100%' }}
                 styles={{ body: { padding: '32px 24px' } }}
               >
@@ -844,23 +841,31 @@ function OrganizationDetail({
                     <TeamOutlined />
                  </div>
                  <Title level={2} style={{ margin: 0, color: '#0f172a' }}>{unit.memberCount}</Title>
-                 <Text type="secondary" style={{ display: 'block', marginTop: 4, marginBottom: 24 }}>Nhân sự thuộc đơn vị</Text>
-                 <Link style={{ fontWeight: 500, color: '#4f46e5' }}>Quản lý nhân sự &rarr;</Link>
+                 <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>Nhân sự trực tiếp</Text>
+                 {subtreeMembers > 0 && (
+                   <Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
+                     {unit.memberCount + subtreeMembers} nhân sự tính cả đơn vị con
+                   </Text>
+                 )}
               </Card>
             </Col>
-            
+
             <Col span={12}>
               <Card
-                variant="borderless" 
+                variant="borderless"
                 style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0', textAlign: 'center', height: '100%' }}
                 styles={{ body: { padding: '32px 24px' } }}
               >
-                 <div style={{ width: 56, height: 56, background: '#fff1f2', color: '#e11d48', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>
+                 <div style={{ width: 56, height: 56, background: '#ecfdf5', color: '#059669', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>
                     <ApartmentOutlined />
                  </div>
-                 <Title level={2} style={{ margin: 0, color: '#0f172a' }}>12</Title>
-                 <Text type="secondary" style={{ display: 'block', marginTop: 4, marginBottom: 24 }}>Cuộc họp đã tổ chức</Text>
-                 <Link style={{ fontWeight: 500, color: '#e11d48' }}>Xem danh sách họp &rarr;</Link>
+                 <Title level={2} style={{ margin: 0, color: '#0f172a' }}>{children.length}</Title>
+                 <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>Đơn vị trực thuộc</Text>
+                 {unit.updatedAt && (
+                   <Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
+                     Cập nhật: {dayjs(unit.updatedAt).format('DD/MM/YYYY')}
+                   </Text>
+                 )}
               </Card>
             </Col>
           </Row>
