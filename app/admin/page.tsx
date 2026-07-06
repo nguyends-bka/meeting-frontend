@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { apiService, catalogApi } from '@/services/api';
@@ -17,7 +17,6 @@ import {
   Form,
   Select,
   Popconfirm,
-  Statistic,
   Row,
   Col,
   Tabs,
@@ -36,8 +35,13 @@ import {
   TranslationOutlined,
   PlusOutlined,
   StarFilled,
+  SearchOutlined,
+  SafetyCertificateOutlined,
+  VideoCameraOutlined,
+  BankOutlined,
 } from '@ant-design/icons';
 import type { AdminCountry, AdminLanguage } from '@/services/catalog/catalogApi';
+import './admin.css';
 
 type User = {
   id: string;
@@ -68,6 +72,10 @@ export default function AdminPage() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
+  const [userSearch, setUserSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'Admin' | 'User'>('all');
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize, setUserPageSize] = useState(10);
 
   // ── Catalog state ────────────────────────────────────────────────
   const [countries, setCountries] = useState<AdminCountry[]>([]);
@@ -206,6 +214,26 @@ export default function AdminPage() {
     void loadCatalog();
   };
 
+  // ── Lọc + tìm kiếm user ──────────────────────────────────────────
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    return users.filter((u) => {
+      if (roleFilter !== 'all' && u.role !== roleFilter) return false;
+      if (!q) return true;
+      return (
+        (u.username || '').toLowerCase().includes(q) ||
+        (u.fullName || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        (u.organizationUnitName || '').toLowerCase().includes(q)
+      );
+    });
+  }, [users, userSearch, roleFilter]);
+
+  const initialsOf = (u: User) => {
+    const base = (u.fullName || u.username || '?').trim();
+    return base.charAt(0).toUpperCase();
+  };
+
   // ── Users table columns ──────────────────────────────────────────
   const columns = [
     {
@@ -213,23 +241,34 @@ export default function AdminPage() {
       key: 'stt',
       width: 60,
       align: 'center' as const,
-      render: (_: unknown, __: User, index: number) => index + 1,
+      render: (_: unknown, __: User, index: number) => (
+        <span style={{ color: '#94a3b8' }}>{(userPage - 1) * userPageSize + index + 1}</span>
+      ),
     },
     {
-      title: 'Username',
+      title: 'Người dùng',
       dataIndex: 'username',
       key: 'username',
-      render: (text: string) => <Typography.Text strong>{text}</Typography.Text>,
+      render: (_: string, record: User) => (
+        <div className="au-row">
+          <div className="au-avatar">{initialsOf(record)}</div>
+          <div style={{ minWidth: 0 }}>
+            <div className="au-name">{record.fullName || record.username}</div>
+            <div className="au-username">@{record.username}</div>
+            {record.email && <div className="au-email">{record.email}</div>}
+          </div>
+        </div>
+      ),
     },
     {
-      title: 'Role',
+      title: 'Vai trò',
       dataIndex: 'role',
       key: 'role',
-      width: 110,
+      width: 120,
       render: (role: string) => (
-        <Tag color={role === 'Admin' ? 'red' : 'blue'}>
-          {role === 'Admin' ? <SettingOutlined /> : <UserOutlined />} {role}
-        </Tag>
+        <span className={`role-pill ${role === 'Admin' ? 'role-pill-admin' : 'role-pill-user'}`}>
+          {role === 'Admin' ? <SafetyCertificateOutlined /> : <UserOutlined />} {role}
+        </span>
       ),
     },
     {
@@ -237,12 +276,10 @@ export default function AdminPage() {
       key: 'extraInfo',
       width: 280,
       render: (_: unknown, record: User) => (
-        <Space direction="vertical" size={0}>
-          <Typography.Text type="secondary">Chức vụ: {record.position || '-'}</Typography.Text>
-          <Typography.Text type="secondary">
-            Học hàm/vị: {record.academicRank || '-'} / {record.academicDegree || '-'}
-          </Typography.Text>
-          <Typography.Text type="secondary">Đơn vị: {record.organizationUnitName || '-'}</Typography.Text>
+        <Space direction="vertical" size={4}>
+          <span className="au-meta-chip">Chức vụ: <strong>{record.position || '—'}</strong></span>
+          <span className="au-meta-chip">Học hàm/vị: <strong>{record.academicRank || '—'} / {record.academicDegree || '—'}</strong></span>
+          <span className="au-meta-chip"><BankOutlined /> <strong>{record.organizationUnitName || 'Chưa gán đơn vị'}</strong></span>
         </Space>
       ),
     },
@@ -289,8 +326,13 @@ export default function AdminPage() {
       title: 'Ngày tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 160,
-      render: (v: string) => dayjs(v).format('DD/MM/YYYY HH:mm'),
+      width: 150,
+      render: (v: string) => (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{dayjs(v).format('DD/MM/YYYY')}</span>
+          <span style={{ fontSize: 12, color: '#94a3b8' }}>{dayjs(v).format('HH:mm')}</span>
+        </div>
+      ),
     },
     {
       title: 'Thao tác',
@@ -303,6 +345,7 @@ export default function AdminPage() {
             icon={<EditOutlined />}
             onClick={() => handleEditRole(record)}
             disabled={record.id === user?.id}
+            style={{ borderRadius: 8 }}
           >
             Đổi role
           </Button>
@@ -320,6 +363,7 @@ export default function AdminPage() {
               danger
               icon={<DeleteOutlined />}
               disabled={record.id === user?.id}
+              style={{ borderRadius: 8 }}
             >
               Xóa
             </Button>
@@ -378,34 +422,50 @@ export default function AdminPage() {
   if (loading) return <div style={{ padding: 24 }}>Đang tải...</div>;
   if (!isAuthenticated || !isAdmin) return null;
 
+  const statItems = stats
+    ? [
+        { label: 'Tổng số người dùng', value: stats.totalUsers, icon: <TeamOutlined />, color: '#2563eb' },
+        { label: 'Quản trị viên', value: stats.totalAdmins, icon: <SafetyCertificateOutlined />, color: '#dc2626' },
+        { label: 'Người dùng', value: stats.totalUsersRole, icon: <UserOutlined />, color: '#059669' },
+        { label: 'Tổng cuộc họp', value: stats.totalMeetings, icon: <VideoCameraOutlined />, color: '#7c3aed' },
+      ]
+    : [];
+
   return (
     <MainLayout>
-      <div style={{ padding: 24 }}>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {/* Statistics */}
-          {stats && (
-            <Card title="Thống kê tổng quan">
-              <Row gutter={16}>
-                <Col span={6}>
-                  <Statistic title="Tổng số User" value={stats.totalUsers} />
-                </Col>
-                <Col span={6}>
-                  <Statistic
-                    title="Admin"
-                    value={stats.totalAdmins}
-                    valueStyle={{ color: '#cf1322' }}
-                  />
-                </Col>
-                <Col span={6}>
-                  <Statistic title="User" value={stats.totalUsersRole} />
-                </Col>
-                <Col span={6}>
-                  <Statistic title="Tổng số Meeting" value={stats.totalMeetings} />
-                </Col>
-              </Row>
-            </Card>
-          )}
+      <div className="admin-container">
+        {/* HEADER TRANG */}
+        <div className="admin-page-head">
+          <div>
+            <Typography.Title level={4} className="admin-page-title">
+              <TeamOutlined /> Quản trị hệ thống
+            </Typography.Title>
+            <Typography.Text className="admin-page-sub">
+              Quản lý người dùng, phân quyền và danh mục dùng chung của hệ thống
+            </Typography.Text>
+          </div>
+        </div>
 
+        {/* THẺ THỐNG KÊ */}
+        {stats && (
+          <Row gutter={[14, 14]} className="admin-stat-row">
+            {statItems.map((s) => (
+              <Col xs={12} lg={6} key={s.label} style={{ display: 'flex' }}>
+                <div className="admin-stat">
+                  <span className="admin-stat-icon" style={{ color: s.color, background: `${s.color}14` }}>
+                    {s.icon}
+                  </span>
+                  <div>
+                    <div className="admin-stat-count">{s.value}</div>
+                    <div className="admin-stat-label">{s.label}</div>
+                  </div>
+                </div>
+              </Col>
+            ))}
+          </Row>
+        )}
+
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
           {/* Main Tabs */}
           <Tabs
             defaultActiveKey="users"
@@ -421,22 +481,59 @@ export default function AdminPage() {
                 ),
                 children: (
                   <Card
+                    className="admin-card"
+                    styles={{ body: { padding: 20 } }}
                     extra={
-                      <Button icon={<ReloadOutlined />} onClick={() => void loadUsers()} loading={loadingUsers}>
+                      <Button icon={<ReloadOutlined />} onClick={() => void loadUsers()} loading={loadingUsers} style={{ borderRadius: 10 }}>
                         Tải lại
                       </Button>
                     }
                   >
+                    <div className="admin-toolbar">
+                      <Input
+                        className="admin-search"
+                        prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                        placeholder="Tìm theo tên, username, email, đơn vị..."
+                        allowClear
+                        value={userSearch}
+                        onChange={(e) => { setUserSearch(e.target.value); setUserPage(1); }}
+                        style={{ borderRadius: 10, height: 40 }}
+                      />
+                      <Select
+                        value={roleFilter}
+                        onChange={(v) => { setRoleFilter(v); setUserPage(1); }}
+                        style={{ width: 170, height: 40 }}
+                        options={[
+                          { value: 'all', label: 'Tất cả vai trò' },
+                          { value: 'Admin', label: 'Quản trị viên' },
+                          { value: 'User', label: 'Người dùng' },
+                        ]}
+                      />
+                      <Typography.Text style={{ color: '#94a3b8', fontSize: 13, marginLeft: 'auto' }}>
+                        {filteredUsers.length} người dùng
+                      </Typography.Text>
+                    </div>
                     <Table<User>
                       rowKey="id"
+                      className="admin-table"
                       loading={loadingUsers}
                       columns={columns as any}
-                      dataSource={users}
-                      scroll={{ x: 1200 }}
+                      dataSource={filteredUsers}
+                      scroll={{ x: 'max-content' }}
+                      locale={{
+                        emptyText: (
+                          <div style={{ padding: '32px 0', color: '#94a3b8' }}>
+                            {userSearch || roleFilter !== 'all' ? 'Không tìm thấy người dùng phù hợp' : 'Chưa có người dùng nào'}
+                          </div>
+                        ),
+                      }}
                       pagination={{
-                        pageSize: 10,
+                        current: userPage,
+                        pageSize: userPageSize,
+                        onChange: (p, s) => { setUserPage(p); setUserPageSize(s); },
                         showSizeChanger: true,
                         pageSizeOptions: [10, 20, 50, 100],
+                        showTotal: (total, range) => `Hiển thị ${range[0]}-${range[1]} trong số ${total}`,
                       }}
                     />
                   </Card>
@@ -459,12 +556,14 @@ export default function AdminPage() {
                         label: <Space><GlobalOutlined />Quốc gia ({countries.length})</Space>,
                         children: (
                           <Card
+                            className="admin-card"
+                            styles={{ body: { padding: 20 } }}
                             extra={
                               <Space>
-                                <Button icon={<ReloadOutlined />} onClick={() => void loadCatalog()} loading={loadingCatalog}>
+                                <Button icon={<ReloadOutlined />} onClick={() => void loadCatalog()} loading={loadingCatalog} style={{ borderRadius: 10 }}>
                                   Tải lại
                                 </Button>
-                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openCountryModal()}>
+                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openCountryModal()} style={{ borderRadius: 10 }}>
                                   Thêm quốc gia
                                 </Button>
                               </Space>
@@ -472,6 +571,7 @@ export default function AdminPage() {
                           >
                             <Table<AdminCountry>
                               rowKey="code"
+                              className="admin-table"
                               loading={loadingCatalog}
                               columns={countryColumns}
                               dataSource={countries}
@@ -485,12 +585,14 @@ export default function AdminPage() {
                         label: <Space><TranslationOutlined />Ngôn ngữ ({languages.length})</Space>,
                         children: (
                           <Card
+                            className="admin-card"
+                            styles={{ body: { padding: 20 } }}
                             extra={
                               <Space>
-                                <Button icon={<ReloadOutlined />} onClick={() => void loadCatalog()} loading={loadingCatalog}>
+                                <Button icon={<ReloadOutlined />} onClick={() => void loadCatalog()} loading={loadingCatalog} style={{ borderRadius: 10 }}>
                                   Tải lại
                                 </Button>
-                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openLanguageModal()}>
+                                <Button type="primary" icon={<PlusOutlined />} onClick={() => openLanguageModal()} style={{ borderRadius: 10 }}>
                                   Thêm ngôn ngữ
                                 </Button>
                               </Space>
@@ -498,6 +600,7 @@ export default function AdminPage() {
                           >
                             <Table<AdminLanguage>
                               rowKey="code"
+                              className="admin-table"
                               loading={loadingCatalog}
                               columns={languageColumns}
                               dataSource={languages}
