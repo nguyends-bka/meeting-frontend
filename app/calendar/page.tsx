@@ -47,7 +47,7 @@ export default function CalendarPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // all, ongoing, upcoming, completed
   const [viewMode, setViewMode] = useState<'month' | 'list'>('month');
-  const [listDate, setListDate] = useState<dayjs.Dayjs | null>(null); // null = Tất cả (dùng cho List view)
+  const [listDate, setListDate] = useState<dayjs.Dayjs | null>(dayjs()); // mặc định hôm nay; null = Tất cả (List view)
   const [meetings, setMeetings] = useState<HomeMeetingRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -398,9 +398,37 @@ export default function CalendarPage() {
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <UnorderedListOutlined style={{ color: '#2563eb', fontSize: 18 }} />
+                {/* Điều hướng ngày: ← [ngày] → */}
+                <div className="cal-nav-group">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<LeftOutlined />}
+                    disabled={!listDate}
+                    onClick={() => setListDate((d) => (d ?? dayjs()).subtract(1, 'day'))}
+                    style={{ height: 32, width: 32 }}
+                  />
+                  <Button
+                    type="text"
+                    size="small"
+                    onClick={() => setListDate(dayjs())}
+                    style={{ height: 32, padding: '0 12px', fontWeight: 600 }}
+                  >
+                    Hôm nay
+                  </Button>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<RightOutlined />}
+                    disabled={!listDate}
+                    onClick={() => setListDate((d) => (d ?? dayjs()).add(1, 'day'))}
+                    style={{ height: 32, width: 32 }}
+                  />
+                </div>
                 <Title level={4} className="cal-month-label" style={{ minWidth: 'auto' }}>
-                  {listDate ? `Ngày ${listDate.format('DD/MM/YYYY')}` : 'Tất cả cuộc họp'}
+                  {listDate
+                    ? (listDate.isSame(dayjs(), 'day') ? `Hôm nay, ${listDate.format('DD/MM/YYYY')}` : listDate.format('dddd, DD/MM/YYYY'))
+                    : 'Tất cả cuộc họp'}
                 </Title>
                 <span className="cal-list-count">{listMeetings.length}</span>
                 <div className="cal-list-datefilter">
