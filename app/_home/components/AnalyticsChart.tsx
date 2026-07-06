@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Card, Typography } from 'antd';
+import { LineChartOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { HomeMeetingRow } from '../types';
 
@@ -30,6 +31,8 @@ export default function AnalyticsChart({ allMeetings }: AnalyticsChartProps) {
     const vals = chartData.map((d) => d.value);
     return Math.max(...vals, 4); // default scale to at least 4 meetings
   }, [chartData]);
+
+  const totalMeetings = useMemo(() => chartData.reduce((s, d) => s + d.value, 0), [chartData]);
 
   // Dimension settings for SVG viewBox
   const svgWidth = 500;
@@ -68,10 +71,18 @@ export default function AnalyticsChart({ allMeetings }: AnalyticsChartProps) {
   return (
     <Card
       variant="borderless"
-      className="premium-shadow"
-      style={{ borderRadius: 24, marginBottom: 24, border: 'none', background: '#ffffff' }}
-      title={<span style={{ fontWeight: 800, fontSize: 16, color: '#1e293b' }}>Tần suất họp (7 ngày)</span>}
+      className="home-card"
+      style={{ marginBottom: 24 }}
+      styles={{ body: { padding: 20 } }}
+      title={<span className="home-section-title"><LineChartOutlined style={{ color: '#2563eb' }} /> Tần suất họp (7 ngày)</span>}
     >
+      {totalMeetings === 0 ? (
+        <div className="chart-empty">
+          <LineChartOutlined />
+          <Text type="secondary">Chưa có cuộc họp nào trong 7 ngày qua</Text>
+        </div>
+      ) : (
+      <>
       <div className="chart-container-svg">
         <svg
           viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -168,6 +179,8 @@ export default function AnalyticsChart({ allMeetings }: AnalyticsChartProps) {
           Số cuộc họp thống kê thực tế theo từng ngày
         </Text>
       </div>
+      </>
+      )}
     </Card>
   );
 }

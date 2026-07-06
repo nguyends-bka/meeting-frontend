@@ -1,8 +1,6 @@
 import React from 'react';
-import { Card, Row, Col, Typography, Grid } from 'antd';
-import { VideoCameraOutlined, CheckCircleOutlined } from '@ant-design/icons';
-
-const { Text } = Typography;
+import { Card, Row, Col, Grid } from 'antd';
+import { VideoCameraOutlined, CheckCircleOutlined, RightOutlined } from '@ant-design/icons';
 
 interface StatsOverviewProps {
   stats: {
@@ -15,70 +13,31 @@ interface StatsOverviewProps {
 export default function StatsOverview({ stats, onRedirectHistory }: StatsOverviewProps) {
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
-  
   const isNarrow = !screens.lg;
-  const isWideHome = Boolean(screens.xxl);
-  const isCompactStats = !isWideHome && screens.lg;
-  const statScale = isNarrow ? 0.8 : isCompactStats ? 0.85 : 1;
-  const ss = (n: number) => Math.round(n * statScale);
 
   return (
     <Card
       variant="borderless"
-      className="premium-shadow"
-      styles={{
-        body: { padding: isNarrow ? '16px' : '24px' }
-      }}
-      style={{
-        borderRadius: isNarrow ? 20 : 24,
-        marginBottom: isNarrow ? 16 : 24,
-        border: 'none'
-      }}
-      title={
-        <span style={{ fontWeight: 800, fontSize: isNarrow ? 15 : 18, color: '#1e293b' }}>
-          Tổng quan cá nhân
-        </span>
-      }
+      className="home-card"
+      styles={{ body: { padding: isNarrow ? 16 : 20 } }}
+      style={{ marginBottom: isNarrow ? 16 : 24 }}
+      title={<span className="home-section-title">Tổng quan cá nhân</span>}
     >
-      <Row gutter={isNarrow ? [12, 12] : [16, 16]}>
+      <Row gutter={[14, 14]}>
         <Col xs={24} sm={12}>
-          <div
-            className="hover-scale"
-            style={{
-              padding: ss(20),
-              borderRadius: ss(16),
-              background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-              border: '1px solid rgba(186, 230, 253, 0.5)',
-              height: '100%',
-              position: 'relative',
-              overflow: 'hidden'
-            }}
-          >
-            <div style={{ position: 'absolute', right: -5, top: -5, opacity: 0.1 }}>
-              <VideoCameraOutlined style={{ fontSize: ss(80), color: '#0284c7' }} />
+          <div className="home-stat">
+            <span className="home-stat-icon" style={{ color: '#2563eb', background: 'rgba(37,99,235,0.1)' }}>
+              <VideoCameraOutlined />
+            </span>
+            <div>
+              <div className="home-stat-count">{stats.createdThisWeek}</div>
+              <div className="home-stat-label">Đã tạo tuần này</div>
             </div>
-            <VideoCameraOutlined style={{ fontSize: ss(28), color: '#0ea5e9' }} />
-            <div style={{ fontSize: ss(36), fontWeight: 800, marginTop: ss(12), color: '#0369a1', lineHeight: 1 }}>
-              {stats.createdThisWeek}
-            </div>
-            <Text style={{ fontSize: ss(13), display: 'block', marginTop: 8, color: '#0284c7', fontWeight: 600 }}>
-              Đã tạo tuần này
-            </Text>
           </div>
         </Col>
         <Col xs={24} sm={12}>
           <div
-            className="hover-scale"
-            style={{
-              padding: ss(20),
-              borderRadius: ss(16),
-              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-              border: '1px solid rgba(187, 247, 208, 0.5)',
-              height: '100%',
-              cursor: 'pointer',
-              position: 'relative',
-              overflow: 'hidden'
-            }}
+            className="home-stat is-clickable"
             role="button"
             tabIndex={0}
             onClick={onRedirectHistory}
@@ -86,16 +45,14 @@ export default function StatsOverview({ stats, onRedirectHistory }: StatsOvervie
               if (e.key === 'Enter' || e.key === ' ') onRedirectHistory();
             }}
           >
-            <div style={{ position: 'absolute', right: -5, top: -5, opacity: 0.1 }}>
-              <CheckCircleOutlined style={{ fontSize: ss(80), color: '#16a34a' }} />
+            <span className="home-stat-icon" style={{ color: '#059669', background: 'rgba(5,150,105,0.1)' }}>
+              <CheckCircleOutlined />
+            </span>
+            <div style={{ flex: 1 }}>
+              <div className="home-stat-count">{stats.joinedSessionsTotal}</div>
+              <div className="home-stat-label">Đã tham gia (lượt)</div>
+              <div className="home-stat-link">Xem lịch sử <RightOutlined style={{ fontSize: 10 }} /></div>
             </div>
-            <CheckCircleOutlined style={{ fontSize: ss(28), color: '#22c55e' }} />
-            <div style={{ fontSize: ss(36), fontWeight: 800, marginTop: ss(12), color: '#14532d', lineHeight: 1 }}>
-              {stats.joinedSessionsTotal}
-            </div>
-            <Text style={{ fontSize: ss(13), display: 'block', marginTop: 8, color: '#16a34a', fontWeight: 600 }}>
-              Đã tham gia (lượt)
-            </Text>
           </div>
         </Col>
       </Row>

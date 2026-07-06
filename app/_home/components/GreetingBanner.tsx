@@ -52,10 +52,10 @@ export default function GreetingBanner({
         body: { padding: isNarrow ? '12px 16px' : '20px 28px' }
       }}
       style={{
-        borderRadius: isNarrow ? 16 : 24,
+        borderRadius: 16,
         marginBottom: isNarrow ? 12 : 16,
         background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #4338ca 100%)',
-        boxShadow: '0 20px 40px -10px rgba(59, 130, 246, 0.3)',
+        boxShadow: '0 8px 24px -8px rgba(37, 99, 235, 0.35)',
         overflow: 'hidden',
         position: 'relative',
       }}

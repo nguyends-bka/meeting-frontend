@@ -64,16 +64,16 @@ export default function TodaySchedule({
   return (
     <Card
       variant="borderless"
-      className="premium-shadow"
+      className="home-card"
       styles={{
         body: { padding: isNarrow ? '12px' : '16px 20px' }
       }}
-      style={{ borderRadius: 20, marginBottom: isNarrow ? 12 : 16, border: 'none', background: '#ffffff' }}
+      style={{ marginBottom: isNarrow ? 12 : 16 }}
       title={
         isNarrow ? undefined : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <CalendarOutlined style={{ color: '#2563eb', fontSize: 18 }} />
-            <span style={{ fontWeight: 800, fontSize: 16, color: '#1e293b' }}>{titleText}</span>
+            <span className="home-section-title">{titleText}</span>
             {isToday && (
               <span style={{
                 background: '#eff6ff',
