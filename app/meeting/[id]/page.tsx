@@ -1197,7 +1197,8 @@ export default function MeetingPage() {
 
     return (
       <div style={styles.container}>
-        <div style={styles.preJoinWrapper} className="prejoin-no-username prejoin-shell">
+        <div style={styles.preJoinOuter}>
+          <div style={styles.preJoinWrapper} className="prejoin-no-username prejoin-shell">
           <style
             dangerouslySetInnerHTML={{
               __html: `
@@ -1226,28 +1227,28 @@ export default function MeetingPage() {
                   border-radius: 10px;
                 }
                 .prejoin-shell .lk-prejoin .lk-button.lk-button-primary {
-                  margin: 8px 14px 12px;
+                  margin: 8px 14px 14px;
                   width: calc(100% - 28px);
-                  min-height: 46px;
+                  min-height: 48px;
                   border-radius: 12px;
-                  font-size: 20px;
+                  font-size: 16px;
                   font-weight: 600;
-                  background: #3b82f6;
-                  border-color: #3b82f6;
-                }
-                .prejoin-shell .lk-prejoin .lk-button.lk-button-primary:hover {
                   background: #2563eb;
                   border-color: #2563eb;
+                  box-shadow: 0 4px 12px rgba(37,99,235,0.24);
+                  transition: background 0.15s ease, box-shadow 0.15s ease;
+                }
+                .prejoin-shell .lk-prejoin .lk-button.lk-button-primary:hover {
+                  background: #1d4ed8;
+                  border-color: #1d4ed8;
+                  box-shadow: 0 6px 16px rgba(37,99,235,0.3);
                 }
                 @media (max-width: 860px) {
                   .prejoin-shell {
                     grid-template-columns: 1fr !important;
-                    grid-template-rows: auto minmax(0, 1fr);
+                    grid-template-rows: auto auto;
                   }
-                  .prejoin-shell .lk-video-preview { min-height: 0; }
-                  .prejoin-shell .lk-prejoin .lk-button.lk-button-primary {
-                    font-size: 17px;
-                  }
+                  .prejoin-shell .lk-video-preview { min-height: 220px; }
                 }
               `,
             }}
@@ -1303,6 +1304,22 @@ export default function MeetingPage() {
           </div>
 
           <div style={styles.setupCard}>
+            <h2 style={styles.setupCardTitle}>Thiết lập thiết bị</h2>
+
+            {/* Trạng thái thiết bị */}
+            <div style={styles.deviceStatusList}>
+              <div style={{ ...styles.deviceStatusItem, ...(noCamera ? styles.deviceStatusWarn : styles.deviceStatusOk) }}>
+                <span style={styles.deviceStatusIcon}>{noCamera ? '⚠️' : '📷'}</span>
+                <span style={styles.deviceStatusText}>{noCamera ? 'Không tìm thấy camera' : 'Camera sẵn sàng'}</span>
+              </div>
+              <div style={{ ...styles.deviceStatusItem, ...(showMicWarning ? styles.deviceStatusWarn : styles.deviceStatusOk) }}>
+                <span style={styles.deviceStatusIcon}>{showMicWarning ? '⚠️' : '🎙️'}</span>
+                <span style={styles.deviceStatusText}>{showMicWarning ? 'Không tìm thấy microphone' : 'Microphone sẵn sàng'}</span>
+              </div>
+            </div>
+
+            <div style={styles.setupDivider} />
+
             <div style={styles.formGroup}>
               <label style={styles.label}>Nguồn Microphone</label>
               <select
@@ -1316,7 +1333,7 @@ export default function MeetingPage() {
             </div>
 
             {audioSource === 'virtual' && (
-              <div style={styles.formGroup}>
+              <div style={{ ...styles.formGroup, marginTop: 14 }}>
                 <label style={styles.label}>Địa chỉ WebSocket</label>
                 <input
                   value={virtualMicWsUrl}
@@ -1337,7 +1354,12 @@ export default function MeetingPage() {
                 {!noCamera && showMicWarning && 'Không tìm thấy microphone. Vui lòng kiểm tra lại thiết bị!'}
               </div>
             )}
+
+            <div style={styles.privacyNote}>
+              🔒 Bạn có thể bật/tắt mic và camera bằng nút trên khung xem trước. Chưa ai nhìn thấy hay nghe thấy bạn cho tới khi bấm <strong>Tham gia</strong>.
+            </div>
           </div>
+        </div>
         </div>
       </div>
     );
@@ -1586,11 +1608,19 @@ const styles: { [key: string]: React.CSSProperties } = {
   container: {
     height: '100vh',
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f3f4f6',
-    padding: '10px 16px',
+    background: 'linear-gradient(180deg, #eef2f9 0%, #f3f4f6 100%)',
+    padding: '16px',
     overflow: 'hidden',
+  },
+  preJoinOuter: {
+    width: '100%',
+    maxWidth: '1040px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    maxHeight: 'calc(100vh - 32px)',
   },
   loadingContainer: {
     textAlign: 'center',
@@ -1644,21 +1674,66 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   preJoinWrapper: {
     width: '100%',
-    maxWidth: '1040px',
-    height: 'calc(100vh - 20px)',
-    maxHeight: 'calc(100vh - 20px)',
+    minHeight: 0,
+    flex: '1 1 auto',
     display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) 320px',
+    gridTemplateColumns: 'minmax(0, 1fr) 340px',
     gap: '14px',
-    alignItems: 'start',
+    alignItems: 'stretch',
   },
   setupCard: {
     backgroundColor: '#ffffff',
-    padding: '14px 20px',
-    borderRadius: '12px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    padding: '18px 20px',
+    borderRadius: '14px',
+    boxShadow: '0 2px 10px rgba(15,23,42,0.05)',
     border: '1px solid #e5e7eb',
-    alignSelf: 'start',
+    alignSelf: 'stretch',
+    display: 'flex',
+    flexDirection: 'column',
+    overflowY: 'auto',
+  },
+  setupCardTitle: {
+    fontSize: '16px',
+    fontWeight: 700,
+    margin: '0 0 14px 0',
+    color: '#0f172a',
+  },
+  deviceStatusList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  deviceStatusItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '9px 12px',
+    borderRadius: '10px',
+    border: '1px solid transparent',
+    fontSize: '13px',
+    fontWeight: 600,
+  },
+  deviceStatusOk: {
+    background: '#ecfdf5',
+    borderColor: '#a7f3d0',
+    color: '#059669',
+  },
+  deviceStatusWarn: {
+    background: '#fffbeb',
+    borderColor: '#fde68a',
+    color: '#d97706',
+  },
+  deviceStatusIcon: {
+    fontSize: '15px',
+    lineHeight: 1,
+  },
+  deviceStatusText: {
+    flex: 1,
+  },
+  setupDivider: {
+    height: '1px',
+    background: '#f1f5f9',
+    margin: '16px 0',
   },
   cardTitle: {
     fontSize: '20px',
@@ -1672,23 +1747,24 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: 'column',
   },
   label: {
-    fontSize: '14px',
+    fontSize: '13px',
     fontWeight: '600',
-    marginBottom: '8px',
+    marginBottom: '7px',
     color: '#374151',
   },
   select: {
     width: '100%',
     padding: '10px 12px',
-    borderRadius: '8px',
+    borderRadius: '10px',
     border: '1px solid #d1d5db',
     fontSize: '14px',
     backgroundColor: '#fff',
+    cursor: 'pointer',
   },
   input: {
     width: '100%',
     padding: '10px 12px',
-    borderRadius: '8px',
+    borderRadius: '10px',
     border: '1px solid #d1d5db',
     fontSize: '14px',
     backgroundColor: '#fff',
@@ -1699,13 +1775,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#6b7280',
   },
   deviceWarning: {
-    padding: '14px 20px',
+    marginTop: '14px',
+    padding: '12px 14px',
     backgroundColor: '#fff8e6',
     border: '1px solid #f0c674',
-    borderRadius: '8px',
-    fontSize: '14px',
+    borderRadius: '10px',
+    fontSize: '13px',
     color: '#7d5a00',
     textAlign: 'center',
+  },
+  privacyNote: {
+    marginTop: 'auto',
+    paddingTop: '16px',
+    fontSize: '12px',
+    lineHeight: 1.5,
+    color: '#94a3b8',
   },
   joiningOverlay: {
     position: 'absolute',

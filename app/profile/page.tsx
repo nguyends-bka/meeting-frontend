@@ -8,13 +8,11 @@ import MainLayout from '@/components/MainLayout';
 import {
   App,
   Button,
-  Card,
   Form,
   Input,
   Select,
   Space,
   Typography,
-  Descriptions,
   Tag,
   Radio,
 } from 'antd';
@@ -27,9 +25,18 @@ import {
   GlobalOutlined,
   TranslationOutlined,
   StarFilled,
+  EditOutlined,
+  IdcardOutlined,
+  BankOutlined,
+  SolutionOutlined,
+  ScanOutlined,
+  CalendarOutlined,
+  ReadOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { CountryOption, LanguageOption, UserCountryItem, UserLanguageItem } from '@/dtos/user.dto';
+import './profile.css';
 
 const AVATAR_SIZE = 256;
 
@@ -295,6 +302,21 @@ export default function ProfilePage() {
   if (loading) return <div style={{ padding: 24 }}>Đang tải...</div>;
   if (!isAuthenticated) return null;
 
+  const academicRankLabel: Record<string, string> = { GS: 'Giáo sư (GS)', PGS: 'Phó giáo sư (PGS)' };
+  const academicDegreeLabel: Record<string, string> = {
+    TS: 'Tiến sĩ (TS)', ThS: 'Thạc sĩ (ThS)', CN: 'Cử nhân (CN)', KS: 'Kỹ sư (KS)',
+  };
+
+  // Field ở chế độ xem
+  const ViewField = ({ label, icon, value, empty }: { label: string; icon?: React.ReactNode; value?: React.ReactNode; empty?: boolean }) => (
+    <div className="profile-field">
+      <span className="profile-field-label">{icon}{label}</span>
+      {empty
+        ? <span className="profile-field-empty">Chưa cập nhật</span>
+        : <span className="profile-field-value">{value}</span>}
+    </div>
+  );
+
   return (
     <MainLayout>
       {/* Hidden Forms để kết nối form instances khi chưa hiển thị (tránh warning useForm) */}
@@ -308,20 +330,61 @@ export default function ProfilePage() {
           <Form.Item hidden />
         </Form>
       )}
-      <div style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {/* Profile Information or Change Password */}
-          {showPasswordForm ? (
-            <Card
-              title={
-                <Space>
-                  <LockOutlined />
-                  <Typography.Title level={4} style={{ margin: 0 }}>
+      <div className="profile-container">
+        {/* ===== HERO ===== */}
+        {profile && (
+          <div className="profile-hero">
+            <div className="profile-hero-band" />
+            <div className="profile-hero-inner">
+              {facePreviewUrl ? (
+                <img src={facePreviewUrl} alt="avatar" className="profile-avatar" />
+              ) : (
+                <span className="profile-avatar">
+                  {(profile.fullName || profile.username || 'U').trim().charAt(0).toUpperCase()}
+                </span>
+              )}
+              <div className="profile-hero-main">
+                <Typography.Title level={4} className="profile-name">
+                  {profile.fullName || profile.username}
+                </Typography.Title>
+                <div className="profile-username"><UserOutlined /> @{profile.username}</div>
+                <div className="profile-badges">
+                  <span className={`profile-pill profile-pill-role ${profile.role === 'Admin' ? 'is-admin' : ''}`}>
+                    <IdcardOutlined /> {profile.role}
+                  </span>
+                  {profile.hasFaceEmbedding ? (
+                    <span className="profile-pill profile-pill-ok"><ScanOutlined /> Đã đăng ký sinh trắc học</span>
+                  ) : (
+                    <span className="profile-pill profile-pill-warn"><ScanOutlined /> Chưa đăng ký sinh trắc học</span>
+                  )}
+                  <span className="profile-pill" style={{ background: '#f8fafc', color: '#64748b', borderColor: '#e2e8f0' }}>
+                    <CalendarOutlined /> Tham gia {dayjs(profile.createdAt).format('DD/MM/YYYY')}
+                  </span>
+                </div>
+              </div>
+              {!showUpdateForm && !showPasswordForm && (
+                <div className="profile-hero-actions">
+                  <Button type="primary" icon={<EditOutlined />} onClick={() => setShowUpdateForm(true)}>
+                    Chỉnh sửa
+                  </Button>
+                  <Button icon={<LockOutlined />} onClick={() => setShowPasswordForm(true)}>
                     Đổi mật khẩu
-                  </Typography.Title>
-                </Space>
-              }
-            >
+                  </Button>
+                  <Button icon={<ReloadOutlined />} onClick={() => void loadProfile()} loading={loadingProfile} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ===== ĐỔI MẬT KHẨU ===== */}
+        {showPasswordForm ? (
+          <div className="profile-card">
+            <div className="profile-card-head">
+              <LockOutlined />
+              <h3 className="profile-card-title">Đổi mật khẩu</h3>
+            </div>
+            <div className="profile-card-body">
               <Form
                 form={passwordForm}
                 layout="vertical"
@@ -332,10 +395,7 @@ export default function ProfilePage() {
                   name="oldPassword"
                   rules={[{ required: true, message: 'Vui lòng nhập mật khẩu cũ' }]}
                 >
-                  <Input.Password
-                    placeholder="Nhập mật khẩu cũ"
-                    prefix={<LockOutlined />}
-                  />
+                  <Input.Password placeholder="Nhập mật khẩu cũ" prefix={<LockOutlined />} size="large" />
                 </Form.Item>
 
                 <Form.Item
@@ -346,10 +406,7 @@ export default function ProfilePage() {
                     { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự' },
                   ]}
                 >
-                  <Input.Password
-                    placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
-                    prefix={<LockOutlined />}
-                  />
+                  <Input.Password placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)" prefix={<LockOutlined />} size="large" />
                 </Form.Item>
 
                 <Form.Item
@@ -368,440 +425,285 @@ export default function ProfilePage() {
                     }),
                   ]}
                 >
-                  <Input.Password
-                    placeholder="Nhập lại mật khẩu mới"
-                    prefix={<LockOutlined />}
-                  />
+                  <Input.Password placeholder="Nhập lại mật khẩu mới" prefix={<LockOutlined />} size="large" />
                 </Form.Item>
 
-                <Form.Item>
-                  <Space>
-                    <Button
-                      type="primary"
-                      icon={<SaveOutlined />}
-                      htmlType="submit"
-                      loading={changingPassword}
-                    >
-                      Đổi mật khẩu
-                    </Button>
-                    <Button onClick={() => {
-                      passwordForm.resetFields();
-                      setShowPasswordForm(false);
-                    }}>
-                      Hủy
-                    </Button>
-                  </Space>
-                </Form.Item>
-              </Form>
-            </Card>
-          ) : (
-            <Card
-              title={
-                <Space>
-                  <UserOutlined />
-                  <Typography.Title level={4} style={{ margin: 0 }}>
-                    Thông tin cá nhân
-                  </Typography.Title>
-                </Space>
-              }
-              extra={
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={() => void loadProfile()}
-                  loading={loadingProfile}
-                >
-                  Tải lại
-                </Button>
-              }
-            >
-              {profile ? (
-                <Form
-                  form={profileForm}
-                  onFinish={() => void handleUpdateProfile()}
-                >
-                  <Descriptions column={1} bordered>
-                    <Descriptions.Item label="Username">
-                      <Typography.Text strong>{profile.username}</Typography.Text>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Họ và tên">
-                      {showUpdateForm ? (
-                        <Form.Item
-                          name="fullName"
-                          style={{ margin: 0 }}
-                          required
-                          rules={[
-                            { required: true, whitespace: true, message: 'Vui lòng nhập họ và tên' },
-                            { max: 100, message: 'Họ và tên không được quá 100 ký tự' },
-                          ]}
-                        >
-                          <Input
-                            placeholder="Nhập họ và tên"
-                            prefix={<UserOutlined />}
-                          />
-                        </Form.Item>
-                      ) : (
-                        profile.fullName ? (
-                          <Typography.Text>{profile.fullName}</Typography.Text>
-                        ) : (
-                          <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
-                        )
-                      )}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Email">
-                      {showUpdateForm ? (
-                        <Form.Item
-                          name="email"
-                          style={{ margin: 0 }}
-                          required
-                          rules={[
-                            { required: true, whitespace: true, message: 'Vui lòng nhập email' },
-                            {
-                              validator: async (_, v) => {
-                                const s = String(v ?? '').trim();
-                                if (!s) return;
-                                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) {
-                                  throw new Error('Email không hợp lệ');
-                                }
-                              },
-                            },
-                            { max: 100, message: 'Email không được quá 100 ký tự' },
-                          ]}
-                        >
-                          <Input
-                            placeholder="Nhập email"
-                            prefix={<MailOutlined />}
-                          />
-                        </Form.Item>
-                      ) : (
-                        profile.email ? (
-                          <Typography.Text>{profile.email}</Typography.Text>
-                        ) : (
-                          <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
-                        )
-                      )}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Chức vụ">
-                      {showUpdateForm ? (
-                        <Form.Item
-                          name="position"
-                          style={{ margin: 0 }}
-                          rules={[{ max: 100, message: 'Chức vụ không được quá 100 ký tự' }]}
-                        >
-                          <Input placeholder="Nhập chức vụ" />
-                        </Form.Item>
-                      ) : profile.position ? (
-                        <Typography.Text>{profile.position}</Typography.Text>
-                      ) : (
-                        <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
-                      )}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Học hàm">
-                      {showUpdateForm ? (
-                        <Form.Item name="academicRank" style={{ margin: 0 }}>
-                          <Select
-                            allowClear
-                            placeholder="Chọn học hàm"
-                            options={[
-                              { label: 'GS', value: 'GS' },
-                              { label: 'PGS', value: 'PGS' },
-                            ]}
-                          />
-                        </Form.Item>
-                      ) : profile.academicRank ? (
-                        <Typography.Text>{profile.academicRank}</Typography.Text>
-                      ) : (
-                        <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
-                      )}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Học vị">
-                      {showUpdateForm ? (
-                        <Form.Item name="academicDegree" style={{ margin: 0 }}>
-                          <Select
-                            allowClear
-                            placeholder="Chọn học vị"
-                            options={[
-                              { label: 'TS', value: 'TS' },
-                              { label: 'ThS', value: 'ThS' },
-                              { label: 'CN', value: 'CN' },
-                              { label: 'KS', value: 'KS' },
-                            ]}
-                          />
-                        </Form.Item>
-                      ) : profile.academicDegree ? (
-                        <Typography.Text>{profile.academicDegree}</Typography.Text>
-                      ) : (
-                        <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
-                      )}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Đơn vị công tác">
-                      {showUpdateForm ? (
-                        <Form.Item name="organizationUnitId" style={{ margin: 0 }}>
-                          <Select
-                            allowClear
-                            showSearch
-                            loading={loadingOrgUnits}
-                            placeholder="Chọn đơn vị công tác"
-                            options={orgUnits.map((x) => ({
-                              label: `${'— '.repeat(Math.max(0, x.level - 1))}${x.name}`,
-                              value: x.id,
-                            }))}
-                            filterOption={(input, option) =>
-                              String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                          />
-                        </Form.Item>
-                      ) : profile.organizationUnitName ? (
-                        <Typography.Text>{profile.organizationUnitName}</Typography.Text>
-                      ) : (
-                        <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
-                      )}
-                    </Descriptions.Item>
-
-                    {/* ── Quốc tịch / Quốc gia ─────────────────────────── */}
-                    <Descriptions.Item label={<Space><GlobalOutlined />Quốc tịch / Quốc gia</Space>}>
-                      {showUpdateForm ? (
-                        <Form.Item name="countryCodes" style={{ margin: 0 }}>
-                          <Select
-                            mode="multiple"
-                            allowClear
-                            showSearch
-                            loading={loadingCatalogs}
-                            placeholder="Chọn quốc tịch / quốc gia"
-                            options={countries.map((c) => ({
-                              label: c.countryName,
-                              value: c.code,
-                            }))}
-                            filterOption={(input, option) =>
-                              String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                            style={{ width: '100%' }}
-                          />
-                        </Form.Item>
-                      ) : (profile.countries ?? []).length > 0 ? (
-                        <Space wrap>
-                          {(profile.countries ?? []).map((c) => (
-                            <Tag key={c.code} icon={<GlobalOutlined />} color="blue">
-                              {c.countryName}
-                            </Tag>
-                          ))}
-                        </Space>
-                      ) : (
-                        <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
-                      )}
-                    </Descriptions.Item>
-
-                    {/* ── Ngôn ngữ ─────────────────────────────────────── */}
-                    <Descriptions.Item label={<Space><TranslationOutlined />Ngôn ngữ</Space>}>
-                      {showUpdateForm ? (
-                        <Space direction="vertical" style={{ width: '100%' }}>
-                          <Form.Item name="languageCodes" style={{ margin: 0 }}>
-                            <Select
-                              mode="multiple"
-                              allowClear
-                              showSearch
-                              loading={loadingCatalogs}
-                              placeholder="Chọn ngôn ngữ"
-                              options={languages.map((l) => ({
-                                label: l.languageName,
-                                value: l.code,
-                              }))}
-                              filterOption={(input, option) =>
-                                String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                              }
-                              style={{ width: '100%' }}
-                              onChange={(codes: string[]) => {
-                                setSelectedLangCodes(codes);
-                                if (codes.length === 1) {
-                                  setPrimaryLangCode(codes[0]);
-                                } else if (primaryLangCode && !codes.includes(primaryLangCode)) {
-                                  setPrimaryLangCode(null);
-                                }
-                              }}
-                            />
-                          </Form.Item>
-                          {/* Chọn ngôn ngữ ưu tiên */}
-                          {selectedLangCodes.length > 1 && (
-                            <div>
-                              <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
-                                <StarFilled style={{ color: '#faad14', marginRight: 4 }} />
-                                Ngôn ngữ ưu tiên (bắt buộc chọn 1):
-                              </Typography.Text>
-                              <Radio.Group
-                                value={primaryLangCode}
-                                onChange={(e) => setPrimaryLangCode(e.target.value as string)}
-                              >
-                                <Space direction="vertical">
-                                  {selectedLangCodes.map((code) => {
-                                    const lang = languages.find((l) => l.code === code);
-                                    return (
-                                      <Radio key={code} value={code}>
-                                        {lang?.languageName ?? code}
-                                      </Radio>
-                                    );
-                                  })}
-                                </Space>
-                              </Radio.Group>
-                            </div>
-                          )}
-                          {selectedLangCodes.length > 1 && !primaryLangCode && (
-                            <Typography.Text type="danger" style={{ fontSize: 12 }}>
-                              Vui lòng chọn 1 ngôn ngữ ưu tiên
-                            </Typography.Text>
-                          )}
-                        </Space>
-                      ) : (profile.languages ?? []).length > 0 ? (
-                        <Space wrap>
-                          {(profile.languages ?? []).map((l) => (
-                            <Tag
-                              key={l.code}
-                              icon={l.isPrimary ? <StarFilled style={{ color: '#faad14' }} /> : <TranslationOutlined />}
-                              color={l.isPrimary ? 'gold' : 'default'}
-                            >
-                              {l.languageName}
-                              {l.isPrimary && ' (Ưu tiên)'}
-                            </Tag>
-                          ))}
-                        </Space>
-                      ) : (
-                        <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
-                      )}
-                    </Descriptions.Item>
-
-                    <Descriptions.Item label="Ảnh đại diện">
-                      {showUpdateForm ? (
-                        <Space direction="vertical" size={8}>
-                          <Form.Item
-                            name="avatar"
-                            style={{ margin: 0, display: 'none' }}
-                          >
-                            <Input />
-                          </Form.Item>
-                          {facePreviewUrl ? (
-                            <img
-                              src={facePreviewUrl}
-                              alt="face template preview"
-                              style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' }}
-                            />
-                          ) : (
-                            <Typography.Text type="secondary">Chưa có ảnh khuôn mặt</Typography.Text>
-                          )}
-                          <Space>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                void onUploadFaceImage(file);
-                                e.currentTarget.value = '';
-                              }}
-                            />
-                            <Button
-                              onClick={() => {
-                                profileForm.setFieldValue('avatar', '');
-                                setFacePreviewUrl(null);
-                              }}
-                            >
-                              Xóa ảnh
-                            </Button>
-                          </Space>
-                          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                            Ảnh được crop vuông, nén JPEG (256x256), lưu base64 trong DB.
-                          </Typography.Text>
-                        </Space>
-                      ) : facePreviewUrl ? (
-                        <img
-                          src={facePreviewUrl}
-                          alt="face template preview"
-                          style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' }}
-                        />
-                      ) : (
-                        <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>
-                      )}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Đăng ký sinh trắc học">
-                      {profile.hasFaceEmbedding ? (
-                        <Tag color="success">Đã đăng ký</Tag>
-                      ) : (
-                        <Tag color="warning">Chưa đăng ký</Tag>
-                      )}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Role">
-                      <Tag color={profile.role === 'Admin' ? 'red' : 'blue'}>
-                        {profile.role}
-                      </Tag>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Ngày tạo tài khoản">
-                      {dayjs(profile.createdAt).format('DD/MM/YYYY HH:mm')}
-                    </Descriptions.Item>
-                  </Descriptions>
-                  
-                  {showUpdateForm && (
-                    <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-                      <Button
-                        type="primary"
-                        icon={<SaveOutlined />}
-                        htmlType="submit"
-                        loading={updatingProfile}
-                      >
-                        Cập nhật
-                      </Button>
-                      <Button onClick={() => {
-                        profileForm.resetFields();
-                        // Reset lại state ngôn ngữ về giá trị từ profile
-                        if (profile) {
-                          const langCodes = (profile.languages ?? []).map((l) => l.code);
-                          setSelectedLangCodes(langCodes);
-                          const primary = (profile.languages ?? []).find((l) => l.isPrimary);
-                          setPrimaryLangCode(primary?.code ?? null);
-                          profileForm.setFieldValue('languageCodes', langCodes);
-                          profileForm.setFieldValue('countryCodes', (profile.countries ?? []).map((c) => c.code));
-                        }
-                        setShowUpdateForm(false);
-                      }}>
-                        Hủy
-                      </Button>
-                    </div>
-                  )}
-                </Form>
-              ) : (
-                <div>Đang tải thông tin...</div>
-              )}
-              
-              {!showUpdateForm && (
-                <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-                  <Button
-                    type="primary"
-                    icon={<UserOutlined />}
-                    onClick={() => setShowUpdateForm(true)}
-                  >
-                    Thay đổi thông tin
-                  </Button>
-                  <Button
-                    icon={<LockOutlined />}
-                    onClick={() => setShowPasswordForm(true)}
-                  >
+                <div className="profile-form-actions">
+                  <Button type="primary" icon={<SaveOutlined />} htmlType="submit" loading={changingPassword} size="large">
                     Đổi mật khẩu
                   </Button>
-                  <Button
-                    onClick={() => {
+                  <Button size="large" onClick={() => {
+                    passwordForm.resetFields();
+                    setShowPasswordForm(false);
+                  }}>
+                    Hủy
+                  </Button>
+                </div>
+              </Form>
+            </div>
+          </div>
+        ) : profile ? (
+          <Form form={profileForm} onFinish={() => void handleUpdateProfile()}>
+            {/* ===== NHÓM: THÔNG TIN CƠ BẢN ===== */}
+            <div className="profile-card">
+              <div className="profile-card-head">
+                <UserOutlined />
+                <h3 className="profile-card-title">Thông tin cơ bản</h3>
+              </div>
+              <div className="profile-card-body">
+                {showUpdateForm ? (
+                  <div className="profile-form-grid">
+                    <Form.Item className="full" label="Họ và tên" name="fullName" required
+                      rules={[
+                        { required: true, whitespace: true, message: 'Vui lòng nhập họ và tên' },
+                        { max: 100, message: 'Họ và tên không được quá 100 ký tự' },
+                      ]}>
+                      <Input placeholder="Nhập họ và tên" prefix={<UserOutlined />} size="large" />
+                    </Form.Item>
+                    <Form.Item className="full" label="Email" name="email" required
+                      rules={[
+                        { required: true, whitespace: true, message: 'Vui lòng nhập email' },
+                        {
+                          validator: async (_, v) => {
+                            const s = String(v ?? '').trim();
+                            if (!s) return;
+                            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) {
+                              throw new Error('Email không hợp lệ');
+                            }
+                          },
+                        },
+                        { max: 100, message: 'Email không được quá 100 ký tự' },
+                      ]}>
+                      <Input placeholder="Nhập email" prefix={<MailOutlined />} size="large" />
+                    </Form.Item>
+                    <Form.Item label="Chức vụ" name="position"
+                      rules={[{ max: 100, message: 'Chức vụ không được quá 100 ký tự' }]}>
+                      <Input placeholder="Nhập chức vụ" prefix={<SolutionOutlined />} size="large" />
+                    </Form.Item>
+                    <Form.Item label="Đơn vị công tác" name="organizationUnitId">
+                      <Select
+                        allowClear showSearch loading={loadingOrgUnits} size="large"
+                        placeholder="Chọn đơn vị công tác"
+                        options={orgUnits.map((x) => ({
+                          label: `${'— '.repeat(Math.max(0, x.level - 1))}${x.name}`,
+                          value: x.id,
+                        }))}
+                        filterOption={(input, option) =>
+                          String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                        }
+                      />
+                    </Form.Item>
+                    <Form.Item label="Học hàm" name="academicRank">
+                      <Select allowClear size="large" placeholder="Chọn học hàm"
+                        options={[{ label: 'GS', value: 'GS' }, { label: 'PGS', value: 'PGS' }]} />
+                    </Form.Item>
+                    <Form.Item label="Học vị" name="academicDegree">
+                      <Select allowClear size="large" placeholder="Chọn học vị"
+                        options={[
+                          { label: 'TS', value: 'TS' }, { label: 'ThS', value: 'ThS' },
+                          { label: 'CN', value: 'CN' }, { label: 'KS', value: 'KS' },
+                        ]} />
+                    </Form.Item>
+                  </div>
+                ) : (
+                  <div className="profile-info-grid">
+                    <ViewField label="Họ và tên" icon={<UserOutlined />} value={profile.fullName} empty={!profile.fullName} />
+                    <ViewField label="Email" icon={<MailOutlined />} value={profile.email} empty={!profile.email} />
+                    <ViewField label="Chức vụ" icon={<SolutionOutlined />} value={profile.position} empty={!profile.position} />
+                    <ViewField label="Đơn vị công tác" icon={<BankOutlined />} value={profile.organizationUnitName} empty={!profile.organizationUnitName} />
+                    <ViewField label="Học hàm" icon={<ReadOutlined />} value={profile.academicRank ? academicRankLabel[profile.academicRank] : undefined} empty={!profile.academicRank} />
+                    <ViewField label="Học vị" icon={<ReadOutlined />} value={profile.academicDegree ? academicDegreeLabel[profile.academicDegree] : undefined} empty={!profile.academicDegree} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ===== NHÓM: QUỐC TỊCH & NGÔN NGỮ ===== */}
+            <div className="profile-card">
+              <div className="profile-card-head">
+                <GlobalOutlined />
+                <h3 className="profile-card-title">Quốc tịch & Ngôn ngữ</h3>
+              </div>
+              <div className="profile-card-body">
+                {showUpdateForm ? (
+                  <div className="profile-form-grid">
+                    <Form.Item className="full" label={<span><GlobalOutlined /> Quốc tịch / Quốc gia</span>} name="countryCodes">
+                      <Select
+                        mode="multiple" allowClear showSearch loading={loadingCatalogs} size="large"
+                        placeholder="Chọn quốc tịch / quốc gia"
+                        options={countries.map((c) => ({ label: c.countryName, value: c.code }))}
+                        filterOption={(input, option) =>
+                          String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                        }
+                      />
+                    </Form.Item>
+                    <Form.Item className="full" label={<span><TranslationOutlined /> Ngôn ngữ</span>} name="languageCodes" style={{ marginBottom: 4 }}>
+                      <Select
+                        mode="multiple" allowClear showSearch loading={loadingCatalogs} size="large"
+                        placeholder="Chọn ngôn ngữ"
+                        options={languages.map((l) => ({ label: l.languageName, value: l.code }))}
+                        filterOption={(input, option) =>
+                          String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                        }
+                        onChange={(codes: string[]) => {
+                          setSelectedLangCodes(codes);
+                          if (codes.length === 1) {
+                            setPrimaryLangCode(codes[0]);
+                          } else if (primaryLangCode && !codes.includes(primaryLangCode)) {
+                            setPrimaryLangCode(null);
+                          }
+                        }}
+                      />
+                    </Form.Item>
+                    {selectedLangCodes.length > 1 && (
+                      <div className="full" style={{ marginBottom: 8 }}>
+                        <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+                          <StarFilled style={{ color: '#faad14', marginRight: 4 }} />
+                          Ngôn ngữ ưu tiên (bắt buộc chọn 1):
+                        </Typography.Text>
+                        <Radio.Group value={primaryLangCode} onChange={(e) => setPrimaryLangCode(e.target.value as string)}>
+                          <Space direction="vertical">
+                            {selectedLangCodes.map((code) => {
+                              const lang = languages.find((l) => l.code === code);
+                              return <Radio key={code} value={code}>{lang?.languageName ?? code}</Radio>;
+                            })}
+                          </Space>
+                        </Radio.Group>
+                        {!primaryLangCode && (
+                          <Typography.Text type="danger" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+                            Vui lòng chọn 1 ngôn ngữ ưu tiên
+                          </Typography.Text>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="profile-info-grid one-col">
+                    <div className="profile-field">
+                      <span className="profile-field-label"><GlobalOutlined /> Quốc tịch / Quốc gia</span>
+                      {(profile.countries ?? []).length > 0 ? (
+                        <div className="profile-tag-row">
+                          {(profile.countries ?? []).map((c) => (
+                            <Tag key={c.code} icon={<GlobalOutlined />} color="blue" style={{ margin: 0 }}>{c.countryName}</Tag>
+                          ))}
+                        </div>
+                      ) : <span className="profile-field-empty">Chưa cập nhật</span>}
+                    </div>
+                    <div className="profile-field">
+                      <span className="profile-field-label"><TranslationOutlined /> Ngôn ngữ</span>
+                      {(profile.languages ?? []).length > 0 ? (
+                        <div className="profile-tag-row">
+                          {(profile.languages ?? []).map((l) => (
+                            <Tag key={l.code}
+                              icon={l.isPrimary ? <StarFilled style={{ color: '#faad14' }} /> : <TranslationOutlined />}
+                              color={l.isPrimary ? 'gold' : 'default'} style={{ margin: 0 }}>
+                              {l.languageName}{l.isPrimary && ' (Ưu tiên)'}
+                            </Tag>
+                          ))}
+                        </div>
+                      ) : <span className="profile-field-empty">Chưa cập nhật</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ===== NHÓM: ẢNH ĐẠI DIỆN (chỉ khi edit) ===== */}
+            {showUpdateForm && (
+              <div className="profile-card">
+                <div className="profile-card-head">
+                  <ScanOutlined />
+                  <h3 className="profile-card-title">Ảnh đại diện</h3>
+                </div>
+                <div className="profile-card-body">
+                  <Form.Item name="avatar" style={{ margin: 0, display: 'none' }}><Input /></Form.Item>
+                  <div className="profile-avatar-edit">
+                    {facePreviewUrl ? (
+                      <img src={facePreviewUrl} alt="avatar preview" className="profile-avatar-preview" />
+                    ) : (
+                      <span className="profile-avatar-placeholder"><UserOutlined /></span>
+                    )}
+                    <div>
+                      <div style={{ marginBottom: 10 }}>
+                        <input className="profile-file-input" type="file" accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            void onUploadFaceImage(file);
+                            e.currentTarget.value = '';
+                          }} />
+                      </div>
+                      <Space>
+                        <Button size="small" onClick={() => {
+                          profileForm.setFieldValue('avatar', '');
+                          setFacePreviewUrl(null);
+                        }}>Xóa ảnh</Button>
+                      </Space>
+                      <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
+                        Ảnh được crop vuông, nén JPEG (256×256), lưu base64 trong DB.
+                      </Typography.Paragraph>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ===== ACTIONS EDIT ===== */}
+            {showUpdateForm && (
+              <div className="profile-form-actions" style={{ marginBottom: 8 }}>
+                <Button type="primary" icon={<SaveOutlined />} htmlType="submit" loading={updatingProfile} size="large">
+                  Lưu thay đổi
+                </Button>
+                <Button size="large" icon={<CloseOutlined />} onClick={() => {
+                  profileForm.resetFields();
+                  if (profile) {
+                    const langCodes = (profile.languages ?? []).map((l) => l.code);
+                    setSelectedLangCodes(langCodes);
+                    const primary = (profile.languages ?? []).find((l) => l.isPrimary);
+                    setPrimaryLangCode(primary?.code ?? null);
+                    profileForm.setFieldValue('languageCodes', langCodes);
+                    profileForm.setFieldValue('countryCodes', (profile.countries ?? []).map((c) => c.code));
+                  }
+                  setShowUpdateForm(false);
+                }}>
+                  Hủy
+                </Button>
+              </div>
+            )}
+
+            {/* Nút phụ ở chế độ xem: sinh trắc học */}
+            {!showUpdateForm && (
+              <div className="profile-card">
+                <div className="profile-card-head">
+                  <ScanOutlined />
+                  <h3 className="profile-card-title">Bảo mật & Xác thực</h3>
+                </div>
+                <div className="profile-card-body">
+                  <div className="profile-security-row">
+                    <div className="profile-security-info">
+                      <span className="profile-field-label"><ScanOutlined /> Sinh trắc học khuôn mặt</span>
+                      <span className="profile-field-value">
+                        {profile?.hasFaceEmbedding
+                          ? 'Bạn đã đăng ký khuôn mặt để đăng nhập nhanh.'
+                          : 'Chưa đăng ký. Đăng ký để đăng nhập bằng khuôn mặt.'}
+                      </span>
+                    </div>
+                    <Button icon={<ScanOutlined />} onClick={() => {
                       try {
                         sessionStorage.removeItem('bk_face_reg_skipped');
                         sessionStorage.setItem('bk_face_reg_force_open', '1');
-                      } catch {
-                        // ignore
-                      }
+                      } catch { /* ignore */ }
                       window.location.reload();
-                    }}
-                  >
-                    {profile?.hasFaceEmbedding
-                      ? 'Cập nhật sinh trắc học'
-                      : 'Đăng ký sinh trắc học'}
-                  </Button>
+                    }}>
+                      {profile?.hasFaceEmbedding ? 'Cập nhật sinh trắc học' : 'Đăng ký sinh trắc học'}
+                    </Button>
+                  </div>
                 </div>
-              )}
-            </Card>
-          )}
-        </Space>
+              </div>
+            )}
+          </Form>
+        ) : (
+          <div className="profile-card"><div className="profile-card-body">Đang tải thông tin...</div></div>
+        )}
       </div>
     </MainLayout>
   );

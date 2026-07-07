@@ -1,0 +1,118 @@
+/* ============================================================
+   profile.css – Trang /profile (Thông tin cá nhân)
+   Đồng bộ hệ design với /meetings, /history
+   ============================================================ */
+
+.profile-container { padding: 24px; max-width: 920px; margin: 0 auto; animation: pFadeIn 0.2s ease-out; }
+@keyframes pFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* === HERO / HEADER === */
+.profile-hero {
+  position: relative;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 22px 24px;
+  box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+.profile-hero-band {
+  position: absolute; inset: 0 0 auto 0; height: 68px;
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 55%, #3b82f6 100%);
+}
+/* Nội dung bắt đầu DƯỚI band (68px) để chữ luôn nằm trên nền trắng; chỉ avatar nhô lên band */
+.profile-hero-inner { position: relative; display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap; padding-top: 78px; }
+
+.profile-avatar {
+  width: 96px; height: 96px; border-radius: 20px; flex-shrink: 0;
+  object-fit: cover; border: 3px solid #fff; background: #eff6ff;
+  box-shadow: 0 4px 14px rgba(15,23,42,0.12);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 40px; font-weight: 700; color: #2563eb;
+  margin-top: -52px; /* nhô lên đè band, phần dưới nằm trên nền trắng */
+}
+.profile-hero-main { flex: 1; min-width: 200px; padding-top: 2px; }
+.profile-name.ant-typography { margin: 0; font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; }
+.profile-username { font-size: 13px; color: #64748b; margin-top: 2px; display: inline-flex; align-items: center; gap: 6px; }
+.profile-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.profile-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; align-self: flex-start; padding-top: 2px; }
+
+/* Pill trạng thái sinh trắc học */
+.profile-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 11px; font-size: 12px; font-weight: 600; border: 1px solid transparent; }
+.profile-pill-ok { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
+.profile-pill-warn { background: #fffbeb; color: #d97706; border-color: #fde68a; }
+.profile-pill-role { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.profile-pill-role.is-admin { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+/* === SECTION CARD === */
+.profile-card {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+  margin-bottom: 18px; overflow: hidden;
+}
+.profile-card-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 15px 20px; border-bottom: 1px solid #f1f5f9;
+}
+.profile-card-head .anticon { color: #2563eb; font-size: 16px; }
+.profile-card-title { font-size: 15px; font-weight: 600; color: #0f172a; margin: 0; }
+.profile-card-body { padding: 18px 20px; }
+
+/* === INFO GRID (chế độ xem) === */
+.profile-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 24px; }
+.profile-info-grid.one-col { grid-template-columns: 1fr; }
+.profile-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.profile-field-label { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.03em; display: inline-flex; align-items: center; gap: 6px; }
+.profile-field-label .anticon { color: #cbd5e1; }
+.profile-field-value { font-size: 14px; font-weight: 500; color: #1e293b; word-break: break-word; }
+.profile-field-empty { font-size: 14px; color: #cbd5e1; font-style: italic; }
+
+/* Tag list */
+.profile-tag-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.profile-tag-row .ant-tag { display: inline-flex; align-items: center; gap: 4px; margin: 0; padding: 2px 10px; border-radius: 999px; line-height: 20px; }
+.profile-tag-row .ant-tag .anticon { margin: 0; }
+
+/* === BẢO MẬT & XÁC THỰC === */
+.profile-security-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.profile-security-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+/* === EDIT FORM === */
+.profile-form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 20px; }
+.profile-form-grid .full { grid-column: 1 / -1; }
+.profile-form-grid .ant-form-item { margin-bottom: 14px; }
+
+/* Ảnh đại diện upload */
+.profile-avatar-edit { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.profile-avatar-preview { width: 96px; height: 96px; border-radius: 16px; object-fit: cover; border: 1px solid #e2e8f0; background: #f8fafc; }
+.profile-avatar-placeholder { width: 96px; height: 96px; border-radius: 16px; border: 1px dashed #cbd5e1; background: #f8fafc; display: inline-flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 28px; }
+.profile-file-input { font-size: 13px; }
+
+.profile-form-actions { display: flex; gap: 10px; margin-top: 6px; }
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .profile-container { padding: 16px; }
+  .profile-info-grid, .profile-form-grid { grid-template-columns: 1fr; }
+  .profile-hero-actions { width: 100%; }
+  .profile-avatar { width: 78px; height: 78px; font-size: 32px; }
+}
+
+/* === DARK MODE (phần tử tùy biến; AntD do darkAlgorithm lo) === */
+.dark-theme .profile-hero,
+.dark-theme .profile-card { background: #1d1d1d; border-color: #303030; }
+.dark-theme .profile-card-head { border-bottom-color: #303030; }
+.dark-theme .profile-card-title,
+.dark-theme .profile-name.ant-typography { color: #f1f5f9; }
+.dark-theme .profile-username { color: #94a3b8; }
+.dark-theme .profile-field-value { color: #e5e7eb; }
+.dark-theme .profile-field-label { color: #94a3b8; }
+.dark-theme .profile-field-label .anticon { color: #64748b; }
+.dark-theme .profile-field-empty { color: #52525b; }
+.dark-theme .profile-avatar { border-color: #262626; background: rgba(37,99,235,0.22); color: #93c5fd; }
+.dark-theme .profile-avatar-preview { border-color: #303030; background: #262626; }
+.dark-theme .profile-avatar-placeholder { border-color: #3f3f46; background: #262626; color: #71717a; }
+.dark-theme .profile-pill-ok { background: rgba(5,150,105,0.16); color: #6ee7b7; border-color: rgba(5,150,105,0.4); }
+.dark-theme .profile-pill-warn { background: rgba(217,119,6,0.16); color: #fbbf24; border-color: rgba(217,119,6,0.4); }
+.dark-theme .profile-pill-role { background: rgba(37,99,235,0.18); color: #93c5fd; border-color: rgba(37,99,235,0.4); }
+.dark-theme .profile-pill-role.is-admin { background: rgba(220,38,38,0.16); color: #fca5a5; border-color: rgba(220,38,38,0.4); }
