@@ -185,7 +185,7 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
             <div className="access-card">
               <div className="ac-label">Link cuộc họp</div>
               <div className="ac-val-row">
-                <div className="ac-val" style={{ color: '#2563eb' }}>{buildMeetingLink(m.id)}</div>
+                <div className="ac-val ac-val-link" style={{ color: '#2563eb' }}>{buildMeetingLink(m.id)}</div>
                 <Button 
                   size="small" 
                   type="text" 
@@ -200,7 +200,7 @@ export function MeetingDetailView(props: MeetingDetailViewProps) {
             <div className="access-card">
               <div className="ac-label">Mã phòng (ID)</div>
               <div className="ac-val-row">
-                <div className="ac-val">{m.meetingCode}</div>
+                <div className="ac-val ac-val-code">{m.meetingCode}</div>
                 <Button 
                   size="small" 
                   type="text" 

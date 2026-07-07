@@ -119,10 +119,15 @@
 .detail-divider { border: none; border-top: 1px solid #e2e8f0; margin: 14px 0; }
 
 /* Access cards */
-.access-card { background: #f8fafc; border-radius: 6px; padding: 10px 14px; height: 100%; }
+.access-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; height: 100%; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.access-card:hover { border-color: #cbd5e1; box-shadow: 0 2px 8px rgba(15,23,42,0.05); }
 .ac-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; font-family: inherit; }
 .ac-val-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
-.ac-val { font-family: inherit; font-size: 14px; font-weight: 400; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.ac-val { font-family: var(--font-mono, ui-monospace, monospace); font-size: 15px; font-weight: 700; letter-spacing: 0.03em; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+/* Link (dài) không dùng mono cỡ lớn để đỡ tràn */
+.ac-val-link { font-family: inherit !important; font-size: 13px !important; font-weight: 500 !important; letter-spacing: 0 !important; }
+.ac-val-code { color: #2563eb; }
+.dark-theme .ac-val-code { color: #93c5fd; }
 .btn-copy { font-size: 12px; font-weight: 500; padding: 4px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; color: #475569; cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; font-family: inherit; }
 .btn-copy:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
 
