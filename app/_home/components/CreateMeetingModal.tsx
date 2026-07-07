@@ -1,6 +1,6 @@
 import React from 'react';
-import { Modal, Result, Descriptions, Space, Button, Input, Form, DatePicker, Divider, Checkbox, Typography, Radio, Select } from 'antd';
-import { VideoCameraOutlined, CopyOutlined, RightCircleOutlined, CalendarOutlined } from '@ant-design/icons';
+import { Modal, Space, Button, Input, Form, DatePicker, Divider, Checkbox, Typography, Radio, Tooltip } from 'antd';
+import { VideoCameraOutlined, CopyOutlined, RightCircleOutlined, CalendarOutlined, CheckCircleFilled, KeyOutlined, LinkOutlined, NumberOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 
@@ -46,60 +46,59 @@ export default function CreateMeetingModal({
       centered
     >
       {createdMeeting ? (
-        <Result
-          status="info"
-          title="Thông tin cuộc họp"
-          subTitle="Phòng họp đã sẵn sàng. Hãy chia sẻ thông tin dưới đây cho người tham gia."
-          style={{ padding: '24px 0 0 0' }}
-          extra={
-            <div style={{ textAlign: 'left', background: '#f5f5f5', padding: '20px', borderRadius: '8px', marginTop: 24 }}>
-              <Descriptions column={1} size="small" labelStyle={{ fontWeight: 600, width: '100px' }}>
-                <Descriptions.Item label="Mã phòng">
-                  <Space>
-                    <Text copyable={{ text: createdMeeting.code }} style={{ fontSize: 16, color: '#1890ff', fontWeight: 600 }}>
-                      {createdMeeting.code}
-                    </Text>
-                  </Space>
-                </Descriptions.Item>
-                <Descriptions.Item label="Passcode">
-                  <Space>
-                    <Text copyable={{ text: createdMeeting.passcode }} style={{ fontSize: 16, fontWeight: 600 }}>
-                      {createdMeeting.passcode}
-                    </Text>
-                  </Space>
-                </Descriptions.Item>
-                <Descriptions.Item label="Link chia sẻ">
-                  <Space.Compact style={{ width: '100%', marginTop: 4 }}>
-                    <Input
-                      value={buildLink(createdMeeting.id)}
-                      readOnly
-                      style={{ background: '#fff' }}
-                    />
-                    <Button
-                      type="primary"
-                      icon={<CopyOutlined />}
-                      onClick={() => void onCopy(buildLink(createdMeeting.id), 'Đã copy link')}
-                    />
-                  </Space.Compact>
-                </Descriptions.Item>
-              </Descriptions>
+        <div className="cmr-success">
+          {/* Header thành công */}
+          <div className="cmr-success-head">
+            <span className="cmr-success-icon"><CheckCircleFilled /></span>
+            <Typography.Title level={4} className="cmr-success-title">Tạo cuộc họp thành công</Typography.Title>
+            <Text className="cmr-success-sub">Phòng họp đã sẵn sàng. Chia sẻ thông tin dưới đây cho người tham gia.</Text>
+          </div>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px' }}>
-                <Button size="large" onClick={onCancel}>
-                  Đóng
-                </Button>
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<RightCircleOutlined />}
-                  onClick={() => onJoinCreated(createdMeeting.id)}
-                >
-                  Tham gia phòng ngay
-                </Button>
+          {/* Mã phòng + Passcode (2 khối) */}
+          <div className="cmr-info-grid">
+            <div className="cmr-info-card">
+              <div className="cmr-info-label"><NumberOutlined /> Mã phòng</div>
+              <div className="cmr-info-value-row">
+                <span className="cmr-info-value cmr-accent">{createdMeeting.code}</span>
+                <Tooltip title="Sao chép mã">
+                  <Button type="text" size="small" icon={<CopyOutlined />} className="cmr-copy-btn"
+                    onClick={() => void onCopy(createdMeeting.code, 'Đã copy mã phòng')} />
+                </Tooltip>
               </div>
             </div>
-          }
-        />
+            <div className="cmr-info-card">
+              <div className="cmr-info-label"><KeyOutlined /> Passcode</div>
+              <div className="cmr-info-value-row">
+                <span className="cmr-info-value">{createdMeeting.passcode}</span>
+                <Tooltip title="Sao chép passcode">
+                  <Button type="text" size="small" icon={<CopyOutlined />} className="cmr-copy-btn"
+                    onClick={() => void onCopy(createdMeeting.passcode, 'Đã copy passcode')} />
+                </Tooltip>
+              </div>
+            </div>
+          </div>
+
+          {/* Link chia sẻ */}
+          <div className="cmr-link-block">
+            <div className="cmr-info-label"><LinkOutlined /> Link chia sẻ</div>
+            <Space.Compact style={{ width: '100%', marginTop: 6 }}>
+              <Input value={buildLink(createdMeeting.id)} readOnly className="cmr-link-input" />
+              <Button type="primary" icon={<CopyOutlined />}
+                onClick={() => void onCopy(buildLink(createdMeeting.id), 'Đã copy link')}>
+                Sao chép
+              </Button>
+            </Space.Compact>
+          </div>
+
+          {/* Nút hành động */}
+          <div className="cmr-actions">
+            <Button size="large" onClick={onCancel}>Đóng</Button>
+            <Button type="primary" size="large" icon={<RightCircleOutlined />}
+              onClick={() => onJoinCreated(createdMeeting.id)}>
+              Tham gia phòng ngay
+            </Button>
+          </div>
+        </div>
       ) : (
         <Form
           form={form}

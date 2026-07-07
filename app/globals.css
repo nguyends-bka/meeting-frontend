@@ -242,6 +242,39 @@ body.light-theme {
   color: #fff !important;
 }
 
+/* ============================================================
+   Màn "Tạo cuộc họp thành công" (CreateMeetingModal) — dùng chung
+   ============================================================ */
+.cmr-success { padding: 8px 4px 4px; }
+.cmr-success-head { text-align: center; margin-bottom: 20px; }
+.cmr-success-icon { font-size: 44px; color: #22c55e; display: inline-block; margin-bottom: 10px; }
+.cmr-success-title.ant-typography { margin: 0 0 4px; font-weight: 700; }
+.cmr-success-sub { color: #64748b; font-size: 13px; }
+
+.cmr-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.cmr-info-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; background: #f8fafc; }
+.cmr-info-label { font-size: 12px; font-weight: 600; color: #64748b; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.cmr-info-label .anticon { color: #94a3b8; }
+.cmr-info-value-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cmr-info-value { font-size: 20px; font-weight: 700; letter-spacing: 0.06em; font-family: var(--font-mono, monospace); color: #0f172a; }
+.cmr-info-value.cmr-accent { color: #2563eb; }
+.cmr-copy-btn { color: #94a3b8 !important; border-radius: 8px !important; }
+.cmr-copy-btn:hover { color: #2563eb !important; background: #eff6ff !important; }
+
+.cmr-link-block { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; background: #f8fafc; margin-bottom: 20px; }
+.cmr-link-input { background: #fff !important; font-size: 13px; color: #475569; }
+
+.cmr-actions { display: flex; gap: 12px; justify-content: center; }
+.cmr-actions .ant-btn { min-width: 130px; border-radius: 10px; font-weight: 600; }
+
+/* Dark mode */
+.dark-theme .cmr-success-sub { color: #94a3b8; }
+.dark-theme .cmr-info-card, .dark-theme .cmr-link-block { background: #262626; border-color: #3f3f46; }
+.dark-theme .cmr-info-label { color: #94a3b8; }
+.dark-theme .cmr-info-value { color: #f1f5f9; }
+.dark-theme .cmr-info-value.cmr-accent { color: #93c5fd; }
+.dark-theme .cmr-copy-btn:hover { color: #93c5fd !important; background: rgba(37,99,235,0.18) !important; }
+
 @keyframes spin {
   0% {
     transform: rotate(0deg);
