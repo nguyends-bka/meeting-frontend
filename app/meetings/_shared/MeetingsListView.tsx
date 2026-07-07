@@ -216,17 +216,6 @@ export function MeetingsListView({
                           <Tag color="blue" style={{ border: 0, borderRadius: 12, margin: 0, fontWeight: 500, fontSize: 11, lineHeight: '18px' }}>Host</Tag>
                         )}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span className="mtg-meta-label">Mã:</span>
-                        <Typography.Text code copyable={{ text: record.meetingCode, tooltips: ['Sao chép mã', 'Đã sao chép'] }} style={{ fontSize: 12, padding: '1px 6px', margin: 0 }}>
-                          {record.meetingCode}
-                        </Typography.Text>
-                        <span className="mtg-dot">•</span>
-                        <span className="mtg-meta-label">Mật khẩu:</span>
-                        <Typography.Text code copyable={{ text: record.passcode, tooltips: ['Sao chép mật khẩu', 'Đã sao chép'] }} style={{ fontSize: 12, padding: '1px 6px', margin: 0 }}>
-                          {record.passcode}
-                        </Typography.Text>
-                      </div>
                       <div className="mtg-meta-line">
                         <span className="mtg-meta-chip"><EnvironmentOutlined /> {record.location || getVirtualRoom(record.hostName, record.id)}</span>
                         <span className="mtg-meta-chip"><UserOutlined /> {record.location ? record.hostName : getHostNameOnly(record.hostName)}</span>
