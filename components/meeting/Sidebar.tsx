@@ -184,12 +184,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
         {
           key: '/admin/logs',
           icon: <FileTextOutlined />,
-          label: (
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <span>Nhật ký hệ thống</span>
-              {!collapsed && <ComingSoonTag />}
-            </Space>
-          ),
+          label: 'Nhật ký hệ thống',
         },
       ],
     },

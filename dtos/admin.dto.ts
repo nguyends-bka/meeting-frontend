@@ -64,3 +64,32 @@ export interface AdminMeeting {
 export interface DeleteMeetingResponse {
   message: string;
 }
+
+export interface AuditLog {
+  id: string;
+  category: string;
+  action: string;
+  severity: 'info' | 'warning' | 'error' | string;
+  actorUserId?: string | null;
+  actorName?: string | null;
+  targetId?: string | null;
+  targetLabel?: string | null;
+  message: string;
+  ipAddress?: string | null;
+  at: number; // unix ms
+}
+
+export interface AuditLogPage {
+  items: AuditLog[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface AuditLogQuery {
+  page?: number;
+  pageSize?: number;
+  category?: string;
+  severity?: string;
+  search?: string;
+}

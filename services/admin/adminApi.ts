@@ -7,6 +7,8 @@ import type {
   AdminStats,
   AdminMeeting,
   DeleteMeetingResponse,
+  AuditLogPage,
+  AuditLogQuery,
 } from '@/dtos/admin.dto';
 
 // Admin domain API - React Query compatible
@@ -45,6 +47,19 @@ export const adminApi = {
   deleteMeeting: async (meetingId: string) => {
     return apiClient.request<DeleteMeetingResponse>(`/api/admin/meetings/${meetingId}`, {
       method: 'DELETE',
+    });
+  },
+
+  getAuditLogs: async (query: AuditLogQuery = {}) => {
+    const params = new URLSearchParams();
+    if (query.page) params.set('page', String(query.page));
+    if (query.pageSize) params.set('pageSize', String(query.pageSize));
+    if (query.category) params.set('category', query.category);
+    if (query.severity) params.set('severity', query.severity);
+    if (query.search) params.set('search', query.search);
+    const qs = params.toString();
+    return apiClient.request<AuditLogPage>(`/api/admin/audit-logs${qs ? `?${qs}` : ''}`, {
+      method: 'GET',
     });
   },
 };
