@@ -1,0 +1,99 @@
+/* ============================================================
+   analytics.css – Trang /admin/analytics (Thống kê & Phân tích)
+   Đồng bộ hệ design với /admin, /history, /meetings
+   ============================================================ */
+
+.an-container { padding: 24px; width: 100%; animation: anFadeIn 0.2s ease-out; }
+@keyframes anFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* HEADER */
+.an-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.an-title.ant-typography { margin: 0; font-size: 22px; font-weight: 700; color: #0f172a; letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 10px; }
+.an-title .anticon { color: #2563eb; }
+.an-sub.ant-typography { display: block; margin-top: 4px; font-size: 13px; color: #64748b; }
+.an-head-actions { display: flex; align-items: center; gap: 10px; }
+
+.an-loading { display: flex; justify-content: center; padding: 80px 0; }
+
+/* CARD */
+.an-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 2px 8px rgba(15,23,42,0.04); padding: 18px 20px; margin-bottom: 18px; }
+.an-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.an-card-title { font-size: 15px; font-weight: 600; color: #0f172a; margin: 0; }
+
+/* KPI */
+.an-kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 18px; }
+.an-kpi { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; box-shadow: 0 1px 2px rgba(15,23,42,0.03); display: flex; gap: 12px; align-items: flex-start; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.an-kpi:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,23,42,0.07); }
+.an-kpi-icon { width: 40px; height: 40px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.an-kpi-value { font-size: 22px; font-weight: 700; color: #0f172a; line-height: 1.1; }
+.an-kpi-label { font-size: 12px; font-weight: 500; color: #64748b; margin-top: 3px; }
+.an-kpi-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+/* Layout 2 cột */
+.an-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.an-two-col .an-card { margin-bottom: 0; }
+.an-two-col + .an-card { margin-top: 18px; }
+
+/* Legend chung */
+.an-legend { display: flex; gap: 14px; }
+.an-legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b; }
+.an-legend-item i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
+
+/* Empty */
+.an-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px 0; color: #94a3b8; }
+.an-empty .anticon { font-size: 28px; }
+.an-empty span { font-size: 13px; }
+
+/* Biểu đồ đường */
+.an-chart-wrap { position: relative; }
+.an-chart-wrap svg { display: block; }
+.an-tooltip { position: absolute; top: 0; transform: translateX(-50%); background: #0f172a; color: #fff; border-radius: 8px; padding: 8px 10px; font-size: 12px; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 18px rgba(2,6,23,0.35); z-index: 5; }
+.an-tooltip .an-tt-date { font-weight: 700; margin-bottom: 4px; }
+.an-tooltip div { display: flex; align-items: center; gap: 6px; }
+.an-tooltip i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+/* Donut */
+.an-donut-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.an-donut { width: 150px; height: 150px; flex-shrink: 0; }
+.an-donut-num { font-size: 26px; font-weight: 700; fill: #0f172a; }
+.an-donut-lbl { font-size: 11px; fill: #94a3b8; }
+.an-donut-legend { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 8px; }
+.an-dl-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.an-dl-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.an-dl-label { flex: 1; color: #475569; }
+.an-dl-count { font-weight: 700; color: #0f172a; }
+
+/* Top hosts */
+.an-hosts { display: flex; flex-direction: column; gap: 12px; }
+.an-host-row { display: flex; align-items: center; gap: 12px; }
+.an-host-rank { font-size: 13px; font-weight: 700; color: #94a3b8; width: 26px; flex-shrink: 0; }
+.an-host-main { flex: 1; min-width: 0; }
+.an-host-name { font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-host-bar-track { height: 8px; background: #eef2f7; border-radius: 999px; overflow: hidden; }
+.an-host-bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #3b82f6, #2563eb); transition: width 0.4s ease; }
+.an-host-count { font-size: 14px; font-weight: 700; color: #2563eb; flex-shrink: 0; }
+
+/* Phân bố theo giờ */
+.an-hours { display: flex; align-items: flex-end; gap: 4px; height: 140px; }
+.an-hour-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.an-hour-bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+.an-hour-bar { width: 70%; min-height: 3px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, #3b82f6, #93c5fd); transition: height 0.4s ease; }
+.an-hour-label { font-size: 10px; color: #94a3b8; margin-top: 6px; height: 12px; }
+
+/* RESPONSIVE */
+@media (max-width: 1100px) { .an-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px) { .an-two-col { grid-template-columns: 1fr; } .an-two-col .an-card { margin-bottom: 18px; } }
+@media (max-width: 640px) { .an-kpi-grid { grid-template-columns: repeat(2, 1fr); } .an-container { padding: 16px; } }
+
+/* ── DARK MODE ─────────────────────────────────────────────── */
+.dark-theme .an-card, .dark-theme .an-kpi { background: #1d1d1d; border-color: #303030; }
+.dark-theme .an-title.ant-typography, .dark-theme .an-card-title, .dark-theme .an-kpi-value { color: #f1f5f9; }
+.dark-theme .an-sub.ant-typography, .dark-theme .an-kpi-label, .dark-theme .an-legend-item { color: #94a3b8; }
+.dark-theme .an-kpi-sub { color: #71717a; }
+.dark-theme .an-host-name { color: #e5e7eb; }
+.dark-theme .an-host-bar-track { background: #303030; }
+.dark-theme .an-dl-label { color: #cbd5e1; }
+.dark-theme .an-dl-count { color: #f1f5f9; }
+.dark-theme .an-donut-num { fill: #f1f5f9; }
+.dark-theme .an-donut circle[stroke='#eef2f7'] { stroke: #303030; }
+.dark-theme .an-grid { stroke: #303030 !important; }

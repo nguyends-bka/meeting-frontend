@@ -174,12 +174,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
         {
           key: '/admin/analytics',
           icon: <BarChartOutlined />,
-          label: (
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <span>Thống kê & Phân tích</span>
-              {!collapsed && <ComingSoonTag />}
-            </Space>
-          ),
+          label: 'Thống kê & Phân tích',
         },
         {
           key: '/admin/logs',

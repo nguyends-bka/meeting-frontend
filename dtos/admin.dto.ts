@@ -93,3 +93,49 @@ export interface AuditLogQuery {
   severity?: string;
   search?: string;
 }
+
+// ── Analytics ────────────────────────────────────────────────
+export interface AnalyticsSummary {
+  totalMeetings: number;
+  liveMeetings: number;
+  endedMeetings: number;
+  upcomingMeetings: number;
+  cancelledMeetings: number;
+  totalParticipants: number;
+  totalUsers: number;
+  totalRecordings: number;
+  avgDurationMinutes: number;
+  meetingsInRange: number;
+  newUsersInRange: number;
+}
+
+export interface TimeSeriesPoint {
+  date: string; // yyyy-MM-dd
+  meetings: number;
+  newUsers: number;
+}
+
+export interface StatusSlice {
+  status: string;
+  count: number;
+}
+
+export interface TopHost {
+  hostIdentity: string;
+  hostName: string;
+  meetingCount: number;
+}
+
+export interface HourBucket {
+  hour: number;
+  count: number;
+}
+
+export interface AnalyticsResponse {
+  rangeDays: number;
+  summary: AnalyticsSummary;
+  series: TimeSeriesPoint[];
+  statusBreakdown: StatusSlice[];
+  topHosts: TopHost[];
+  hourDistribution: HourBucket[];
+}

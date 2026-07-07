@@ -9,6 +9,7 @@ import type {
   DeleteMeetingResponse,
   AuditLogPage,
   AuditLogQuery,
+  AnalyticsResponse,
 } from '@/dtos/admin.dto';
 
 // Admin domain API - React Query compatible
@@ -59,6 +60,12 @@ export const adminApi = {
     if (query.search) params.set('search', query.search);
     const qs = params.toString();
     return apiClient.request<AuditLogPage>(`/api/admin/audit-logs${qs ? `?${qs}` : ''}`, {
+      method: 'GET',
+    });
+  },
+
+  getAnalytics: async (days = 30) => {
+    return apiClient.request<AnalyticsResponse>(`/api/admin/analytics?days=${days}`, {
       method: 'GET',
     });
   },
