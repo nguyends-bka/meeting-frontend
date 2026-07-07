@@ -71,22 +71,6 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
 
   const isDark = sidebarTheme === 'dark';
 
-  // UI Component cho Tag "Sắp ra mắt" phù hợp với nền tối
-  const ComingSoonTag = () => (
-    <Tag
-      bordered={false}
-      color={isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(15, 23, 42, 0.08)'}
-      style={{
-        borderRadius: '10px',
-        fontSize: '11px',
-        margin: 0,
-        color: isDark ? '#e2e8f0' : '#334155',
-      }}
-    >
-      Sắp ra mắt
-    </Tag>
-  );
-
   // Menu items cho User thường
   const userMenuItems: MenuItem[] = [
     {
@@ -108,12 +92,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
     {
       key: '/calendar',
       icon: <CalendarOutlined />,
-      label: (
-        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <span>Lịch cuộc họp</span>
-          {!collapsed && <ComingSoonTag />}
-        </Space>
-      ),
+      label: 'Lịch cuộc họp',
     },
     {
       type: 'divider',
@@ -189,12 +168,7 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
     {
       key: '/calendar',
       icon: <CalendarOutlined />,
-      label: (
-        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <span>Lịch cuộc họp</span>
-          {!collapsed && <ComingSoonTag />}
-        </Space>
-      ),
+      label: 'Lịch cuộc họp',
     },
     {
       type: 'divider',
