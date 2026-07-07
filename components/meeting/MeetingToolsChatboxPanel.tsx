@@ -403,7 +403,7 @@ export default function MeetingToolsChatbotPanel({ meetingId }: { meetingId: str
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Nhập câu hỏi hoặc mô tả lỗi cần sửa..."
+          placeholder="Nhập câu hỏi..."
           style={{
             flex: 1,
             border: '1px solid #cbd5e1',

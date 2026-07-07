@@ -768,6 +768,32 @@ export default function MeetingPage() {
   const [isTranscriptFallback, setIsTranscriptFallback] = useState(false);
   const [transcriptSessionId, setTranscriptSessionId] = useState('');
 
+  // Tiêu đề tab trình duyệt: hiển thị gọn gàng, chuyên nghiệp thay vì tên phòng thô của LiveKit.
+  // Dùng MutationObserver để ép lại nếu bị ghi đè (LiveKit có thể đặt title = tên phòng).
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const clean = (meetingTitle || 'Cuộc họp').trim();
+    const desired = preJoinDone ? `${clean} · BKMeeting` : `Chuẩn bị vào họp · BKMeeting`;
+
+    const apply = () => {
+      if (document.title !== desired) document.title = desired;
+    };
+    apply();
+
+    const titleEl = document.querySelector('title');
+    const observer = titleEl
+      ? new MutationObserver(apply)
+      : null;
+    if (titleEl && observer) {
+      observer.observe(titleEl, { childList: true });
+    }
+
+    return () => {
+      observer?.disconnect();
+      document.title = 'BKMeeting';
+    };
+  }, [meetingTitle, preJoinDone]);
+
   const triggerFallback = useCallback(() => {
     setIsTranscriptFallback(true);
     const newId = typeof window !== 'undefined' && window.crypto?.randomUUID
