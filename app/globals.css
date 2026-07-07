@@ -807,16 +807,46 @@ button:active:not(:disabled):not(.meeting-unified-close) {
   transform: translateX(-50%) !important;
   z-index: 30 !important;
   margin: 0 !important;
-  width: calc(100% - 24px) !important;
+  /* Cụm pill nổi ở giữa đáy thay vì trải ngang gần full màn hình */
+  width: auto !important;
   max-width: calc(100% - 24px) !important;
-  padding: 6px 0 6px 10px !important;
+  padding: 7px 10px !important;
   gap: 6px !important;
   box-sizing: border-box !important;
+  align-items: center !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 16px !important;
+  background: rgba(17, 24, 39, 0.72) !important;
+  backdrop-filter: blur(14px) saturate(1.1) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.1) !important;
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 
 .meeting-room-shell .lk-control-bar .lk-button,
 .meeting-room-shell .lk-control-bar .lk-disconnect-button {
-  padding: 0.4rem 0.7rem !important;
+  padding: 0.45rem 0.75rem !important;
+  border-radius: 11px !important;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease !important;
+}
+
+/* Hover mượt cho các nút trên thanh */
+.meeting-room-shell .lk-control-bar .lk-button:hover,
+.meeting-room-shell .lk-control-bar .lk-disconnect-button:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+.meeting-room-shell .lk-control-bar .lk-button:active,
+.meeting-room-shell .lk-control-bar .lk-disconnect-button:active {
+  transform: translateY(1px) !important;
+}
+
+/* Nút rời phòng: đỏ rõ ràng, tách khỏi cụm nút thường */
+.meeting-room-shell .lk-control-bar .lk-disconnect-button {
+  background-color: rgba(220, 38, 38, 0.92) !important;
+  color: #fff !important;
+}
+.meeting-room-shell .lk-control-bar .lk-disconnect-button:hover {
+  background-color: rgba(185, 28, 28, 0.98) !important;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4) !important;
 }
 
 @media (max-width: 768px) {
@@ -826,10 +856,10 @@ button:active:not(:disabled):not(.meeting-unified-close) {
   }
 
   .meeting-room-shell .lk-control-bar {
-    width: calc(100% - 12px) !important;
     max-width: calc(100% - 12px) !important;
-    padding: 5px 0 5px 8px !important;
+    padding: 6px 8px !important;
     gap: 5px !important;
+    border-radius: 14px !important;
   }
 }
 
@@ -857,8 +887,9 @@ button:active:not(:disabled):not(.meeting-unified-close) {
 /* Chỉ dùng box-shadow (không border/outline thêm vào box) để không làm lệch flex control bar */
 .meeting-tools-toggle[data-active='true'],
 .meeting-tools-toggle[aria-pressed='true'] {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95) !important;
+  background-color: rgba(37, 99, 235, 0.22) !important;
+  box-shadow: inset 0 0 0 1.5px rgba(96, 165, 250, 0.9) !important;
+  color: #bfdbfe !important;
   outline: none;
 }
 
