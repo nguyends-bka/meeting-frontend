@@ -54,7 +54,7 @@ export default function GreetingBanner({
       style={{
         borderRadius: 16,
         marginBottom: isNarrow ? 12 : 16,
-        background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #4338ca 100%)',
+        background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 55%, #3b82f6 100%)',
         boxShadow: '0 8px 24px -8px rgba(37, 99, 235, 0.35)',
         overflow: 'hidden',
         position: 'relative',
@@ -69,7 +69,7 @@ export default function GreetingBanner({
         position: 'absolute', bottom: -100, right: 150, width: 250, height: 250,
         borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%)', pointerEvents: 'none', filter: 'blur(20px)'
       }} />
-      
+
       {isNarrow ? (
         /* Mobile Layout */
         <div style={{ position: 'relative', zIndex: 1 }}>
@@ -94,7 +94,7 @@ export default function GreetingBanner({
             }}>
               ✨ {getVietnameseDate(true)}
             </span>
-            
+
             <div style={{
               background: 'rgba(0, 0, 0, 0.2)',
               backdropFilter: 'blur(10px)',
@@ -219,4 +219,3 @@ export default function GreetingBanner({
     </Card>
   );
 }
-

@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import MainLayout from '@/components/MainLayout';
-import { Card, Row, Col, Typography, Button, Input, Tag, Empty, Grid, Form, App, DatePicker } from 'antd';
+import { Card, Row, Col, Typography, Button, Input, Tag, Empty, Grid, Form, App, DatePicker, Tooltip } from 'antd';
 import {
   CalendarOutlined,
   LeftOutlined,
@@ -46,8 +46,9 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState<dayjs.Dayjs>(dayjs());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // all, ongoing, upcoming, completed
-  const [viewMode, setViewMode] = useState<'month' | 'list'>('month');
-  const [listDate, setListDate] = useState<dayjs.Dayjs | null>(dayjs()); // mặc định hôm nay; null = Tất cả (List view)
+  const [viewMode, setViewMode] = useState<'month' | 'week' | 'list'>('month');
+  const [listMode, setListMode] = useState<'all' | 'date'>('date'); // Danh sách: Tất cả | Theo ngày
+  const [listDate, setListDate] = useState<dayjs.Dayjs>(dayjs());     // ngày đang xem (khi listMode='date')
   const [meetings, setMeetings] = useState<HomeMeetingRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -214,13 +215,22 @@ export default function CalendarPage() {
     });
   }, [meetings, searchTerm, statusFilter]);
 
-  // Danh sách cho List view: lọc theo ngày (nếu chọn), sắp xếp mới nhất trước
+  // Danh sách cho List view: 'all' = tất cả, 'date' = lọc theo ngày; sắp xếp mới nhất trước
   const listMeetings = useMemo(() => {
-    const base = listDate
+    const base = listMode === 'date'
       ? filteredMeetings.filter((m) => dayjs(m.createdAt).isSame(listDate, 'day'))
       : filteredMeetings;
     return [...base].sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf());
-  }, [filteredMeetings, listDate]);
+  }, [filteredMeetings, listMode, listDate]);
+
+  // Nhãn động cho nút giữa ở Danh sách (theo ngày)
+  const dayOffsetLabel = useMemo(() => {
+    const diff = listDate.startOf('day').diff(dayjs().startOf('day'), 'day');
+    if (diff === 0) return 'Hôm nay';
+    if (diff === -1) return 'Hôm qua';
+    if (diff === 1) return 'Ngày mai';
+    return diff < 0 ? `${diff} ngày` : `+${diff} ngày`;
+  }, [listDate]);
 
   const stats = useMemo(() => {
     return {
@@ -306,6 +316,59 @@ export default function CalendarPage() {
     setCurrentDate(dayjs());
   };
 
+  // Nhãn động cho nút giữa ở Lịch tháng
+  const monthOffsetLabel = useMemo(() => {
+    const now = dayjs();
+    const diff = (currentDate.year() - now.year()) * 12 + (currentDate.month() - now.month());
+    if (diff === 0) return 'Tháng này';
+    if (diff === -1) return 'Tháng trước';
+    if (diff === 1) return 'Tháng sau';
+    return diff < 0 ? `${diff} tháng` : `+${diff} tháng`;
+  }, [currentDate]);
+
+  // Điều hướng tuần (đầu tuần = Thứ Hai)
+  const startOfWeek = useMemo(() => {
+    const dow = currentDate.day(); // 0=CN..6=T7
+    const diffToMonday = dow === 0 ? 6 : dow - 1;
+    return currentDate.subtract(diffToMonday, 'day').startOf('day');
+  }, [currentDate]);
+
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => startOfWeek.add(i, 'day')),
+    [startOfWeek],
+  );
+
+  const handlePrevWeek = () => setCurrentDate((prev) => prev.subtract(1, 'week'));
+  const handleNextWeek = () => setCurrentDate((prev) => prev.add(1, 'week'));
+
+  // Nhãn động cho nút giữa: cho biết tuần đang xem cách tuần hiện tại bao xa
+  const weekOffsetLabel = useMemo(() => {
+    // Thứ Hai của tuần hiện tại (cùng logic với startOfWeek)
+    const today = dayjs();
+    const dow = today.day(); // 0=CN..6=T7
+    const thisWeekStart = today.subtract(dow === 0 ? 6 : dow - 1, 'day').startOf('day');
+    const diff = startOfWeek.diff(thisWeekStart, 'week');
+    if (diff === 0) return 'Tuần này';
+    if (diff === -1) return 'Tuần trước';
+    if (diff === 1) return 'Tuần sau';
+    return diff < 0 ? `${diff} tuần` : `+${diff} tuần`;
+  }, [startOfWeek]);
+
+  // Khi vào chế độ tuần, cuộn tới ~7h sáng cho khỏi mở ở vùng nửa đêm trống
+  const weekBodyRef = React.useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (viewMode === 'week' && weekBodyRef.current) {
+      weekBodyRef.current.scrollTop = 7 * 48; // 7 giờ * 48px
+    }
+  }, [viewMode]);
+
+  // Đặt lịch khi bấm vào một ô giờ trong tuần
+  const handleSlotClick = (day: dayjs.Dayjs, hour: number) => {
+    const startVal = day.hour(hour).minute(0).second(0);
+    createForm.setFieldsValue({ scheduleRange: [startVal, startVal.add(1, 'hour')] });
+    setCreateOpen(true);
+  };
+
   if (authLoading) return <div style={{ padding: 24, textAlign: 'center' }}>Đang tải...</div>;
   if (!isAuthenticated) return null;
 
@@ -365,94 +428,185 @@ export default function CalendarPage() {
         >
           {/* TOOLBAR */}
           <div className="cal-toolbar">
-            {/* Left: Month navigator (chỉ ở lịch tháng) hoặc nhãn ngữ cảnh (danh sách) */}
+            <div className="cal-toolbar-row">
+            {/* Left: điều hướng theo chế độ xem */}
             {viewMode === 'month' ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div className="cal-nav-group">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<LeftOutlined />}
-                    onClick={handlePrevMonth}
-                    style={{ height: 32, width: 32 }}
-                  />
-                  <Button
-                    type="text"
-                    size="small"
-                    onClick={handleToday}
-                    style={{ height: 32, padding: '0 12px', fontWeight: 600 }}
-                  >
-                    Hôm nay
-                  </Button>
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<RightOutlined />}
-                    onClick={handleNextMonth}
-                    style={{ height: 32, width: 32 }}
-                  />
+                  <Tooltip title="Tháng trước">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<LeftOutlined />}
+                      onClick={handlePrevMonth}
+                      style={{ height: 32, width: 32 }}
+                    />
+                  </Tooltip>
+                  <Tooltip title="Về tháng hiện tại">
+                    <Button
+                      type="text"
+                      size="small"
+                      onClick={handleToday}
+                      style={{ height: 32, padding: '0 14px', fontWeight: 600, minWidth: 96 }}
+                    >
+                      {monthOffsetLabel}
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title="Tháng sau">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<RightOutlined />}
+                      onClick={handleNextMonth}
+                      style={{ height: 32, width: 32 }}
+                    />
+                  </Tooltip>
                 </div>
                 <Title level={4} className="cal-month-label">
                   Tháng {currentDate.month() + 1}, {currentDate.year()}
                 </Title>
               </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                {/* Điều hướng ngày: ← [ngày] → */}
+            ) : viewMode === 'week' ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div className="cal-nav-group">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<LeftOutlined />}
-                    disabled={!listDate}
-                    onClick={() => setListDate((d) => (d ?? dayjs()).subtract(1, 'day'))}
-                    style={{ height: 32, width: 32 }}
-                  />
-                  <Button
-                    type="text"
-                    size="small"
-                    onClick={() => setListDate(dayjs())}
-                    style={{ height: 32, padding: '0 12px', fontWeight: 600 }}
-                  >
-                    Hôm nay
-                  </Button>
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<RightOutlined />}
-                    disabled={!listDate}
-                    onClick={() => setListDate((d) => (d ?? dayjs()).add(1, 'day'))}
-                    style={{ height: 32, width: 32 }}
-                  />
+                  <Tooltip title="Tuần trước">
+                    <Button type="text" size="small" icon={<LeftOutlined />} onClick={handlePrevWeek} style={{ height: 32, width: 32 }} />
+                  </Tooltip>
+                  <Tooltip title="Về tuần hiện tại">
+                    <Button type="text" size="small" onClick={handleToday} style={{ height: 32, padding: '0 14px', fontWeight: 600, minWidth: 96 }}>
+                      {weekOffsetLabel}
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title="Tuần sau">
+                    <Button type="text" size="small" icon={<RightOutlined />} onClick={handleNextWeek} style={{ height: 32, width: 32 }} />
+                  </Tooltip>
                 </div>
                 <Title level={4} className="cal-month-label" style={{ minWidth: 'auto' }}>
-                  {listDate
-                    ? (listDate.isSame(dayjs(), 'day') ? `Hôm nay, ${listDate.format('DD/MM/YYYY')}` : listDate.format('dddd, DD/MM/YYYY'))
-                    : 'Tất cả cuộc họp'}
+                  {startOfWeek.format('DD/MM')} – {startOfWeek.add(6, 'day').format('DD/MM/YYYY')}
                 </Title>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                {/* Điều hướng ngày: ← [nhãn động] → (chỉ tác dụng ở chế độ Theo ngày) */}
+                <div className="cal-nav-group">
+                  <Tooltip title="Ngày trước">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<LeftOutlined />}
+                      disabled={listMode === 'all'}
+                      onClick={() => setListDate((d) => d.subtract(1, 'day'))}
+                      style={{ height: 32, width: 32 }}
+                    />
+                  </Tooltip>
+                  <Tooltip title="Về hôm nay">
+                    <Button
+                      type="text"
+                      size="small"
+                      disabled={listMode === 'all'}
+                      onClick={() => setListDate(dayjs())}
+                      style={{ height: 32, padding: '0 12px', fontWeight: 600, minWidth: 92 }}
+                    >
+                      {listMode === 'all' ? 'Hôm nay' : dayOffsetLabel}
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title="Ngày sau">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<RightOutlined />}
+                      disabled={listMode === 'all'}
+                      onClick={() => setListDate((d) => d.add(1, 'day'))}
+                      style={{ height: 32, width: 32 }}
+                    />
+                  </Tooltip>
+                </div>
+                {/* Chỉ hiện nhãn khi 'Tất cả' — ở 'Theo ngày' ngày đã có trong chip lịch */}
+                {listMode === 'all' && (
+                  <Title level={4} className="cal-month-label" style={{ minWidth: 'auto' }}>
+                    Tất cả cuộc họp
+                  </Title>
+                )}
                 <span className="cal-list-count">{listMeetings.length}</span>
-                <div className="cal-list-datefilter">
+
+                {/* Segment loại trừ: Tất cả | Theo ngày */}
+                <div className="cal-list-seg">
                   <button
                     type="button"
-                    className={`cal-date-toggle ${listDate === null ? 'active' : ''}`}
-                    onClick={() => setListDate(null)}
+                    className={`cal-seg-btn ${listMode === 'all' ? 'active' : ''}`}
+                    onClick={() => setListMode('all')}
                   >
                     Tất cả
                   </button>
-                  <DatePicker
-                    value={listDate}
-                    onChange={(d) => setListDate(d)}
-                    format="DD/MM/YYYY"
-                    placeholder="Chọn ngày"
-                    allowClear
-                    style={{ borderRadius: 8, height: 34 }}
-                  />
+                  <button
+                    type="button"
+                    className={`cal-seg-btn ${listMode === 'date' ? 'active' : ''}`}
+                    onClick={() => setListMode('date')}
+                  >
+                    Theo ngày
+                  </button>
                 </div>
+
+                {/* Chip ngày (click mở lịch) — chỉ hiện khi chọn "Theo ngày" */}
+                {listMode === 'date' && (
+                  <DatePicker
+                    className="cal-inline-date"
+                    value={listDate}
+                    onChange={(d) => d && setListDate(d)}
+                    format="DD/MM/YYYY"
+                    allowClear={false}
+                    variant="borderless"
+                    suffixIcon={null}
+                    prefix={<CalendarOutlined />}
+                  />
+                )}
               </div>
             )}
 
-            {/* Center Search Input */}
-            <div style={{ flex: 1, maxWidth: isNarrow ? '100%' : 380 }}>
+            {/* Right View Switcher */}
+            <div className="cal-toolbar-right" style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+              <div className="cal-view-switch">
+                <Button
+                  type={viewMode === 'month' ? 'primary' : 'text'}
+                  icon={<AppstoreOutlined />}
+                  onClick={() => setViewMode('month')}
+                  style={{ borderRadius: 8, height: 32, fontSize: 12, fontWeight: 600, boxShadow: viewMode === 'month' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
+                >
+                  Lịch tháng
+                </Button>
+                <Button
+                  type={viewMode === 'week' ? 'primary' : 'text'}
+                  icon={<CalendarOutlined />}
+                  onClick={() => setViewMode('week')}
+                  style={{ borderRadius: 8, height: 32, fontSize: 12, fontWeight: 600, boxShadow: viewMode === 'week' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', color: viewMode === 'week' ? '#ffffff' : '#475569' }}
+                >
+                  Tuần
+                </Button>
+                <Button
+                  type={viewMode === 'list' ? 'primary' : 'text'}
+                  icon={<UnorderedListOutlined />}
+                  onClick={() => setViewMode('list')}
+                  style={{ borderRadius: 8, height: 32, fontSize: 12, fontWeight: 600, boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', color: viewMode === 'list' ? '#ffffff' : '#475569' }}
+                >
+                  Danh sách
+                </Button>
+              </div>
+
+              {statusFilter !== 'all' && (
+                <Tag
+                  color="blue"
+                  closable
+                  onClose={() => setStatusFilter('all')}
+                  style={{ margin: 0, padding: '4px 10px', borderRadius: 8, fontWeight: 600 }}
+                >
+                  Lọc: {statusFilter === 'ongoing' ? 'Đang họp' : statusFilter === 'upcoming' ? 'Sắp tới' : 'Đã xong'}
+                </Tag>
+              )}
+            </div>
+            </div>
+
+            {/* Hàng 2: ô tìm kiếm full-width */}
+            <div className="cal-toolbar-search">
               <Input
                 placeholder="Tìm chủ đề, chủ trì hoặc mã phòng..."
                 prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
@@ -461,52 +615,6 @@ export default function CalendarPage() {
                 style={{ borderRadius: 10, height: 40 }}
                 allowClear
               />
-            </div>
-
-            {/* Right View Switcher */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="cal-view-switch">
-                <Button
-                  type={viewMode === 'month' ? 'primary' : 'text'}
-                  icon={<AppstoreOutlined />}
-                  onClick={() => setViewMode('month')}
-                  style={{
-                    borderRadius: 8,
-                    height: 32,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    boxShadow: viewMode === 'month' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
-                  }}
-                >
-                  Lịch tháng
-                </Button>
-                <Button
-                  type={viewMode === 'list' ? 'primary' : 'text'}
-                  icon={<UnorderedListOutlined />}
-                  onClick={() => setViewMode('list')}
-                  style={{
-                    borderRadius: 8,
-                    height: 32,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    boxShadow: viewMode === 'list' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
-                    color: viewMode === 'list' ? '#ffffff' : '#475569'
-                  }}
-                >
-                  Danh sách
-                </Button>
-              </div>
-
-              {statusFilter !== 'all' && (
-                <Tag 
-                  color="blue" 
-                  closable 
-                  onClose={() => setStatusFilter('all')}
-                  style={{ margin: 0, padding: '4px 10px', borderRadius: 8, fontWeight: 600 }}
-                >
-                  Lọc: {statusFilter === 'ongoing' ? 'Đang họp' : statusFilter === 'upcoming' ? 'Sắp tới' : 'Đã xong'}
-                </Tag>
-              )}
             </div>
           </div>
 
@@ -591,13 +699,90 @@ export default function CalendarPage() {
                   })}
                 </div>
               </div>
+            ) : viewMode === 'week' ? (
+              /* WEEK GRID VIEW (lưới giờ kiểu Outlook) */
+              <div className="cal-week">
+                {/* Header: cột giờ trống + 7 ngày */}
+                <div className="cal-week-head">
+                  <div className="cal-week-gutter-head" />
+                  {weekDays.map((d) => {
+                    const isToday = d.isSame(dayjs(), 'day');
+                    return (
+                      <div key={d.format('YYYY-MM-DD')} className={`cal-week-dayhead ${isToday ? 'is-today' : ''}`}>
+                        <span className="cal-week-dow">{['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.day()]}</span>
+                        <span className="cal-week-daynum">{d.date()}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Body: cuộn dọc, cột giờ + 7 cột ngày */}
+                <div className="cal-week-body" ref={weekBodyRef}>
+                  {/* Cột nhãn giờ */}
+                  <div className="cal-week-gutter">
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <div key={h} className="cal-week-hourlabel">
+                        {h === 0 ? '12 SA' : h < 12 ? `${h} SA` : h === 12 ? '12 CH' : `${h - 12} CH`}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 7 cột ngày */}
+                  {weekDays.map((d) => {
+                    const dayEvents = filteredMeetings.filter((m) => dayjs(m.createdAt).isSame(d, 'day'));
+                    return (
+                      <div key={d.format('YYYY-MM-DD')} className="cal-week-daycol">
+                        {/* Ô giờ nền (click để tạo) */}
+                        {Array.from({ length: 24 }, (_, h) => (
+                          <div key={h} className="cal-week-slot" onClick={() => handleSlotClick(d, h)} />
+                        ))}
+
+                        {/* Khối sự kiện định vị theo giờ */}
+                        {dayEvents.map((meet) => {
+                          const start = dayjs(meet.createdAt);
+                          const plannedEnd = meet.estimatedEndAt ? dayjs(meet.estimatedEndAt) : (meet.startedAt ? dayjs(meet.startedAt) : null);
+                          const end = meet.endedAt
+                            ? dayjs(meet.endedAt)
+                            : plannedEnd && plannedEnd.isValid() && plannedEnd.isAfter(start)
+                              ? plannedEnd
+                              : start.add(1, 'hour');
+                          const HOUR = 48; // px mỗi giờ (đồng bộ với CSS)
+                          const top = (start.hour() + start.minute() / 60) * HOUR;
+                          const height = Math.max(22, (end.diff(start, 'minute') / 60) * HOUR - 2);
+                          const status = meetingRowStatus(meet);
+                          const evClass =
+                            status === 'live' ? 'ev-live'
+                              : status === 'ended' ? 'ev-ended'
+                                : status === 'upcoming' ? 'ev-upcoming'
+                                  : 'ev-other';
+                          return (
+                            <div
+                              key={meet.id}
+                              className={`cal-week-event ${evClass}`}
+                              style={{ top, height }}
+                              onClick={(e) => { e.stopPropagation(); setDetailMeeting(meet); }}
+                              title={`${meet.title} — ${start.format('HH:mm')}-${end.format('HH:mm')}`}
+                            >
+                              <div className="cal-week-event-time">
+                                {status === 'live' && <span className="pulse-dot-green-custom" style={{ width: 6, height: 6, background: '#22c55e', flexShrink: 0 }} />}
+                                {start.format('HH:mm')}
+                              </div>
+                              <div className="cal-week-event-title">{meet.title}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             ) : (
               /* LIST VIEW */
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {listMeetings.length === 0 ? (
                   <Empty
                     description={
-                      listDate
+                      listMode === 'date'
                         ? `Không có cuộc họp nào trong ngày ${listDate.format('DD/MM/YYYY')}.`
                         : searchTerm || statusFilter !== 'all'
                           ? 'Không tìm thấy cuộc họp nào phù hợp với bộ lọc.'
@@ -785,7 +970,9 @@ export default function CalendarPage() {
             <div>
               {viewMode === 'month'
                 ? <>💡 Click vào một ngày để lập lịch, hoặc nhấn <span style={{ fontWeight: 700, color: '#3b82f6' }}>+ Tạo cuộc họp</span> ở header.</>
-                : <>💡 Chọn <span style={{ fontWeight: 700, color: '#3b82f6' }}>Tất cả</span> để xem mọi cuộc họp (mới nhất trước), hoặc chọn một ngày để lọc.</>}
+                : viewMode === 'week'
+                  ? <>💡 Click vào một ô giờ để lập lịch nhanh vào khung giờ đó.</>
+                  : <>💡 <span style={{ fontWeight: 700, color: '#3b82f6' }}>Tất cả</span>: xem mọi cuộc họp (mới nhất trước). <span style={{ fontWeight: 700, color: '#3b82f6' }}>Theo ngày</span>: dùng mũi tên hoặc ô ngày để lọc theo từng ngày.</>}
             </div>
           </div>
         </Card>

@@ -33,14 +33,23 @@
 
 /* === PANEL CHÍNH === */
 .cal-panel { border-radius: 16px; box-shadow: 0 2px 8px rgba(15,23,42,0.04); border: 1px solid #e2e8f0; overflow: hidden; }
-.cal-toolbar { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cal-toolbar { padding: 14px 20px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; display: flex; flex-direction: column; gap: 10px; }
+.cal-toolbar-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cal-toolbar-search { width: 100%; }
+.cal-toolbar-search .ant-input-affix-wrapper { width: 100%; }
+
+/* Chip ngày kiểu inline (viền xanh + icon lịch bên trái) */
+.cal-inline-date.ant-picker { border: 1px solid #2563eb !important; border-radius: 8px !important; height: 34px; padding: 0 12px; background: #fff; }
+.cal-inline-date.ant-picker .ant-picker-input > input { color: #2563eb; font-weight: 600; font-size: 13px; }
+.cal-inline-date.ant-picker .ant-picker-prefix { color: #2563eb; margin-inline-end: 6px; }
 .cal-nav-group { display: inline-flex; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 2px; }
-.cal-month-label { margin: 0; font-weight: 700; color: #0f172a; min-width: 150px; font-size: 18px; }
+.cal-month-label { margin: 0; font-weight: 700; color: #0f172a; min-width: 150px; font-size: 15px; }
 .cal-list-count { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 24px; padding: 0 8px; border-radius: 999px; background: #eff6ff; color: #2563eb; font-size: 12px; font-weight: 700; }
-.cal-list-datefilter { display: inline-flex; align-items: center; gap: 8px; margin-left: 4px; }
-.cal-date-toggle { height: 34px; padding: 0 14px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; color: #64748b; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-.cal-date-toggle:hover { border-color: #93c5fd; color: #2563eb; }
-.cal-date-toggle.active { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
+/* Segment loại trừ: Tất cả | Theo ngày */
+.cal-list-seg { display: inline-flex; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-left: 4px; }
+.cal-seg-btn { height: 34px; padding: 0 14px; border: none; background: #fff; color: #64748b; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.cal-seg-btn:hover { background: #f8fafc; color: #2563eb; }
+.cal-seg-btn.active { background: #2563eb; color: #fff; }
 .cal-view-switch { background: #e2e8f0; padding: 2px; border-radius: 10px; display: inline-flex; }
 .cal-footer { padding: 12px 20px; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b; gap: 12px; flex-wrap: wrap; }
 
@@ -77,19 +86,59 @@
 .cal-list-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 13px; color: #64748b; }
 .cal-list-meta strong { color: #475569; }
 
+/* === WEEK GRID VIEW (lưới giờ kiểu Outlook) === */
+.cal-week { --gutter: 64px; --hour: 48px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+.cal-week-head { display: grid; grid-template-columns: var(--gutter) repeat(7, 1fr); border-bottom: 1px solid #e2e8f0; background: #f8fafc; position: sticky; top: 0; z-index: 3; }
+.cal-week-gutter-head { border-right: 1px solid #e2e8f0; }
+.cal-week-dayhead { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 0; gap: 2px; border-left: 1px solid #f1f5f9; }
+.cal-week-dow { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.04em; }
+.cal-week-daynum { font-size: 18px; font-weight: 800; color: #0f172a; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.cal-week-dayhead.is-today .cal-week-daynum { background: #2563eb; color: #fff; }
+.cal-week-dayhead.is-today .cal-week-dow { color: #2563eb; }
+
+.cal-week-body { display: grid; grid-template-columns: var(--gutter) repeat(7, 1fr); max-height: 62vh; overflow-y: auto; position: relative; }
+.cal-week-gutter { border-right: 1px solid #e2e8f0; }
+.cal-week-hourlabel { height: var(--hour); font-size: 10px; font-weight: 600; color: #94a3b8; text-align: right; padding: 2px 8px 0 0; box-sizing: border-box; position: relative; top: -6px; }
+.cal-week-daycol { position: relative; border-left: 1px solid #f1f5f9; }
+.cal-week-slot { height: var(--hour); border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.1s; }
+.cal-week-slot:hover { background: #eff6ff; }
+
+.cal-week-event {
+  position: absolute; left: 3px; right: 3px; border-radius: 6px; padding: 3px 6px; overflow: hidden;
+  cursor: pointer; z-index: 2; border: 1px solid transparent; box-shadow: 0 1px 2px rgba(15,23,42,0.08);
+  display: flex; flex-direction: column; gap: 1px; transition: box-shadow 0.12s, transform 0.12s;
+}
+.cal-week-event:hover { box-shadow: 0 4px 10px rgba(15,23,42,0.18); z-index: 4; }
+.cal-week-event-time { font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; }
+.cal-week-event-title { font-size: 11px; font-weight: 600; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; }
+.cal-week-event.ev-upcoming { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+.cal-week-event.ev-live { background: #ecfdf5; border-color: #a7f3d0; color: #15803d; }
+.cal-week-event.ev-ended { background: #fff7ed; border-color: #fed7aa; color: #b45309; }
+.cal-week-event.ev-other { background: #f1f5f9; border-color: #e2e8f0; color: #475569; }
+
 /* Pulse dots */
 .pulse-dot-green-custom { border-radius: 50%; animation: calPulseGreen 1.8s infinite ease-in-out; }
 @keyframes calPulseGreen { 0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(34,197,94,0.5);} 50% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(34,197,94,0);} 100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(34,197,94,0);} }
 
 /* === RESPONSIVE === */
+
+/* Màn trung bình: view tabs xuống hàng riêng, căn trái cho thẳng hàng */
+@media (max-width: 992px) {
+  .cal-toolbar-right { margin-left: 0 !important; width: 100%; justify-content: flex-start; }
+  .cal-view-switch { flex: 1; }
+  .cal-view-switch .ant-btn { flex: 1; }
+}
+
 @media (max-width: 768px) {
   .cal-container { padding: 16px; }
   .cal-page-title.ant-typography { font-size: 19px; }
-  .cal-toolbar { flex-direction: column; align-items: stretch; }
-  .cal-month-label { min-width: auto; font-size: 16px; }
+  .cal-month-label { min-width: auto; font-size: 14px; }
   .cal-cell { min-height: 88px; padding: 7px; }
   .cal-add-btn { opacity: 1; }
   .cal-list-row { flex-direction: column; align-items: stretch; }
+  /* Cụm điều hướng danh sách gọn lại theo chiều dọc */
+  .cal-toolbar-row { row-gap: 8px; }
+  .cal-list-seg, .cal-inline-date.ant-picker { margin-left: 0; }
 }
 
 /* === DARK MODE (phần tử tùy biến; AntD do darkAlgorithm lo) === */
@@ -103,9 +152,13 @@
 .dark-theme .cal-view-switch { background: #303030; }
 .dark-theme .cal-month-label { color: #f1f5f9; }
 .dark-theme .cal-list-count { background: rgba(37,99,235,0.2); color: #93c5fd; }
-.dark-theme .cal-date-toggle { background: #262626; border-color: #3f3f46; color: #cbd5e1; }
-.dark-theme .cal-date-toggle:hover { border-color: #3b82f6; color: #93c5fd; }
-.dark-theme .cal-date-toggle.active { background: rgba(37,99,235,0.18); border-color: #3b82f6; color: #93c5fd; }
+.dark-theme .cal-inline-date.ant-picker { background: rgba(37,99,235,0.12) !important; border-color: #3b82f6 !important; }
+.dark-theme .cal-inline-date.ant-picker .ant-picker-input > input { color: #93c5fd; }
+.dark-theme .cal-inline-date.ant-picker .ant-picker-prefix { color: #93c5fd; }
+.dark-theme .cal-list-seg { border-color: #3f3f46; }
+.dark-theme .cal-seg-btn { background: #1d1d1d; color: #cbd5e1; }
+.dark-theme .cal-seg-btn:hover { background: #262626; color: #93c5fd; }
+.dark-theme .cal-seg-btn.active { background: #2563eb; color: #fff; }
 .dark-theme .cal-weekday { color: #94a3b8; }
 .dark-theme .cal-cell { background: #1d1d1d; border-color: #303030; }
 .dark-theme .cal-cell:hover { border-color: #475569; }
@@ -122,3 +175,19 @@
 .dark-theme .cal-event.ev-live { background: rgba(5,150,105,0.2); border-color: rgba(5,150,105,0.45); color: #6ee7b7; }
 .dark-theme .cal-event.ev-ended { background: rgba(217,119,6,0.18); border-color: rgba(217,119,6,0.4); color: #fbbf24; }
 .dark-theme .cal-event.ev-other { background: #262626; border-color: #3f3f46; color: #cbd5e1; }
+
+/* Week view dark */
+.dark-theme .cal-week { border-color: #303030; }
+.dark-theme .cal-week-head { background: #181818; border-color: #303030; }
+.dark-theme .cal-week-gutter-head, .dark-theme .cal-week-gutter { border-color: #303030; }
+.dark-theme .cal-week-dayhead { border-color: #262626; }
+.dark-theme .cal-week-dow { color: #94a3b8; }
+.dark-theme .cal-week-daynum { color: #f1f5f9; }
+.dark-theme .cal-week-hourlabel { color: #64748b; }
+.dark-theme .cal-week-daycol { border-color: #262626; }
+.dark-theme .cal-week-slot { border-color: #262626; }
+.dark-theme .cal-week-slot:hover { background: rgba(37,99,235,0.15); }
+.dark-theme .cal-week-event.ev-upcoming { background: rgba(37,99,235,0.2); border-color: rgba(37,99,235,0.45); color: #93c5fd; }
+.dark-theme .cal-week-event.ev-live { background: rgba(5,150,105,0.22); border-color: rgba(5,150,105,0.5); color: #6ee7b7; }
+.dark-theme .cal-week-event.ev-ended { background: rgba(217,119,6,0.2); border-color: rgba(217,119,6,0.45); color: #fbbf24; }
+.dark-theme .cal-week-event.ev-other { background: #262626; border-color: #3f3f46; color: #cbd5e1; }
