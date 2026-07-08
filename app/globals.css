@@ -2,6 +2,21 @@
   box-sizing: border-box;
 }
 
+/* Chuông thông báo trên header */
+.header-bell-icon:hover { background: #e2e8f0 !important; }
+.header-bell-icon.has-unread { animation: bellRing 2s ease-in-out infinite; }
+.header-bell-icon.has-unread:hover { background: #bfdbfe !important; }
+@keyframes bellRing {
+  0%, 88%, 100% { transform: rotate(0); }
+  90% { transform: rotate(12deg); }
+  92% { transform: rotate(-10deg); }
+  94% { transform: rotate(8deg); }
+  96% { transform: rotate(-6deg); }
+  98% { transform: rotate(3deg); }
+}
+.dark-theme .header-bell-icon:hover { background: #3f3f46 !important; }
+.dark-theme .header-bell-icon.has-unread { background: rgba(37,99,235,0.25) !important; }
+
 /* ============================================================
    DESIGN SYSTEM - TYPOGRAPHY
    Font chính: Inter (Google Fonts)

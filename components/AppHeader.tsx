@@ -7,11 +7,15 @@ import { meetingApi } from '@/services/api';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/navigation';
 import { useHeaderActions } from '@/contexts/HeaderActionsContext';
+import { useAuth } from '@/lib/auth';
 
 const { Header } = Layout;
 const { Text } = Typography;
 
-const ENABLE_NOTIFICATIONS = process.env.NEXT_PUBLIC_ENABLE_MEETING_NOTIFICATIONS === 'true';
+// Mặc định BẬT — chỉ tắt khi đặt tường minh NEXT_PUBLIC_ENABLE_MEETING_NOTIFICATIONS=false.
+// (Trước đây yêu cầu ='true' nên bản build production thiếu biến env sẽ tắt mất
+// phần tự tải/poll/SSE, trong khi nút bấm tay không bị chặn → "phải ấn mới hiện".)
+const ENABLE_NOTIFICATIONS = process.env.NEXT_PUBLIC_ENABLE_MEETING_NOTIFICATIONS !== 'false';
 
 type HomeNotificationItem = {
   id: string;
@@ -28,6 +32,7 @@ type NotificationItemWithEmpty = HomeNotificationItem | { id: 'empty'; title: st
 export default function AppHeader() {
   const router = useRouter();
   const { actions } = useHeaderActions();
+  const { isAuthenticated } = useAuth();
   const { useBreakpoint } = Grid;
   const screens = useBreakpoint();
   const isMobile = !screens.md;
@@ -51,13 +56,14 @@ export default function AppHeader() {
     }
   }, [actions, router]);
 
-  const loadNotifications = async () => {
+  const loadNotifications = async (): Promise<boolean> => {
     setLoadingNotifications(true);
     const res = await meetingApi.getMyNotifications();
     if (res.error || !Array.isArray(res.data)) {
-      setNotifications([]);
+      // Lỗi tạm thời (mạng chập chờn, token chưa sẵn sàng ngay sau reload...):
+      // GIỮ NGUYÊN danh sách đang có để badge không bị nhấp về 0.
       setLoadingNotifications(false);
-      return;
+      return false;
     }
     const mapped: HomeNotificationItem[] = res.data.map((n) => {
       // Map notification types to user-friendly titles and styles
@@ -104,25 +110,75 @@ export default function AppHeader() {
         openedAt: n.openedAt ?? null,
       };
     });
-    setNotifications(mapped.slice(0, 10));
+    const next = mapped.slice(0, 10);
+    // Chỉ cập nhật khi dữ liệu THỰC SỰ thay đổi (có thông báo mới, hoặc đổi
+    // trạng thái đã đọc). Nếu giống hệt thì bỏ qua để không render lại vô ích.
+    setNotifications((prev) => {
+      const changed =
+        prev.length !== next.length ||
+        next.some((n, i) => n.id !== prev[i]?.id || n.openedAt !== prev[i]?.openedAt);
+      return changed ? next : prev;
+    });
     setLoadingNotifications(false);
+    return true;
   };
 
   useEffect(() => {
     if (!ENABLE_NOTIFICATIONS) return;
 
-    // Load notifications immediately on mount
-    void loadNotifications();
+    let cancelled = false;
+    const retryTimers: number[] = [];
 
-    // Poll for new notifications every 30 seconds
+    // Load ngay khi vào trang, và thử lại vài lần nếu chưa thành công
+    // (token có thể chưa sẵn sàng ngay sau khi reload) để badge luôn hiển thị.
+    const loadWithRetry = async (attempt = 0) => {
+      if (cancelled) return;
+      const ok = await loadNotifications();
+      if (!ok && attempt < 3 && !cancelled) {
+        const t = window.setTimeout(() => void loadWithRetry(attempt + 1), 1200);
+        retryTimers.push(t);
+      }
+    };
+    void loadWithRetry();
+
+    // ── Real-time qua SSE (Server-Sent Events) ─────────────────
+    // Server đẩy sự kiện "notification" ngay khi có thông báo mới → chuông cập
+    // nhật tức thời, không cần chờ poll. EventSource tự động reconnect khi rớt mạng.
+    let eventSource: EventSource | null = null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) {
+      try {
+        eventSource = new EventSource(`/api/notifications/stream?token=${encodeURIComponent(token)}`);
+        eventSource.addEventListener('notification', () => {
+          void loadNotifications();
+        });
+      } catch {
+        eventSource = null;
+      }
+    }
+
+    // Poll dự phòng, thưa (60s) — chỉ là lưới an toàn khi SSE bị gián đoạn.
     const interval = window.setInterval(() => {
       void loadNotifications();
-    }, 30000);
+    }, 60000);
+
+    // Làm mới ngay khi người dùng quay lại tab (không phải chờ hết chu kỳ)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void loadNotifications();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
 
     return () => {
+      cancelled = true;
+      retryTimers.forEach((t) => window.clearTimeout(t));
       window.clearInterval(interval);
+      eventSource?.close();
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const openNotificationDetail = useCallback(
     async (item: HomeNotificationItem) => {
@@ -266,22 +322,26 @@ export default function AppHeader() {
                 />
               </div>
             } 
-            trigger="click" 
+            trigger="click"
             placement="bottomRight"
+            onOpenChange={(visible) => {
+              // Tự làm mới ngay khi mở dropdown để không cần bấm nút làm mới
+              if (visible) void loadNotifications();
+            }}
           >
             <Badge count={unreadCount} style={{ backgroundColor: '#ef4444' }} offset={[-4, 4]}>
               <div style={{
                 width: 36,
                 height: 36,
                 borderRadius: '50%',
-                background: '#f1f5f9',
+                background: unreadCount > 0 ? '#dbeafe' : '#f1f5f9',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
                 transition: 'background 0.2s'
-              }} className="header-bell-icon">
-                <BellOutlined style={{ fontSize: 18, color: '#475569' }} />
+              }} className={`header-bell-icon${unreadCount > 0 ? ' has-unread' : ''}`}>
+                <BellOutlined style={{ fontSize: 18, color: unreadCount > 0 ? '#2563eb' : '#475569' }} />
               </div>
             </Badge>
           </Popover>
