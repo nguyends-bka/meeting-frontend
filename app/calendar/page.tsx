@@ -1002,6 +1002,10 @@ export default function CalendarPage() {
         onCopy={copyText}
         buildLink={buildMeetingLink}
         onJoin={(id) => router.push(`/meeting/${id}`)}
+        onViewDetail={(id) => {
+          setDetailMeeting(null);
+          router.push(`/meetings/${id}`);
+        }}
       />
     </MainLayout>
   );

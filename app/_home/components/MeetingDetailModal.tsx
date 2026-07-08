@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, Space, Avatar, Input, Button, Typography, Tooltip } from 'antd';
-import { UserOutlined, CopyOutlined, NumberOutlined, KeyOutlined, EnvironmentOutlined, LinkOutlined, RightCircleOutlined } from '@ant-design/icons';
+import { UserOutlined, CopyOutlined, NumberOutlined, KeyOutlined, EnvironmentOutlined, LinkOutlined, RightCircleOutlined, ProfileOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { HomeMeetingRow } from '../types';
 import { meetingRowStatus, getHostNameOnly, getVirtualRoom } from '../helpers';
@@ -21,6 +21,8 @@ interface MeetingDetailModalProps {
   onCopy: (text: string, msg?: string) => void;
   buildLink: (id: string) => string;
   onJoin: (id: string) => void;
+  /** Mở trang xem chi tiết đầy đủ của cuộc họp (/meetings/[id]). */
+  onViewDetail?: (id: string) => void;
 }
 
 export default function MeetingDetailModal({
@@ -29,6 +31,7 @@ export default function MeetingDetailModal({
   onCopy,
   buildLink,
   onJoin,
+  onViewDetail,
 }: MeetingDetailModalProps) {
   const status = meeting ? meetingRowStatus(meeting) : 'upcoming';
   const isJoinable = status === 'live' || status === 'upcoming';
@@ -115,11 +118,18 @@ export default function MeetingDetailModal({
             </Space.Compact>
           </div>
 
-          <div className="cmr-actions" style={{ justifyContent: 'flex-end' }}>
-            <Button size="large" onClick={onCancel}>Đóng</Button>
-            <Button type="primary" size="large" icon={<RightCircleOutlined />} disabled={!isJoinable} onClick={() => onJoin(meeting.id)}>
-              Tham gia ngay
-            </Button>
+          <div className="cmr-actions" style={{ justifyContent: 'space-between' }}>
+            {onViewDetail ? (
+              <Button size="large" icon={<ProfileOutlined />} onClick={() => onViewDetail(meeting.id)}>
+                Xem chi tiết
+              </Button>
+            ) : <span />}
+            <Space size={8}>
+              <Button size="large" onClick={onCancel}>Đóng</Button>
+              <Button type="primary" size="large" icon={<RightCircleOutlined />} disabled={!isJoinable} onClick={() => onJoin(meeting.id)}>
+                Tham gia ngay
+              </Button>
+            </Space>
           </div>
         </div>
       )}

@@ -369,8 +369,9 @@ export default function AppHeader() {
             {openedNotification.meetingId ? (
               <div style={{ marginTop: 16 }}>
                 <Button type="primary" onClick={() => {
+                  const id = openedNotification.meetingId;
                   setOpenedNotification(null);
-                  router.push('/meetings');
+                  router.push(`/meetings/${id}`);
                 }}>
                   Mở cuộc họp liên quan
                 </Button>

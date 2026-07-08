@@ -220,6 +220,10 @@ function HomePageContent() {
         onCopy={home.copyText}
         buildLink={home.buildMeetingLink}
         onJoin={(id) => home.router.push(`/meeting/${id}`)}
+        onViewDetail={(id) => {
+          home.setDetailMeeting(null);
+          home.router.push(`/meetings/${id}`);
+        }}
       />
 
       <MeetingHistoryModal
