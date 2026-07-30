@@ -58,31 +58,32 @@ function getTranslationText(data: any, preferredLanguage: string): string {
     }
 
     // Gói tin dạng: { "vi": "xin chào", "en": "Hello everyone.", "zh": "大家好。" }
+    // Bỏ qua các key metadata (không phải nội dung dịch) để không hiển thị nhầm
+    // utterance_id / speaker... ra ngoài giao diện.
+    const META_KEYS = new Set(['utterance_id', 'type', 'speaker', 'translations', 'receivedat', 'id']);
     const userLang = preferredLanguage.toLowerCase();
-    const keys = Object.keys(data);
+    const langKeys = Object.keys(data).filter((key) => !META_KEYS.has(key.toLowerCase()));
 
     // Tìm key khớp chính xác với ngôn ngữ ưu tiên
-    const matchedKey = keys.find((key) => key.toLowerCase() === userLang);
+    const matchedKey = langKeys.find((key) => key.toLowerCase() === userLang);
 
     if (matchedKey) {
       text = String(data[matchedKey] ?? '');
     } else {
       // Fallback 1: Thử tiếng Việt 'vi'
-      const viKey = keys.find((key) => key.toLowerCase() === 'vi');
+      const viKey = langKeys.find((key) => key.toLowerCase() === 'vi');
       if (viKey) {
         text = String(data[viKey] ?? '');
       } else {
-        // Fallback 2: Lấy bản dịch đầu tiên có trong object
-        const firstKey = keys[0];
+        // Fallback 2: Lấy bản dịch đầu tiên (chỉ trong các key ngôn ngữ hợp lệ)
+        const firstKey = langKeys[0];
         if (firstKey) {
           text = String(data[firstKey] ?? '');
         }
       }
     }
 
-    if (!text) {
-      text = JSON.stringify(data);
-    }
+    // Không có nội dung dịch hợp lệ → trả rỗng (KHÔNG stringify để tránh phun id/JSON thô ra UI)
   } else {
     // Fallback: Tin nhắn là chuỗi văn bản thô
     text = String(data || '');
