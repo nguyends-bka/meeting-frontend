@@ -43,18 +43,18 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <HeaderActionsProvider>
-      <Layout style={{ height: '100vh', overflow: 'hidden' }}>
+      <Layout className="app-viewport-height" style={{ overflow: 'hidden' }}>
         <Sidebar
           collapsed={collapsed}
           onCollapse={setCollapsed}
           isMobile={isMobile}
           compactMode={isCompactSidebar}
         />
-        <Layout 
-          style={{ 
+        <Layout
+          className="app-viewport-height"
+          style={{
             marginLeft: sidebarWidth,
             transition: 'margin-left 0.2s',
-            height: '100vh',
             overflow: 'hidden',
             minWidth: 0,
           }}

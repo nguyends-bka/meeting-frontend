@@ -224,14 +224,13 @@ export default function Sidebar({ collapsed: externalCollapsed, onCollapse, isMo
 
   return (
     <Sider
-      className={`app-sidebar ${compactMode ? 'app-sidebar-compact' : ''}`}
+      className={`app-sidebar app-viewport-height ${compactMode ? 'app-sidebar-compact' : ''}`}
       collapsible
       collapsed={collapsed}
       onCollapse={setCollapsed}
       width={compactMode ? 200 : 250}
       collapsedWidth={isMobile ? 0 : 80}
       style={{
-        height: '100vh',
         position: 'fixed',
         left: 0,
         top: 0,

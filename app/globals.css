@@ -195,6 +195,14 @@ body.light-theme {
   background-color: #2a2a2a !important;
 }
 
+/* Chiều cao bằng phần màn hình đang nhìn thấy. Trên trình duyệt Android, 100vh
+   tính cả phần bị thanh địa chỉ chiếm nên đáy layout bị đẩy ra ngoài màn hình.
+   100vh giữ lại làm dự phòng cho trình duyệt chưa hỗ trợ dvh. */
+.app-viewport-height {
+  height: 100vh;
+  height: 100dvh;
+}
+
 /* Sidebar layout on small-height screens:
    keep header/footer fixed, make menu area scrollable */
 .app-sidebar .ant-layout-sider-children {
