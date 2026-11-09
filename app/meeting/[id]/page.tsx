@@ -9,7 +9,7 @@ import {
   useRoomContext,
 } from '@livekit/components-react';
 import type { LocalUserChoices } from '@livekit/components-core';
-import { LocalAudioTrack, RoomEvent, Track } from 'livekit-client';
+import { DisconnectReason, LocalAudioTrack, RoomEvent, Track } from 'livekit-client';
 import { useAuth } from '@/lib/auth';
 import { apiService, meetingApi } from '@/services/api';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -59,6 +59,19 @@ function normalizeLiveKitServerUrl(rawUrl: string): string {
       .replace(/\/+$/, '')
       .replace(/\/rtc\/v1$/i, '')
       .replace(/\/rtc$/i, '');
+  }
+}
+
+function getDisconnectNotice(reason?: DisconnectReason): string {
+  switch (reason) {
+    case DisconnectReason.DUPLICATE_IDENTITY:
+      return 'Tài khoản này vừa vào phòng từ một thiết bị khác, nên phiên trên thiết bị này đã bị ngắt.';
+    case DisconnectReason.PARTICIPANT_REMOVED:
+      return 'Bạn đã được mời ra khỏi cuộc họp.';
+    case DisconnectReason.SERVER_SHUTDOWN:
+      return 'Máy chủ họp đang khởi động lại. Vui lòng thử lại sau ít phút.';
+    default:
+      return 'Không giữ được kết nối tới máy chủ họp. Vui lòng kiểm tra mạng, VPN và trình duyệt rồi thử lại.';
   }
 }
 
@@ -750,6 +763,9 @@ export default function MeetingPage() {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [roomError, setRoomError] = useState<string | null>(null);
+  const [disconnectNotice, setDisconnectNotice] = useState<string | null>(null);
+  // Đang hiện màn hình lỗi: khi phòng bị gỡ và tự ngắt, không được chuyển về trang chủ.
+  const keepRoomErrorScreenRef = useRef(false);
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [currentMeetingId, setCurrentMeetingId] = useState<string | null>(null);
   const [meetingTitle, setMeetingTitle] = useState<string>('Cuộc họp');
@@ -767,6 +783,7 @@ export default function MeetingPage() {
   const [virtualMicWsUrl, setVirtualMicWsUrl] = useState('ws://127.0.0.1:9001/audio');
   const [isTranscriptFallback, setIsTranscriptFallback] = useState(false);
   const [transcriptSessionId, setTranscriptSessionId] = useState('');
+  const fallbackActiveRef = useRef(false);
 
   // Tiêu đề tab trình duyệt: hiển thị gọn gàng, chuyên nghiệp thay vì tên phòng thô của LiveKit.
   // Dùng MutationObserver để ép lại nếu bị ghi đè (LiveKit có thể đặt title = tên phòng).
@@ -795,6 +812,10 @@ export default function MeetingPage() {
   }, [meetingTitle, preJoinDone]);
 
   const triggerFallback = useCallback(() => {
+    // Chỉ tạo session khi mới chuyển sang fallback. Nếu tạo lại sau mỗi lỗi WebSocket, URL đổi liên tục
+    // và mọi kết nối bị mở lại liên tục khi server AI không phản hồi.
+    if (fallbackActiveRef.current) return;
+    fallbackActiveRef.current = true;
     setIsTranscriptFallback(true);
     const newId = typeof window !== 'undefined' && window.crypto?.randomUUID
       ? window.crypto.randomUUID()
@@ -834,6 +855,7 @@ export default function MeetingPage() {
         try {
           ws.close();
         } catch {}
+        fallbackActiveRef.current = false;
         setIsTranscriptFallback(false);
       };
 
@@ -1003,15 +1025,25 @@ export default function MeetingPage() {
   const handleError = useCallback((error: Error) => {
     const msg = error?.message ?? '';
     const name = error?.name ?? '';
+    const isPermissionDenied =
+      name === 'NotAllowedError' || /permission denied|permission dismissed/i.test(msg);
     const isDeviceLost =
+      isPermissionDenied ||
       name === 'NotFoundError' ||
       name === 'NotReadableError' ||
+      name === 'OverconstrainedError' ||
       /requested device not found|device not found|client initiated disconnect|could not start video source|could not start audio source/i.test(
         msg,
       );
 
     if (isDeviceLost) {
       console.warn('LiveKit: thiết bị mất kết nối, tham gia trong trạng thái mic/camera tắt:', error);
+      if (isPermissionDenied) {
+        message.warning({
+          key: 'media-permission',
+          content: 'Trình duyệt chưa cho phép dùng micro hoặc camera. Bạn vẫn ở trong cuộc họp với thiết bị đó đang tắt.',
+        });
+      }
       return;
     }
 
@@ -1027,10 +1059,28 @@ export default function MeetingPage() {
     }
 
     console.error('LiveKit room error:', error);
+    keepRoomErrorScreenRef.current = true;
     setRoomError(error.message || 'Có lỗi xảy ra trong meeting room');
-  }, []);
+  }, [message]);
 
-  const handleDisconnected = useCallback(async () => {
+  const handleMicSetupError = useCallback(
+    (notice: string) => {
+      message.warning({ key: 'mic-setup', content: notice });
+    },
+    [message],
+  );
+
+  const handleDisconnected = useCallback(async (reason?: DisconnectReason) => {
+    const leftByUser = reason === DisconnectReason.CLIENT_INITIATED;
+    const meetingEnded =
+      reason === DisconnectReason.ROOM_DELETED || reason === DisconnectReason.ROOM_CLOSED;
+    const keepCurrentScreen = keepRoomErrorScreenRef.current;
+
+    if (!keepCurrentScreen && !leftByUser && !meetingEnded) {
+      keepRoomErrorScreenRef.current = true;
+      setDisconnectNotice(getDisconnectNotice(reason));
+    }
+
     if (participantId && currentMeetingId) {
       try {
         await apiService.leaveMeeting(participantId, currentMeetingId);
@@ -1039,8 +1089,13 @@ export default function MeetingPage() {
       }
     }
 
+    if (keepRoomErrorScreenRef.current) return;
+
+    if (meetingEnded) {
+      message.info('Cuộc họp đã kết thúc.');
+    }
     router.push('/');
-  }, [router, participantId, currentMeetingId]);
+  }, [router, participantId, currentMeetingId, message]);
 
   const normalizedHostIdentity = meetingHostIdentity?.trim().toLowerCase() ?? '';
   const normalizedUserId = user?.id?.trim().toLowerCase() ?? '';
@@ -1402,12 +1457,12 @@ export default function MeetingPage() {
     );
   }
 
-  if (roomError) {
+  if (roomError || disconnectNotice) {
     return (
       <div style={styles.container}>
         <div style={styles.errorContainer}>
-          <h2 style={styles.errorTitle}>Lỗi Meeting Room</h2>
-          <p style={styles.errorMessage}>{roomError}</p>
+          <h2 style={styles.errorTitle}>{roomError ? 'Lỗi Meeting Room' : 'Đã ngắt khỏi cuộc họp'}</h2>
+          <p style={styles.errorMessage}>{roomError ?? disconnectNotice}</p>
           <button
             onClick={() => {
               setRoomError(null);
@@ -1511,7 +1566,7 @@ export default function MeetingPage() {
               <VirtualMicPublisher
                 enabled={true}
                 wsUrl={virtualMicWsUrl}
-                onError={(message) => setRoomError(message)}
+                onError={() => handleMicSetupError('Không dùng được micro ảo. Bạn vẫn ở trong cuộc họp nhưng người khác có thể không nghe thấy bạn.')}
               />
             )}
 
@@ -1520,7 +1575,7 @@ export default function MeetingPage() {
                 enabled={true}
                 wsUrl={currentPhysicalMicWsUrl}
                 preferredDeviceId={userChoices?.audioDeviceId ?? null}
-                onError={(message) => setRoomError(message)}
+                onError={() => handleMicSetupError('Không gửi được âm thanh để tạo phụ đề và phiên dịch. Bạn vẫn ở trong cuộc họp.')}
               />
             )}
 
