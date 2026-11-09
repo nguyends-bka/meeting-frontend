@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { getPostLoginPath, withLoginNext } from '@/lib/auth/loginRedirect';
 import {
   addFaceEmbeddingListener,
   FACE_FRAME_SEND_INTERVAL_MS,
@@ -28,7 +29,7 @@ export default function FaceLoginPage() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.push('/');
+      router.push(getPostLoginPath());
     }
   }, [isAuthenticated, authLoading, router]);
 
@@ -57,7 +58,7 @@ export default function FaceLoginPage() {
         const result = await loginWithFaceEmbedding(embedding);
         if (result.success) {
           faceAutoFlowRunningRef.current = false;
-          router.push('/');
+          router.push(getPostLoginPath());
           return;
         }
       } catch {
@@ -127,7 +128,7 @@ export default function FaceLoginPage() {
     faceLoginInProgressRef.current = false;
     setFaceLoading(false);
     stopCamera();
-    router.push('/login');
+    router.push(withLoginNext('/login'));
   };
 
   const startCamera = async () => {

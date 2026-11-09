@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Button, Spin, Space, Typography, App } from 'antd';
 import { CopyOutlined, ReloadOutlined, RobotOutlined, CloseOutlined } from '@ant-design/icons';
 import { meetingApi } from '@/services/api';
@@ -18,6 +18,18 @@ export function SummaryReportModal({ meeting, onClose }: SummaryReportModalProps
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [triggering, setTriggering] = useState<boolean>(false);
+  // Tăng sau mỗi lần yêu cầu tóm tắt để chạy lại vòng kiểm tra trạng thái.
+  const [pollRequest, setPollRequest] = useState(0);
+  const currentMeetingIdRef = useRef<string | null>(null);
+  const waitBeforeFirstPollRef = useRef(false);
+
+  useEffect(() => {
+    currentMeetingIdRef.current = meeting?.id ?? null;
+    setStatus('NotGenerated');
+    setSummaryText('');
+    setErrorMessage(null);
+    if (!meeting) setLoading(false);
+  }, [meeting]);
 
   useEffect(() => {
     let active = true;
@@ -50,11 +62,12 @@ export function SummaryReportModal({ meeting, onClose }: SummaryReportModalProps
     };
 
     if (meeting) {
-      fetchStatus(true);
-    } else {
-      setStatus('NotGenerated');
-      setSummaryText('');
-      setErrorMessage(null);
+      if (waitBeforeFirstPollRef.current) {
+        waitBeforeFirstPollRef.current = false;
+        timerId = setTimeout(() => fetchStatus(false), 10000);
+      } else {
+        fetchStatus(true);
+      }
     }
 
     return () => {
@@ -62,12 +75,13 @@ export function SummaryReportModal({ meeting, onClose }: SummaryReportModalProps
       if (timerId) clearTimeout(timerId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meeting]);
+  }, [meeting, pollRequest]);
 
   const handleTrigger = async () => {
     if (!meeting) return;
+    const requestedMeetingId = meeting.id;
     setTriggering(true);
-    const res = await meetingApi.triggerMinutesSummary(meeting.id);
+    const res = await meetingApi.triggerMinutesSummary(requestedMeetingId);
     setTriggering(false);
 
     if (res.error) {
@@ -76,28 +90,13 @@ export function SummaryReportModal({ meeting, onClose }: SummaryReportModalProps
     }
 
     message.success('Đã gửi yêu cầu tóm tắt AI thành công!');
+    if (currentMeetingIdRef.current !== requestedMeetingId) return;
+
     setStatus('Processing');
     setSummaryText('');
     setErrorMessage(null);
-
-    // Kích hoạt chu kỳ Polling ngay lập tức
-    const pollInterval = setInterval(async () => {
-      if (!meeting) {
-        clearInterval(pollInterval);
-        return;
-      }
-      const statusRes = await meetingApi.getMinutesSummaryStatus(meeting.id);
-      if (statusRes.data) {
-        setStatus(statusRes.data.status);
-        setSummaryText(statusRes.data.summaryText || '');
-        setErrorMessage(statusRes.data.errorMessage);
-        if (statusRes.data.status !== 'Pending' && statusRes.data.status !== 'Processing') {
-          clearInterval(pollInterval);
-        }
-      } else {
-        clearInterval(pollInterval);
-      }
-    }, 10000);
+    waitBeforeFirstPollRef.current = true;
+    setPollRequest((value) => value + 1);
   };
 
   const handleCopy = async () => {

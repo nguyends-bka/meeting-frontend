@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
+import { getPostLoginPath, withLoginNext } from '@/lib/auth/loginRedirect';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -13,10 +14,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
+  const [faceLoginHref, setFaceLoginHref] = useState('/login/face');
+
+  useEffect(() => {
+    setFaceLoginHref(withLoginNext('/login/face'));
+  }, []);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.push('/');
+      router.push(getPostLoginPath());
     }
   }, [isAuthenticated, authLoading, router]);
 
@@ -25,10 +31,10 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    const result = await login(username, password);
+    const result = await login(username.trim(), password);
     
     if (result.success) {
-      router.push('/');
+      router.push(getPostLoginPath());
     } else {
       setError(result.error || 'Đăng nhập thất bại');
     }
@@ -101,7 +107,7 @@ export default function LoginPage() {
 
         {/* Nút đăng nhập bằng khuôn mặt */}
         <Link
-          href="/login/face"
+          href={faceLoginHref}
           style={{
             marginTop: 12,
             display: 'flex',

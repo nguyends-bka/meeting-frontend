@@ -41,7 +41,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     const result = await register(
-      username, 
+      username.trim(), 
       password, 
       fullName.trim() || undefined, 
       email.trim() || undefined

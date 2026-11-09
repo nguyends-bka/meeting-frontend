@@ -96,6 +96,15 @@ export function useMeetingsPage(user: any, isAdmin: boolean) {
 
   const totalPages = Math.max(1, Math.ceil(filteredMeetings.length / tablePageSize));
 
+  useEffect(() => {
+    setTablePage(1);
+  }, [searchText, filterStatus]);
+
+  // Xóa hết cuộc họp ở trang cuối thì lùi về trang còn dữ liệu.
+  useEffect(() => {
+    if (tablePage > totalPages) setTablePage(totalPages);
+  }, [tablePage, totalPages]);
+
   // --- CHI TIẾT CUỘC HỌP (Invitees, Co-hosts, Recordings) ---
   const [meetingInvitees, setMeetingInvitees] = useState<MeetingInvitee[]>([]);
   const [meetingCoHosts, setMeetingCoHosts] = useState<MeetingCoHostItem[]>([]);

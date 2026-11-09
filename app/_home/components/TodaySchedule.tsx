@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Button, Typography, Tag, Space, Grid, message } from 'antd';
+import { Card, Button, Typography, Tag, Space, Grid } from 'antd';
 import { CalendarOutlined, CaretRightOutlined, InfoCircleOutlined, CopyOutlined, ClockCircleOutlined, EnvironmentOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { HomeMeetingRow } from '../types';
@@ -49,17 +49,6 @@ export default function TodaySchedule({
   const emptyText = isToday
     ? 'Chưa có cuộc họp nào được tạo hôm nay.'
     : `Chưa có cuộc họp nào được tạo trong ngày ${dateToUse.format('DD/MM/YYYY')}.`;
-
-  const handleCopyLink = async (meetingCode: string) => {
-    if (typeof window === 'undefined') return;
-    const link = `${window.location.origin}/join?code=${meetingCode}`;
-    try {
-      await navigator.clipboard.writeText(link);
-      message.success('Đã sao chép liên kết mời họp');
-    } catch {
-      message.error('Sao chép thất bại');
-    }
-  };
 
   return (
     <Card

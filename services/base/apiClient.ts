@@ -1,5 +1,7 @@
 // Base API client with common request handling
 
+import { buildLoginUrl } from '@/lib/auth/loginRedirect';
+
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
@@ -40,7 +42,7 @@ class ApiClient {
         if (response.status === 401 && typeof window !== 'undefined' && !isLoginAttempt) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          window.location.href = '/login';
+          window.location.href = buildLoginUrl();
           return { error: 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.' };
         }
 

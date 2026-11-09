@@ -8,6 +8,7 @@ import { App, Form, Grid } from 'antd';
 import { HomeMeetingRow, HistoryEntry } from './types';
 import {
   isMeetingLive,
+  meetingRowStatus,
   pickHeroMeeting,
   formatDurationFromScheduleRange,
   formatHistoryParticipationDuration,
@@ -119,6 +120,10 @@ export function useHomePage() {
 
       if (isAdmin) {
         const res = await adminApi.getAllMeetings();
+        if (res.error) {
+          message.error(res.error);
+          return;
+        }
         const meetings = (res.data ?? []) as any[];
         rows = meetings.map((m) => ({
           id: m.id,
@@ -138,6 +143,10 @@ export function useHomePage() {
         }));
       } else {
         const result = await apiService.getMeetings();
+        if (result.error) {
+          message.error(result.error);
+          return;
+        }
         const meetings = (result.data ?? []) as any[];
         rows = meetings.map((m) => ({
           id: m.id,
@@ -205,7 +214,12 @@ export function useHomePage() {
   };
 
   const onCreateMeeting = async () => {
-    const values = await createForm.validateFields();
+    let values;
+    try {
+      values = await createForm.validateFields();
+    } catch {
+      return;
+    }
     const title = String(values.title || '').trim();
     const baseHostName = String(values.hostName || '').trim() || user?.username || 'Host';
     const roomName = values.selectedRoom === 'Khác' ? String(values.customRoom || '').trim() : values.selectedRoom;
@@ -324,7 +338,12 @@ export function useHomePage() {
   }, [historyItems, historyMeeting, message]);
 
   const onJoinMeeting = async () => {
-    const values = await joinForm.validateFields();
+    let values;
+    try {
+      values = await joinForm.validateFields();
+    } catch {
+      return;
+    }
     const meetingIdOrCode = String(values.meetingIdOrCode || '').trim();
     const passcode = String(values.passcode || '').trim();
 
@@ -380,7 +399,7 @@ export function useHomePage() {
   const pendingForYou = useMemo(() => {
     if (!stats) return 0;
     const extra = allMeetings.filter(
-      (r) => dayjs(r.createdAt).isSame(dayjs(), 'day') && !r.endedAt && !isMeetingLive(r)
+      (r) => dayjs(r.createdAt).isSame(dayjs(), 'day') && meetingRowStatus(r) === 'upcoming'
     ).length;
     return (stats.activeMeetings ?? 0) + extra;
   }, [allMeetings, stats]);

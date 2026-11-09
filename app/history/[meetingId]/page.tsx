@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { buildLoginUrl } from '@/lib/auth/loginRedirect';
 import { apiService } from '@/services/api';
 import dayjs from 'dayjs';
 import {
@@ -60,7 +61,7 @@ export default function MeetingHistoryPage() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push('/login');
+      router.push(buildLoginUrl());
       return;
     }
     if (isAuthenticated && meetingId) {

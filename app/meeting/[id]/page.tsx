@@ -11,6 +11,7 @@ import {
 import type { LocalUserChoices } from '@livekit/components-core';
 import { DisconnectReason, LocalAudioTrack, RoomEvent, Track } from 'livekit-client';
 import { useAuth } from '@/lib/auth';
+import { buildLoginUrl } from '@/lib/auth/loginRedirect';
 import { apiService, meetingApi } from '@/services/api';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { startVirtualMicReceiver } from '@/lib/virtualMicReceiver';
@@ -915,7 +916,7 @@ export default function MeetingPage() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push('/login');
+      router.push(buildLoginUrl());
       return;
     }
   }, [authLoading, isAuthenticated, router]);

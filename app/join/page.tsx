@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { buildLoginUrl } from '@/lib/auth/loginRedirect';
 import { apiService } from '@/services/api';
 import MainLayout from '@/components/MainLayout';
 import {
@@ -26,7 +27,7 @@ export default function JoinPage() {
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push('/login');
+      router.push(buildLoginUrl());
     }
   }, [isAuthenticated, loading, router]);
 
@@ -88,10 +89,11 @@ export default function JoinPage() {
             <Form.Item
               label="Meeting ID hoặc Code"
               name="meetingIdOrCode"
+              normalize={(value: string) => value?.trim()}
               rules={[
                 { required: true, message: 'Vui lòng nhập Meeting ID hoặc Code' },
                 {
-                  pattern: /^[0-9a-fA-F-]{8,}$|^[A-Z0-9]{6}$/,
+                  pattern: /^[0-9a-f-]{8,}$|^[a-z0-9]{6}$/i,
                   message: 'Định dạng không hợp lệ',
                 },
               ]}
