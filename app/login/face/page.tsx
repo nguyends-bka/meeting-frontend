@@ -14,11 +14,26 @@ import {
 } from '@/lib/faceIdWebSocket';
 import './face-camera.css';
 
+const NOTICE_NOT_RECOGNIZED = 'Chưa nhận diện được. Hãy nhìn thẳng vào camera.';
+const NOTICE_SERVICE_UNAVAILABLE = 'Không kết nối được dịch vụ khuôn mặt trên thiết bị. Hệ thống đang thử lại.';
+
+function getCameraErrorNotice(error: unknown): string {
+  const name = error instanceof Error ? error.name : '';
+  if (name === 'NotAllowedError' || name === 'SecurityError') {
+    return 'Trình duyệt chưa cho phép dùng camera. Hãy cấp quyền rồi bấm Bật camera lại.';
+  }
+  if (name === 'NotFoundError') {
+    return 'Không tìm thấy camera trên thiết bị này.';
+  }
+  return 'Không mở được camera. Hãy kiểm tra camera rồi thử lại.';
+}
+
 export default function FaceLoginPage() {
   const [faceLoading, setFaceLoading] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraStarting, setCameraStarting] = useState(false);
   const [faceGuideDetected, setFaceGuideDetected] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const { loginWithFaceEmbedding, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -58,11 +73,14 @@ export default function FaceLoginPage() {
         const result = await loginWithFaceEmbedding(embedding);
         if (result.success) {
           faceAutoFlowRunningRef.current = false;
+          setNotice(null);
           router.push(getPostLoginPath());
           return;
         }
+        // Tiếp tục thử khi có embedding mới.
+        setNotice(result.error === 'Face không khớp' ? NOTICE_NOT_RECOGNIZED : result.error || NOTICE_NOT_RECOGNIZED);
       } catch {
-        // im lặng — tiếp tục thử khi có embedding mới
+        setNotice(NOTICE_NOT_RECOGNIZED);
       } finally {
         faceLoginInProgressRef.current = false;
       }
@@ -127,6 +145,7 @@ export default function FaceLoginPage() {
     faceAutoFlowRunningRef.current = false;
     faceLoginInProgressRef.current = false;
     setFaceLoading(false);
+    setNotice(null);
     stopCamera();
     router.push(withLoginNext('/login'));
   };
@@ -158,8 +177,9 @@ export default function FaceLoginPage() {
       videoRef.current.srcObject = stream;
       await videoRef.current.play();
       setCameraOn(true);
-    } catch {
+    } catch (error) {
       stopCamera();
+      throw error;
     } finally {
       setCameraStarting(false);
     }
@@ -171,6 +191,7 @@ export default function FaceLoginPage() {
 
     faceAutoFlowRunningRef.current = true;
     setFaceLoading(true);
+    setNotice(null);
 
     try {
       await startCamera();
@@ -180,13 +201,19 @@ export default function FaceLoginPage() {
         try {
           const base64Image = await videoFrameToBase64NoPrefix();
           await sendFaceImageToDevice(base64Image);
-        } catch {
-          // bỏ qua lỗi tạm thời, vòng lặp tiếp tục
+          setNotice((current) => (current === NOTICE_SERVICE_UNAVAILABLE ? null : current));
+        } catch (error) {
+          // Lỗi khác là lỗi tạm thời của camera: vòng lặp tiếp tục.
+          if (error instanceof Error && error.message.includes('WebSocket')) {
+            setNotice(NOTICE_SERVICE_UNAVAILABLE);
+          }
         }
         await new Promise((r) => setTimeout(r, FACE_FRAME_SEND_INTERVAL_MS));
       }
-    } catch {
+    } catch (error) {
       faceAutoFlowRunningRef.current = false;
+      stopCamera();
+      setNotice(getCameraErrorNotice(error));
     } finally {
       setFaceLoading(false);
     }
@@ -211,6 +238,12 @@ export default function FaceLoginPage() {
           <div className="fc-corner br" />
           <div className={`fc-face-guide${faceGuideDetected ? ' detected' : ''}`} />
         </div>
+
+        {notice && (
+          <p role="status" style={{ margin: '12px 0 0', color: '#fbbf24', fontSize: 14, textAlign: 'center' }}>
+            {notice}
+          </p>
+        )}
 
         <div className="fc-btn-row">
           <button

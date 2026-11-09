@@ -6,8 +6,10 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { App } from 'antd';
 import { useConnectionState, useRoomContext } from '@livekit/components-react';
 import { ConnectionState, RoomEvent } from 'livekit-client';
 import { useAuth } from '@/lib/auth';
@@ -74,7 +76,10 @@ export function VoteRoomProvider({
   const room = useRoomContext();
   const connectionState = useConnectionState(room);
   const { user } = useAuth();
+  const { message } = App.useApp();
   const [state, setState] = useState<VoteRoomState>(() => initialVoteState());
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const localIdentity = room.localParticipant.identity;
   /** Trùng với JWT (backend yêu cầu createdBy / voterIdentity khớp user đăng nhập) */
@@ -228,31 +233,39 @@ export function VoteRoomProvider({
         status: publishNow ? 'open' : 'draft',
       };
       setState((prev) => applyVoteRaw(prev, JSON.stringify(msg)));
-      if (publishNow) {
-        publish(msg);
-      }
 
       const mid = meetingId?.trim();
-      if (mid) {
-        void (async () => {
-          const res = await meetingApi.createPoll(mid, {
-            pollId: msg.pollId,
-            title: msg.title,
-            options: msg.options,
-            createdBy: msg.createdBy,
-            createdByName: msg.createdByName,
-            createdAt: msg.createdAt,
-            selectionMode: msg.selectionMode,
-            endAt: msg.endAt,
-            status: publishNow ? 'open' : 'draft',
-          });
-          if (res.error) {
-            console.warn('[Vote] Không lưu được biểu quyết lên DB:', res.error);
-          }
-        })();
+      if (!mid) {
+        if (publishNow) publish(msg);
+        return;
       }
+
+      void (async () => {
+        const res = await meetingApi.createPoll(mid, {
+          pollId: msg.pollId,
+          title: msg.title,
+          options: msg.options,
+          createdBy: msg.createdBy,
+          createdByName: msg.createdByName,
+          createdAt: msg.createdAt,
+          selectionMode: msg.selectionMode,
+          endAt: msg.endAt,
+          status: publishNow ? 'open' : 'draft',
+        });
+        if (res.error) {
+          console.warn('[Vote] Không lưu được biểu quyết lên DB:', res.error);
+          setState((prev) => {
+            const polls = { ...prev.polls };
+            delete polls[pollId];
+            return { polls };
+          });
+          message.error(`Không tạo được biểu quyết: ${res.error}`);
+          return;
+        }
+        if (publishNow) publish(msg);
+      })();
     },
-    [actorId, localDisplayName, meetingId, publish],
+    [actorId, localDisplayName, meetingId, message, publish],
   );
 
   const publishPoll = useCallback(
@@ -361,25 +374,40 @@ export function VoteRoomProvider({
         voterName: localDisplayName,
         at: Date.now(),
       };
+      const previousVote = stateRef.current.polls[pollId]?.votes[actorId];
       setState((prev) => applyVoteRaw(prev, JSON.stringify(msg)));
-      publish(msg);
 
       const mid = meetingId?.trim();
-      if (mid) {
-        void (async () => {
-          const res = await meetingApi.votePoll(mid, pollId, {
-            optionIndices: msg.optionIndices,
-            voterIdentity: msg.voterIdentity,
-            voterName: msg.voterName,
-            at: msg.at,
-          });
-          if (res.error) {
-            console.warn('[Vote] Không lưu được phiếu lên DB:', res.error);
-          }
-        })();
+      if (!mid) {
+        publish(msg);
+        return;
       }
+
+      void (async () => {
+        const res = await meetingApi.votePoll(mid, pollId, {
+          optionIndices: msg.optionIndices,
+          voterIdentity: msg.voterIdentity,
+          voterName: msg.voterName,
+          at: msg.at,
+        });
+        if (res.error) {
+          console.warn('[Vote] Không lưu được phiếu lên DB:', res.error);
+          setState((prev) => {
+            const poll = prev.polls[pollId];
+            // Chỉ hoàn tác nếu người dùng chưa bỏ phiếu mới hơn trong lúc chờ.
+            if (!poll || poll.votes[actorId]?.at !== msg.at) return prev;
+            const votes = { ...poll.votes };
+            if (previousVote) votes[actorId] = previousVote;
+            else delete votes[actorId];
+            return { polls: { ...prev.polls, [pollId]: { ...poll, votes } } };
+          });
+          message.error(`Không lưu được phiếu của bạn: ${res.error}`);
+          return;
+        }
+        publish(msg);
+      })();
     },
-    [actorId, localDisplayName, meetingId, publish],
+    [actorId, localDisplayName, meetingId, message, publish],
   );
 
   const closePoll = useCallback(
@@ -390,23 +418,31 @@ export function VoteRoomProvider({
         closedBy: actorId,
         at: Date.now(),
       };
-      setState((prev) => applyVoteRaw(prev, JSON.stringify(msg)));
-      publish(msg);
+      const applyClose = () => {
+        setState((prev) => applyVoteRaw(prev, JSON.stringify(msg)));
+        publish(msg);
+      };
 
       const mid = meetingId?.trim();
-      if (mid) {
-        void (async () => {
-          const res = await meetingApi.closePoll(mid, pollId, {
-            closedBy: msg.closedBy,
-            at: msg.at,
-          });
-          if (res.error) {
-            console.warn('[Vote] Không đóng biểu quyết trên DB:', res.error);
-          }
-        })();
+      if (!mid) {
+        applyClose();
+        return;
       }
+
+      void (async () => {
+        const res = await meetingApi.closePoll(mid, pollId, {
+          closedBy: msg.closedBy,
+          at: msg.at,
+        });
+        if (res.error) {
+          console.warn('[Vote] Không đóng biểu quyết trên DB:', res.error);
+          message.error(`Không đóng được biểu quyết: ${res.error}`);
+          return;
+        }
+        applyClose();
+      })();
     },
-    [actorId, meetingId, publish],
+    [actorId, meetingId, message, publish],
   );
 
   const value = useMemo<VoteRoomContextValue>(

@@ -83,6 +83,10 @@ export default function CalendarPage() {
       let rows: HomeMeetingRow[] = [];
       if (isAdmin) {
         const res = await adminApi.getAllMeetings();
+        if (res.error) {
+          message.error(res.error);
+          return;
+        }
         const meetingsData = (res.data ?? []) as any[];
         rows = meetingsData.map((m) => ({
           id: m.id,
@@ -102,6 +106,10 @@ export default function CalendarPage() {
         }));
       } else {
         const result = await apiService.getMeetings();
+        if (result.error) {
+          message.error(result.error);
+          return;
+        }
         const meetingsData = (result.data ?? []) as any[];
         rows = meetingsData.map((m) => ({
           id: m.id,
@@ -160,7 +168,12 @@ export default function CalendarPage() {
   }, [createForm]);
 
   const onCreateMeeting = async () => {
-    const values = await createForm.validateFields();
+    let values;
+    try {
+      values = await createForm.validateFields();
+    } catch {
+      return;
+    }
     const title = String(values.title || '').trim();
     const baseHostName = String(values.hostName || '').trim() || user?.username || 'Host';
     const roomName = values.selectedRoom === 'Khác' ? String(values.customRoom || '').trim() : values.selectedRoom;

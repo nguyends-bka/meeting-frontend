@@ -206,7 +206,12 @@ export default function ProfilePage() {
   };
 
   const handleUpdateProfile = async () => {
-    const values = await profileForm.validateFields();
+    let values;
+    try {
+      values = await profileForm.validateFields();
+    } catch {
+      return;
+    }
     setUpdatingProfile(true);
 
     const avatarRaw = values.avatar;
@@ -261,6 +266,7 @@ export default function ProfilePage() {
       avatar,
     });
     setShowUpdateForm(false);
+    messageApi.success('Đã lưu thông tin cá nhân');
     await loadProfile();
   };
 
@@ -277,7 +283,12 @@ export default function ProfilePage() {
   };
 
   const handleChangePassword = async () => {
-    const values = await passwordForm.validateFields();
+    let values;
+    try {
+      values = await passwordForm.validateFields();
+    } catch {
+      return;
+    }
 
     if (values.newPassword !== values.confirmPassword) {
       messageApi.error('Mật khẩu xác nhận không khớp');
@@ -297,6 +308,7 @@ export default function ProfilePage() {
 
     passwordForm.resetFields();
     setShowPasswordForm(false);
+    messageApi.success('Đã đổi mật khẩu');
   };
 
   if (loading) return <div style={{ padding: 24 }}>Đang tải...</div>;

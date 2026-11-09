@@ -186,35 +186,34 @@ export default function MeetingDocumentsPanel({
     };
   }, [activeDoc]);
 
+  // Chỉ tải lại file khi đổi tài liệu, không tải lại khi chỉ đổi trạng thái chia sẻ.
+  const activeDocId = activeDoc?.id;
+
   useEffect(() => {
-    if (!activeDoc) {
-      setActiveObjectUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
-      return;
-    }
+    if (activeDocId == null) return;
 
     let cancelled = false;
     const run = async () => {
       try {
-        const blob = await meetingApi.getMeetingDocumentFileBlob(meetingId, activeDoc.id);
+        const blob = await meetingApi.getMeetingDocumentFileBlob(meetingId, activeDocId);
         if (cancelled) return;
-        const url = URL.createObjectURL(blob);
-        setActiveObjectUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev);
-          return url;
-        });
+        setActiveObjectUrl(URL.createObjectURL(blob));
       } catch {
+        if (cancelled) return;
         message.error('Không thể tải file tài liệu');
+        setActiveDoc(null);
       }
     };
 
     void run();
     return () => {
       cancelled = true;
+      setActiveObjectUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
     };
-  }, [activeDoc, meetingId]);
+  }, [activeDocId, meetingId]);
 
   const onPickFile = () => fileInputRef.current?.click();
 

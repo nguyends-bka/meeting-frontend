@@ -18,6 +18,7 @@ import './face-registration-modal.css';
 
 const SESSION_SKIP_KEY = 'bk_face_reg_skipped';
 const SESSION_FORCE_OPEN_KEY = 'bk_face_reg_force_open';
+const SAVE_RETRY_INTERVAL_MS = 5000;
 const FACE_ANGLE_ORDER: FaceAngle[] = ['straight', 'right', 'left', 'up'];
 const FACE_ANGLE_PROMPT: Record<FaceAngle, string> = {
   straight: 'Vui lòng nhìn thẳng',
@@ -229,6 +230,40 @@ export function FaceRegistrationGate() {
     };
 
     let regInFlight = false;
+    let lastSaveAttemptAt = 0;
+
+    const saveCollectedEmbeddings = async () => {
+      const straight = angleEmbeddingsRef.current.straight;
+      const right = angleEmbeddingsRef.current.right;
+      const left = angleEmbeddingsRef.current.left;
+      const up = angleEmbeddingsRef.current.up;
+      if (!straight || !right || !left || !up) return;
+      if (regInFlight || cancelled || !flowActiveRef.current) return;
+
+      regInFlight = true;
+      lastSaveAttemptAt = Date.now();
+      try {
+        const res = await apiService.registerFaceEmbedding({ straight, right, left, up });
+        if (res.error) {
+          messageRef.current.error({
+            key: 'face-registration-save',
+            content: `Chưa lưu được khuôn mặt: ${res.error}. Hệ thống đang thử lại.`,
+          });
+          return;
+        }
+        messageRef.current.destroy('face-registration-save');
+        updateUserRef.current({ hasFaceEmbedding: true });
+        setForcedBiometricOpen(false);
+        flowActiveRef.current = false;
+      } catch {
+        messageRef.current.error({
+          key: 'face-registration-save',
+          content: 'Chưa lưu được khuôn mặt. Hệ thống đang thử lại.',
+        });
+      } finally {
+        regInFlight = false;
+      }
+    };
 
     const onEmbedding = async (payload: FaceEmbeddingMessage) => {
       if (!flowActiveRef.current || cancelled || regInFlight) return;
@@ -246,27 +281,7 @@ export function FaceRegistrationGate() {
         return;
       }
 
-      regInFlight = true;
-      try {
-        const straight = angleEmbeddingsRef.current.straight;
-        const right = angleEmbeddingsRef.current.right;
-        const left = angleEmbeddingsRef.current.left;
-        const up = angleEmbeddingsRef.current.up;
-        if (!straight || !right || !left || !up) return;
-
-        const res = await apiService.registerFaceEmbedding({ straight, right, left, up });
-        if (res.error) {
-          messageRef.current.error(res.error);
-          return;
-        }
-        updateUserRef.current({ hasFaceEmbedding: true });
-        setForcedBiometricOpen(false);
-        flowActiveRef.current = false;
-      } catch {
-        // im lặng — tiếp tục gửi khung hình khi có embedding mới
-      } finally {
-        regInFlight = false;
-      }
+      await saveCollectedEmbeddings();
     };
 
     const run = async () => {
@@ -290,6 +305,16 @@ export function FaceRegistrationGate() {
         await waitForVideoReady();
 
         while (flowActiveRef.current && streamRef.current && !cancelled) {
+          const allAnglesCollected = FACE_ANGLE_ORDER.every((x) => angleEmbeddingsRef.current[x] != null);
+          if (allAnglesCollected) {
+            // Đã đủ 4 góc: thiết bị không gửi thêm góc nào cần lấy, nên phải tự thử lưu lại khi lần trước lỗi.
+            if (Date.now() - lastSaveAttemptAt >= SAVE_RETRY_INTERVAL_MS) {
+              await saveCollectedEmbeddings();
+            }
+            await new Promise((r) => setTimeout(r, FACE_FRAME_SEND_INTERVAL_MS));
+            continue;
+          }
+
           try {
             const base64Image = await videoFrameToBase64NoPrefix();
             await sendRegisterFaceImageToDevice(base64Image);
