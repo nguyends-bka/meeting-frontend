@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import MainLayout from '@/components/MainLayout';
+import FaceThresholdCard from '@/components/admin/FaceThresholdCard';
 import {
   Card,
   Typography,
@@ -47,7 +48,7 @@ const STORAGE_KEY = 'meeting_app_settings';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, isAdmin, loading } = useAuth();
   const { message: messageApi } = App.useApp();
   const [form] = Form.useForm();
 
@@ -305,6 +306,8 @@ export default function SettingsPage() {
               </Card>
             </Form>
           </Card>
+
+          {isAdmin && <FaceThresholdCard />}
         </Space>
       </div>
     </MainLayout>

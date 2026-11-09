@@ -94,6 +94,13 @@ export interface AuditLogQuery {
   search?: string;
 }
 
+export interface FaceThresholdSettings {
+  threshold: number;
+  defaultThreshold: number;
+  minThreshold: number;
+  maxThreshold: number;
+}
+
 // ── Analytics ────────────────────────────────────────────────
 export interface AnalyticsSummary {
   totalMeetings: number;

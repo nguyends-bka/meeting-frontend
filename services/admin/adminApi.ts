@@ -10,6 +10,7 @@ import type {
   AuditLogPage,
   AuditLogQuery,
   AnalyticsResponse,
+  FaceThresholdSettings,
 } from '@/dtos/admin.dto';
 
 // Admin domain API - React Query compatible
@@ -61,6 +62,19 @@ export const adminApi = {
     const qs = params.toString();
     return apiClient.request<AuditLogPage>(`/api/admin/audit-logs${qs ? `?${qs}` : ''}`, {
       method: 'GET',
+    });
+  },
+
+  getFaceThreshold: async () => {
+    return apiClient.request<FaceThresholdSettings>('/api/admin/settings/face-threshold', {
+      method: 'GET',
+    });
+  },
+
+  updateFaceThreshold: async (threshold: number) => {
+    return apiClient.request<FaceThresholdSettings>('/api/admin/settings/face-threshold', {
+      method: 'PUT',
+      body: JSON.stringify({ threshold }),
     });
   },
 
